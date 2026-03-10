@@ -257,9 +257,11 @@ class TestLogRotation:
         log1.append({"event": "test1", "source": "log1"})
 
         # Trigger rotation with large data from first instance
+        # Need 3 large appends to trigger rotation
         large_data = "z" * (MAX_LOG_SIZE_BYTES // 2)
         log1.append({"event": "large1", "data": large_data})
         log1.append({"event": "large2", "data": large_data})
+        log1.append({"event": "large3", "data": large_data})  # Triggers rotation
 
         # Append from second instance (should work after rotation)
         log2.append({"event": "test2", "source": "log2"})
