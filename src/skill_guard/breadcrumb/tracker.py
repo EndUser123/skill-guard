@@ -172,34 +172,44 @@ def set_breadcrumb(skill_name: str, step_name: str) -> None:
     """
     skill_lower = skill_name.lower()
 
-    breadcrumb_file = _get_breadcrumb_file(skill_lower)
-    if not breadcrumb_file.exists():
+    # HYBRID LOGGING: Try to get from cache first (lazy loads from log if needed)
+    trail = _cache.get_state(skill_lower)
+
+    if not trail:
         # Trail not initialized, initialize first
         initialize_breadcrumb_trail(skill_lower)
-        if not breadcrumb_file.exists():
+        trail = _cache.get_state(skill_lower)
+        if not trail:
             return  # No workflow steps declared
 
-    try:
-        trail = json.loads(breadcrumb_file.read_text())
+    # Validate step is in workflow_steps
+    if step_name not in trail.get("workflow_steps", []):
+        # Invalid step name, ignore
+        return
 
-        # Validate step is in workflow_steps
-        if step_name not in trail.get("workflow_steps", []):
-            # Invalid step name, ignore
-            return
+    # Add to completed_steps if not already there
+    completed = trail.get("completed_steps", [])
+    if step_name not in completed:
+        completed.append(step_name)
+        trail["completed_steps"] = completed
+        trail["current_step"] = step_name
+        trail["last_updated"] = time.time()
 
-        # Add to completed_steps if not already there
-        completed = trail.get("completed_steps", [])
-        if step_name not in completed:
-            completed.append(step_name)
-            trail["completed_steps"] = completed
-            trail["current_step"] = step_name
-            trail["last_updated"] = time.time()
+        # HYBRID LOGGING: Append to log (atomic write, no read-modify-write)
+        log = AppendOnlyBreadcrumbLog(skill_lower)
+        log.append({
+            "event": "step_complete",
+            "step": step_name,
+        })
 
-            # Write updated trail
-            breadcrumb_file.write_text(json.dumps(trail, indent=2))
+        # HYBRID LOGGING: Update cache (in-memory, fast)
+        _cache.update_state(skill_lower, trail)
 
-    except (json.JSONDecodeError, OSError):
-        pass
+        # HYBRID LOGGING: Write breadcrumb file (backward compatibility snapshot)
+        # Note: This could be optimized to only write periodically, but keeping
+        # for backward compatibility with existing systems that read JSON files
+        breadcrumb_file = _get_breadcrumb_file(skill_lower)
+        breadcrumb_file.write_text(json.dumps(trail, indent=2))
 
 
 def get_breadcrumb_trail(skill_name: str) -> dict[str, Any] | None:
