@@ -44,6 +44,7 @@ __all__ = [
     "initialize_breadcrumb_trail",
     "set_breadcrumb",
     "get_breadcrumb_trail",
+    "get_active_breadcrumb_trails",
     "verify_breadcrumb_trail",
     "clear_breadcrumb_trail",
     "format_breadcrumb_status",
