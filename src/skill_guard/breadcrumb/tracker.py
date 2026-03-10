@@ -30,11 +30,7 @@ from pathlib import Path
 from typing import Any
 
 # Import terminal detection from skill_guard utilities
-try:
-    from skill_guard.terminal_detection import detect_terminal_id
-except ImportError:
-    # Fallback for development
-    from skill_execution_state import detect_terminal_id
+from skill_guard.utils.terminal_detection import detect_terminal_id
 
 # =============================================================================
 # CONFIGURATION
