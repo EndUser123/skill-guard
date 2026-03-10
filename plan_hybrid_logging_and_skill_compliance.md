@@ -328,10 +328,21 @@ def cleanup_stale_breadcrumbs() -> int:
 **Inspired by production observability research** (see: https://getathenic.com/blog/ai-agent-logging-observability-production)
 
 This hybrid system combines:
-- **Event Sourcing pattern** (immutable append-only log)
+- **Event Sourcing pattern** (immutable append-only log) - validated by research as best practice for AI skill state management
 - **Terminal-scoped isolation** (multi-terminal safety)
 - **Production-grade logging** (structlog, standardized schema)
 - **Lightweight query interface** (grep/jq, no custom infrastructure)
+
+**Event Sourcing Pattern Validation** (from research):
+
+The research confirms that Event Sourcing is superior to state files for AI skill tracking:
+- **Immutable event log**: Stores sequence of state transitions (not snapshots)
+- **Replay capability**: Reconstruct state by replaying events from log
+- **Time-travel debugging**: Can see exactly where skill reasoning diverged
+- **Audit compliance**: Perfect tamper-proof record of every action
+- **Exactly-once semantics**: System knows which side-effects already occurred on resume
+
+Our hybrid logging design (append-only log + in-memory cache + periodic snapshots) aligns with this pattern. The append-only log IS the event source; snapshots are optimization for fast recovery.
 
 **Component 1: Append-Only Log**
 
