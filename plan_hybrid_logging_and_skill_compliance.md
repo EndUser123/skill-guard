@@ -785,6 +785,54 @@ if log_path.stat().st_size > MAX_LOG_SIZE:
 
 **Recovery**: Load previous snapshot, replay entire log
 
+### Failure Mode 6: Cross-Terminal Contamination
+
+**Scenario**: Terminal A reads breadcrumb state from Terminal B, causing stale data or incorrect enforcement
+
+**Root cause**: Terminal ID validation missing or bypassed, shared state directory
+
+**Preventive actions**:
+1. **Always** include terminal_id in breadcrumb trail initialization
+2. **Always** verify terminal_id matches before returning breadcrumb state
+3. **Never** read from shared/global breadcrumb directories
+4. **Always** use terminal-scoped directory paths: `breadcrumbs_{terminal_id}/`
+5. Add assertion in tests: terminal_id in state matches current terminal
+
+**Detection**:
+- Test: Create breadcrumbs in terminal A, try to read from terminal B
+- Test: Simulate compaction (session_id changes), verify terminal_id still checked
+- Test: Verify cleanup only removes current terminal's breadcrumbs
+
+**Recovery**:
+- Immediate: Clear stale breadcrumb file, re-initialize for correct terminal
+- Long-term: Add terminal_id validation to all breadcrumb read paths
+
+**User impact**:
+- **Without isolation**: Terminal A sees Terminal B's incomplete workflow as complete, bypasses enforcement
+- **With isolation**: Each terminal has independent breadcrumb state, no cross-contamination
+
+**Example test**:
+```python
+def test_cross_terminal_isolation():
+    """Verify that Terminal A cannot read Terminal B's breadcrumbs."""
+    # Terminal A: Initialize and set breadcrumb
+    with mock_terminal_id("term_A"):
+        initialize_breadcrumb_trail("code")
+        set_breadcrumb("code", "plan")
+
+    # Terminal B: Try to read Terminal A's breadcrumb (should fail)
+    with mock_terminal_id("term_B"):
+        trail = get_breadcrumb_trail("code")
+        assert trail is None, "Should not read Terminal A's breadcrumb"
+
+    # Terminal B: Initialize its own breadcrumb (should work)
+    with mock_terminal_id("term_B"):
+        initialize_breadcrumb_trail("code")
+        trail = get_breadcrumb_trail("code")
+        assert trail is not None
+        assert trail["terminal_id"] == "term_B"
+```
+
 ---
 
 ## Implementation Plan
