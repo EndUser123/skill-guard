@@ -224,24 +224,41 @@ def get_breadcrumb_trail(skill_name: str) -> dict[str, Any] | None:
         Trail dict or None if no trail exists or session mismatch
     """
     skill_lower = skill_name.lower()
-    breadcrumb_file = _get_breadcrumb_file(skill_lower)
 
-    if not breadcrumb_file.exists():
-        return None
+    # HYBRID LOGGING: Try cache first (lazy loads from log if needed)
+    trail = _cache.get_state(skill_lower)
 
-    try:
-        trail = json.loads(breadcrumb_file.read_text())
-
-        # Verify session isolation (multi-terminal safety)
-        if not verify_session_isolation(trail):
-            # Remove stale trail from different session/terminal
-            breadcrumb_file.unlink(missing_ok=True)
+    if not trail:
+        # Check if breadcrumb file exists (for backward compatibility)
+        breadcrumb_file = _get_breadcrumb_file(skill_lower)
+        if not breadcrumb_file.exists():
             return None
 
-        return trail
+        try:
+            trail = json.loads(breadcrumb_file.read_text())
 
-    except (json.JSONDecodeError, OSError):
+            # Verify session isolation (multi-terminal safety)
+            if not verify_session_isolation(trail):
+                # Remove stale trail from different session/terminal
+                breadcrumb_file.unlink(missing_ok=True)
+                return None
+
+            # Load into cache for next access
+            _cache.update_state(skill_lower, trail)
+            return trail
+
+        except (json.JSONDecodeError, OSError):
+            return None
+
+    # Verify session isolation (multi-terminal safety)
+    if not verify_session_isolation(trail):
+        # Invalidate cache and remove stale file
+        _cache.invalidate(skill_lower)
+        breadcrumb_file = _get_breadcrumb_file(skill_lower)
+        breadcrumb_file.unlink(missing_ok=True)
         return None
+
+    return trail
 
 
 def verify_breadcrumb_trail(skill_name: str) -> tuple[bool, str]:
