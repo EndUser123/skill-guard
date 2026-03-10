@@ -78,7 +78,7 @@ def get_enforcement_level(skill_name: str) -> EnforcementLevel:
         EnforcementLevel enum value
     """
     # 1. Check environment variable (global override)
-    env_level = os.environ.get(ENFORCEMENT_LEVEL_ENV, "").lower()
+    env_level = os.environ.get(ENFORCEMENT_LEVEL_ENV, "").upper()
     if env_level:
         try:
             return EnforcementLevel(env_level)
