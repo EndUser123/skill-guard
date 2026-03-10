@@ -1250,22 +1250,32 @@ def test_cross_terminal_isolation():
 
 ## Next Steps
 
-1. **Review this plan** - Confirm architecture and phased approach
-2. **Start with Phase 1** - Add workflow_steps to critical skills
-3. **Implement Phase 2** - Hybrid logging system with tests
-4. **Add Phase 3** - Query interface and debugging tools
-5. **Document migration** - Guide for adding workflow_steps to other skills
+1. **Implement Phase 1** - Simple binary tracking for all skills
+2. **Implement Phase 2** - Configurable enforcement levels (minimal/standard/strict)
+3. **Implement Phase 3** - Auto-inference from tool patterns
+4. **Test with critical skills** - Add `enforcement_level: strict` to 5-10 skills
+5. **Document SKILL.md usage** - Show how to add enforcement_level and workflow_steps
 
 **Estimated timeline**:
-- Phase 1: 2-3 hours (quick wins, low risk)
-- Phase 2: 6-8 hours (core implementation, medium risk)
-- Phase 3: 2-4 hours (tooling, low risk)
-- **Total**: 10-15 hours across 3 phases
+- Phase 1: 2-3 hours (core tracking, works for all 234 skills)
+- Phase 2: 2-3 hours (enforcement levels, default STANDARD)
+- Phase 3: 1-2 hours (auto-inference from tools)
+- **Total**: 5-8 hours (vs. 10-15 hours for original complex approach)
 
 **Risk assessment**:
-- **Low risk**: Phase 1 (backward compatible, optional)
-- **Medium risk**: Phase 2 (core changes, mitigated by tests)
-- **Low risk**: Phase 3 (new features, no breaking changes)
+- **Low risk**: Phase 1 (backward compatible, zero manual work)
+- **Low risk**: Phase 2 (default STANDARD level prevents most issues)
+- **Low risk**: Phase 3 (inference failures don't block tools)
+- **Medium risk**: Adding `enforcement_level: strict` to skills (requires testing)
+
+**Key simplification from original plan**:
+- ❌ Removed: Complex 3-level compliance detection (Level 0-3)
+- ❌ Removed: Manual workflow_steps required for all 234 skills
+- ❌ Removed: Compliance detection and feedback system
+- ✅ Added: Simple binary tracking (invoked → completed)
+- ✅ Added: Auto-inference from tool patterns
+- ✅ Added: Configurable enforcement (minimal/standard/strict)
+- ✅ Added: Default STANDARD level works for all skills immediately
 
 ---
 
