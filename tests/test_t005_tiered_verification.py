@@ -9,6 +9,8 @@ Acceptance Criteria:
 - STRICT level checks all steps
 """
 
+import time
+
 import pytest
 
 from skill_guard.breadcrumb.tracker import (
