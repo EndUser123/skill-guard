@@ -88,6 +88,7 @@ class TestLogRotation:
         log.append({"event": "test2", "data": large_data})
 
         # Check for archive files
+        log_file = _get_log_file(skill)
         log_dir = log_file.parent
         archives = list(log_dir.glob(f"{skill}_*.jsonl"))
 
