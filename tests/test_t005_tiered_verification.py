@@ -106,7 +106,13 @@ class TestT005TieredVerification:
             )
 
             # Verify: Should fail MINIMAL (duration <= 10s)
+            # Debug: Check what get_breadcrumb_trail returns
+            from skill_guard.breadcrumb.tracker import get_breadcrumb_trail
+            trail_debug = get_breadcrumb_trail(skill)
+            print(f"DEBUG: trail after create: {trail_debug}")
+
             is_complete, message = verify_breadcrumb_trail(skill)
+            print(f"DEBUG: is_complete={is_complete}, message={message}")
             if is_complete:
                 # Debug: See why it passed when it should fail
                 print(f"DEBUG: Unexpected pass. Message: {message}")

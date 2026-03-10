@@ -1,7 +1,7 @@
 {
   "skill": "test_minimal_pass",
-  "terminal_id": "test-terminal",
-  "initialized_at": 1773163941.0624187,
+  "terminal_id": "fallback_term_227300",
+  "initialized_at": 1773164020.1266985,
   "workflow_steps": [
     "step1",
     "step2",
@@ -9,6 +9,6 @@
   ],
   "completed_steps": [],
   "current_step": null,
-  "last_updated": 1773163956.0624194,
+  "last_updated": 1773164035.126699,
   "tool_count": 3
 }

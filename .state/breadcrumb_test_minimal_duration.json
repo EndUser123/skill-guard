@@ -1,13 +1,13 @@
 {
   "skill": "test_minimal_duration",
-  "terminal_id": "test-terminal",
-  "initialized_at": 1773163971.6569092,
+  "terminal_id": "fallback_term_227300",
+  "initialized_at": 1773164030.1367424,
   "workflow_steps": [
     "step1",
     "step2"
   ],
   "completed_steps": [],
   "current_step": null,
-  "last_updated": 1773163976.6569102,
+  "last_updated": 1773164035.1367428,
   "tool_count": 5
 }
