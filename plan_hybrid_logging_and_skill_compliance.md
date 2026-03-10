@@ -1109,26 +1109,26 @@ def test_cross_terminal_isolation():
 
 **Objective**: Enable immediate skill compliance with minimal risk
 
-**Tasks**:
-1. Add `workflow_steps` to critical skills' SKILL.md frontmatter
-   - Skills: code, trace, arch, package, tdd
-   - Action: Edit frontmatter, add workflow_steps list
-   - Verification: `skill_guard.breadcrumb.initialize_breadcrumb_trail()` works
+**T-001**: Add workflow_steps to critical skills' SKILL.md frontmatter
+- File: `.claude/skills/{skill_name}/SKILL.md` (5 skills: code, trace, arch, package, tdd)
+- Action: Edit frontmatter, add workflow_steps list with skill-specific steps
+- Prerequisites: None
+- Acceptance: skill_guard.breadcrumb.initialize_breadcrumb_trail() works when skill invoked
+- Effort: M
 
-2. Add breadcrumb calls to skill hooks (if hooks exist)
-   - Example: `/code` calls set_breadcrumb() after each phase
-   - Action: Add import and function calls in hook scripts
-   - Verification: Breadcrumb file created when skill invoked
+**T-002**: Add breadcrumb calls to skill hooks
+- File: `.claude/skills/{skill_name}/hooks/*.py` (where hooks exist)
+- Action: Import set_breadcrumb, call after each phase completes in hook scripts
+- Prerequisites: T-001
+- Acceptance: Breadcrumb file created when skill invoked, steps marked complete
+- Effort: M
 
-3. Add verification to global hooks
-   - Hook: PreToolUse or UserPromptSubmit
-   - Action: Call verify_breadcrumb_trail() before skill completion
-   - Verification: Warning shown when steps missing
-
-**Acceptance criteria**:
-- code, trace, arch skills have workflow_steps in SKILL.md
-- Breadcrumb files created when skills invoked
-- Verification warns on incomplete workflows
+**T-003**: Add verification to global hooks
+- File: `.claude/hooks/PreToolUse_breadcrumb_verifier.py` (new)
+- Action: Call verify_breadcrumb_trail() before skill completion, show warning on incomplete
+- Prerequisites: T-001, T-002
+- Acceptance: Warning shown when steps missing, incomplete workflows blocked
+- Effort: S
 
 ### Phase 2: Configurable Enforcement System (2-3 hours)
 
