@@ -1219,24 +1219,26 @@ def test_cross_terminal_isolation():
 
 **Objective**: Automatically infer workflow steps from tool usage patterns
 
-**Tasks**:
-1. Create tool pattern inference system (`src/skill_guard/breadcrumb/inference.py`)
-   - Function: `_infer_step_from_tool(tool_name, tool_input)` - Map tools to workflow steps
-   - Patterns: WebSearch→research, Read(SKILL.md)→requirements, Edit(test*)→tdd, Bash(pytest)→verification
-   - Tests: All major tool types, step mapping accuracy, edge cases
+**T-014**: Create tool pattern inference system
+- File: `src/skill_guard/breadcrumb/inference.py` (new)
+- Action: Create _infer_step_from_tool() to map tools to workflow steps (WebSearch→research, Read→requirements, Edit→tdd, Bash→verification)
+- Prerequisites: T-010
+- Acceptance: All major tool types mapped correctly, step mapping accurate, edge cases handled
+- Effort: M
 
-2. Create PostToolUse hook for automatic tracking
-   - Hook: `PostToolUse_breadcrumb_tracker.py`
-   - Track: Every tool usage with inferred step
-   - Build: Unique inferred workflow (preserve order, dedupe)
-   - Tests: Tool tracking, inference accuracy, workflow building
+**T-015**: Create PostToolUse hook for automatic tracking
+- File: `.claude/hooks/PostToolUse_breadcrumb_tracker.py` (new)
+- Action: Track every tool usage with inferred step, build unique inferred workflow (preserve order, dedupe)
+- Prerequisites: T-014
+- Acceptance: Tool tracking works, inference accurate, workflows built correctly, no interference with tool execution
+- Effort: M
 
-3. Update UserPromptSubmit hook for initialization
-   - Hook: `UserPromptSubmit_breadcrumb_init.py` (update existing)
-   - Detect: Skill invocation via regex (`^/\w+`)
-   - Initialize: Simple binary trail (invoked → completed)
-   - Set: Active skill in session state
-   - Tests: Skill detection, trail initialization, state management
+**T-016**: Update UserPromptSubmit hook for initialization
+- File: `.claude/hooks/UserPromptSubmit_breadcrumb_init.py` (update existing)
+- Action: Detect skill invocation via regex (^/\w+), initialize binary trail (invoked→completed), set active skill in session
+- Prerequisites: T-014
+- Acceptance: Skill detection works, trails initialized correctly, state management functional
+- Effort: S
 
 **Acceptance criteria**:
 - Tool inference maps major tools to correct steps
