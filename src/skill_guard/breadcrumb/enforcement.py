@@ -99,7 +99,7 @@ def get_enforcement_level(skill_name: str) -> EnforcementLevel:
                 if isinstance(fm_data, dict):
                     level_str = fm_data.get("enforcement_level", "")
                     if level_str:
-                        level_str = str(level_str).lower()
+                        level_str = str(level_str).upper()
                         try:
                             return EnforcementLevel(level_str)
                         except ValueError:
