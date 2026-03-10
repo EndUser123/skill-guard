@@ -1,0 +1,15 @@
+{
+  "skill": "test_standard_pass",
+  "terminal_id": "test-terminal",
+  "initialized_at": 1773163854.3052988,
+  "workflow_steps": [
+    "step1",
+    "step2",
+    "verify",
+    "step3"
+  ],
+  "completed_steps": [],
+  "current_step": null,
+  "last_updated": 1773163869.305299,
+  "tool_count": 3
+}

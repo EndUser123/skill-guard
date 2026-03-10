@@ -1,0 +1,14 @@
+{
+  "skill": "test_strict_fail",
+  "terminal_id": "test-terminal",
+  "initialized_at": 1773163869.3143406,
+  "workflow_steps": [
+    "step1",
+    "step2",
+    "step3"
+  ],
+  "completed_steps": [],
+  "current_step": null,
+  "last_updated": 1773163869.3143408,
+  "tool_count": 0
+}
