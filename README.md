@@ -38,18 +38,28 @@ from skill_guard import discover_all_skills, get_skill_config
 - 🔄 **Backwards Compatible**: Explicit registry takes precedence over auto-discovery
 - ⚡ **Fast**: Discovers 184+ skills in milliseconds
 
-## 🚀 Quick Start (Hook Developers)
+## 📦 Installation
 
-### Installation
+### For Hook Developers (Dev Mode)
+
+skill-guard is a Python library dependency used by hooks. Install once:
 
 ```bash
-# Clone repository
-git clone https://github.com/yourusername/skill-guard.git P:/packages/skill-guard
 cd P:/packages/skill-guard
-
-# Install as editable Python package
 pip install -e .
 ```
+
+Then import in your hooks:
+
+```python
+from skill_guard import discover_all_skills, get_skill_config
+```
+
+### For End Users
+
+**No action required.** skill-guard is a backend library used by hooks, not a user-facing package. End users benefit from skill enforcement automatically without installing anything directly.
+
+## 🚀 Quick Start
 
 ### Usage in Hooks
 
