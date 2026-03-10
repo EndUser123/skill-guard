@@ -1166,30 +1166,35 @@ def test_cross_terminal_isolation():
 - Performance benchmarks show improvement
 - Log rotation works correctly
 
-### Phase 3: Query Interface & Tooling (2-4 hours)
+### Phase 3: Query Interface & Debugging (1-2 hours)
 
-**Objective**: Add tooling to inspect breadcrumb history and debug issues
+**Objective**: Enable log inspection using standard Unix tools (grep, jq) instead of custom CLI
+
+**Rationale** (from research): Production systems use log aggregation tools (Loki, Elasticsearch) with grep/jq for debugging. For local development, we don't need a custom CLI - standard tools are sufficient and more portable.
 
 **Tasks**:
-1. Add query interface (`src/skill_guard/breadcrumb/query.py`)
-   - Function: get_breadcrumb_history(skill_name) - List all events
-   - Function: get_breadcrumb_state_at_time(skill_name, timestamp) - Time travel
-   - Tests: History reconstruction, time queries
+1. Add query helper functions (`src/skill_guard/breadcrumb/query.py`)
+   - Function: `get_log_path(skill_name)` - Returns path to .log file
+   - Function: `get_snapshot_path(skill_name)` - Returns path to .json file
+   - Tests: Path resolution for different terminals
 
-2. Add CLI command for debugging
-   - Command: `python -m skill_guard.breadcrumb inspect <skill_name>`
-   - Shows: Current state, recent history, missing steps
-   - Tests: CLI output format, error handling
+2. Document debugging commands (README.md)
+   - Show current state: `jq . breadcrumbs_term_abc123/breadcrumb_code.json`
+   - Show all events: `cat breadcrumbs_term_abc123/breadcrumb_code.log | jq`
+   - Filter by event type: `grep '"event": "step_completed"' breadcrumb_code.log | jq`
+   - Time travel: `jq 'select(.timestamp < 1234567890)' breadcrumb_code.log`
+   - Tests: Documentation examples work
 
 3. Add integration tests with real skills
    - Test: Invoke /code skill, verify breadcrumb trail created
-   - Test: Kill mid-execution, verify recovery works
+   - Test: Kill mid-execution, verify recovery works (new log created)
    - Test: Concurrent terminals, verify no corruption
 
 **Acceptance criteria**:
-- Query interface returns accurate history
-- CLI command useful for debugging
+- Query helper functions return correct paths
+- Documentation has working grep/jq examples
 - Integration tests pass with real skills
+- No custom CLI required (use standard tools)
 
 ---
 
