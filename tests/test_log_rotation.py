@@ -207,10 +207,11 @@ class TestLogRotation:
         for entry in entries_before:
             log.append(entry.copy())
 
-        # Trigger rotation
+        # Trigger rotation with large entries (need 3 to trigger rotation)
         large_data = "y" * (MAX_LOG_SIZE_BYTES // 2)
         log.append({"event": "large_entry", "data": large_data})
         log.append({"event": "large_entry_2", "data": large_data})
+        log.append({"event": "large_entry_3", "data": large_data})  # Triggers rotation
 
         # Add entries after rotation
         entries_after = [
