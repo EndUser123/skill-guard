@@ -54,12 +54,11 @@ def _get_skill_execution_registry():
 def detect_terminal_id() -> str:
     """Detect terminal ID for state isolation.
 
-    Uses terminal_detection.py for consistent ID detection across all hooks.
+    Uses terminal_detection.py from utils for consistent ID detection.
     """
     try:
-        # Import shared terminal detection
-        sys.path.insert(0, str(Path(__file__).parent))
-        from terminal_detection import detect_terminal_id as shared_detect
+        # Import shared terminal detection from utils
+        from skill_guard.utils.terminal_detection import detect_terminal_id as shared_detect
         return shared_detect()
     except ImportError:
         # Fallback if terminal_detection not available
