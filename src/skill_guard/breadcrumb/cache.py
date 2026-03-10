@@ -210,10 +210,12 @@ class BreadcrumbStateCache:
             skill_name: Name of the skill
             state: State dict to snapshot
         """
-        # Import here to avoid circular import
-        from skill_guard.breadcrumb.tracker import _get_breadcrumb_file
+        # Build breadcrumb file path directly to avoid circular import
+        from skill_guard.utils.terminal_detection import detect_terminal_id
 
-        breadcrumb_file = _get_breadcrumb_file(skill_name)
+        terminal_id = detect_terminal_id()
+        skill_lower = skill_name.lower().replace("/", "_").replace(" ", "_")
+        breadcrumb_file = STATE_DIR / f"breadcrumbs_{terminal_id}" / f"breadcrumb_{skill_lower}.json"
 
         # Write state to file
         breadcrumb_file.parent.mkdir(parents=True, exist_ok=True)
