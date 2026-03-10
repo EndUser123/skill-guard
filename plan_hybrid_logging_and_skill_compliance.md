@@ -344,6 +344,90 @@ The research confirms that Event Sourcing is superior to state files for AI skil
 
 Our hybrid logging design (append-only log + in-memory cache + periodic snapshots) aligns with this pattern. The append-only log IS the event source; snapshots are optimization for fast recovery.
 
+**Production-Grade Log Schema** (adapted from OpenTelemetry GenAI conventions):
+
+Research shows that production AI systems require standardized log schemas for observability. We adapt the OpenTelemetry GenAI semantic conventions for local development:
+
+```json
+{
+  "timestamp": "2026-03-10T12:34:56.789Z",        // ISO 8601 UTC
+  "level": "INFO",                                 // DEBUG, INFO, WARN, ERROR
+  "service": "skill-guard",                        // System identifier
+  "terminal_id": "term_abc123",                    // **CRITICAL**: Multi-terminal isolation
+  "session_id": "sess_xyz789",                     // Claude Code session (optional)
+  "skill_id": "code",                              // Skill being executed
+  "event": "step_completed",                       // Event type
+  "message": "Phase TDD completed",                // Human-readable summary
+  "trace_id": "abc123def456",                      // Optional: W3C trace ID for distributed tracing
+  "span_id": "789xyz012",                          // Optional: Span ID for operation
+  "metadata": {                                    // Event-specific data
+    "step": "tdd",
+    "workflow_steps": ["requirements", "pre-flight", "tdd"],
+    "completed_steps": ["requirements", "pre-flight", "tdd"],
+    "current_step": "tdd",
+    "duration_ms": 1250
+  }
+}
+```
+
+**Key adaptations for local development**:
+- **terminal_id**: Added to support multi-terminal isolation (not in OpenTelemetry standard)
+- **session_id**: Optional (useful for debugging, but not required for isolation)
+- **trace_id/span_id**: Optional (for future distributed tracing integration)
+- **metadata**: Flexible dict for skill-specific context
+
+**Implementation with structlog** (from research):
+
+Production systems use structlog for structured logging. We adopt this for consistency:
+
+```python
+# File: src/skill_guard/breadcrumb/log.py
+
+import structlog
+from pathlib import Path
+from typing import Any
+import json
+
+class StructlogBreadcrumbLog:
+    """Production-grade append-only log using structlog."""
+
+    def __init__(self, skill_name: str, terminal_id: str):
+        self.skill_name = skill_name
+        self.terminal_id = terminal_id
+        self.log_path = _get_log_file(skill_name, terminal_id)
+
+        # Configure structlog for JSON output
+        self.logger = structlog.get_logger()
+        structlog.configure(
+            processors=[
+                structlog.processors.JSONRenderer()
+            ]
+        )
+
+    def append(self, event: str, **kwargs) -> None:
+        """Append structured event to log."""
+        # Build log entry with standardized schema
+        log_entry = {
+            "timestamp": time.time(),
+            "level": "INFO",
+            "service": "skill-guard",
+            "terminal_id": self.terminal_id,
+            "skill_id": self.skill_name,
+            "event": event,
+            **kwargs
+        }
+
+        # Write to file (JSONL format)
+        with open(self.log_path, 'a') as f:
+            f.write(json.dumps(log_entry) + '\n')
+```
+
+**Benefits of structlog**:
+- Consistent JSON output (machine-readable)
+- Context binding (bind terminal_id once, all logs inherit it)
+- Production-ready (used in production systems at scale)
+- Easy integration with future log aggregation tools
+
 **Component 1: Append-Only Log**
 
 ```python
