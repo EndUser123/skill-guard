@@ -174,7 +174,7 @@ class TestT003BreadcrumbVerifier:
 
     def test_non_completion_tools_skipped(self):
         """Test that non-completion tools are skipped (no verification)."""
-        from skill_guard.breadcrumb.trailer import (
+        from skill_guard.breadcrumb.tracker import (
             clear_breadcrumb_trail,
             initialize_breadcrumb_trail,
         )
