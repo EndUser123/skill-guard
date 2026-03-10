@@ -32,6 +32,7 @@ from .tracker import (
     cleanup_stale_breadcrumbs,
     clear_breadcrumb_trail,
     format_breadcrumb_status,
+    get_active_breadcrumb_trails,
     get_breadcrumb_trail,
     initialize_breadcrumb_trail,
     set_breadcrumb,
