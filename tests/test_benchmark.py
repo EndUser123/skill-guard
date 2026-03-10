@@ -245,33 +245,58 @@ This is a test skill for benchmarking.
         """Test memory usage for active session."""
         skill = "benchmark_hybrid_memory"
 
-        # Clear existing
-        log = AppendOnlyBreadcrumbLog(skill)
-        log.clear()
+        # Create SKILL.md with workflow_steps for this test skill
+        skill_dir = Path("P:/.claude/skills") / skill.lower()
+        skill_dir.mkdir(parents=True, exist_ok=True)
+        skill_file = skill_dir / "SKILL.md"
 
-        # Start memory tracking
-        tracemalloc.start()
+        # Create workflow_steps for testing
+        workflow_steps = [f"step_{i}" for i in range(50)]
+        skill_file.write_text(f"""---
+workflow_steps:
+  {chr(10).join(f'  - {step}' for step in workflow_steps)}
+---
+# Benchmark Memory Test Skill
 
-        # Baseline memory
-        baseline = tracemalloc.get_traced_memory()[0]
+This is a test skill for memory benchmarking.
+""")
 
-        # Simulate active session: 500 operations
-        for i in range(500):
-            set_breadcrumb(skill, f"step_{i % 50}")  # Cycle through 50 steps
+        try:
+            # Clear existing
+            log = AppendOnlyBreadcrumbLog(skill)
+            log.clear()
 
-        # Measure memory usage
-        current = tracemalloc.get_traced_memory()[0]
-        memory_used = (current - baseline) / (1024 * 1024)  # Convert to MB
+            # Initialize breadcrumb trail
+            initialize_breadcrumb_trail(skill)
 
-        tracemalloc.stop()
+            # Start memory tracking
+            tracemalloc.start()
 
-        print(f"\n✓ Memory used for 500 operations: {memory_used:.2f}MB")
+            # Baseline memory
+            baseline = tracemalloc.get_traced_memory()[0]
 
-        # Assert: Memory usage should be reasonable (< 10MB)
-        assert memory_used < 10.0, f"Memory usage {memory_used:.2f}MB exceeds 10MB threshold"
+            # Simulate active session: 500 operations
+            for i in range(500):
+                set_breadcrumb(skill, f"step_{i % 50}")  # Cycle through 50 steps
 
-        # Cleanup
-        log.clear()
+            # Measure memory usage
+            current = tracemalloc.get_traced_memory()[0]
+            memory_used = (current - baseline) / (1024 * 1024)  # Convert to MB
+
+            tracemalloc.stop()
+
+            print(f"\n✓ Memory used for 500 operations: {memory_used:.2f}MB")
+
+            # Assert: Memory usage should be reasonable (< 10MB)
+            assert memory_used < 10.0, f"Memory usage {memory_used:.2f}MB exceeds 10MB threshold"
+
+        finally:
+            # Cleanup
+            log.clear()
+            if skill_file.exists():
+                skill_file.unlink()
+            if skill_dir.exists():
+                skill_dir.rmdir()
 
     def test_write_performance(self):
         """Test write performance for log operations."""
