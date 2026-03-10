@@ -15,8 +15,6 @@ import pytest
 
 from skill_guard.breadcrumb.tracker import (
     clear_breadcrumb_trail,
-    get_breadcrumb_trail,
-    initialize_breadcrumb_trail,
     set_breadcrumb,
     verify_breadcrumb_trail,
 )
@@ -25,32 +23,51 @@ from skill_guard.breadcrumb.tracker import (
 class TestT005TieredVerification:
     """Test tiered verification integration."""
 
+    def _create_test_trail(
+        self, skill: str, workflow_steps: list[str], tool_count: int = 0, age_seconds: float = 0.0
+    ) -> None:
+        """Helper to create a test breadcrumb trail.
+
+        Args:
+            skill: Skill name
+            workflow_steps: List of workflow step names
+            tool_count: Number of tools used (default 0)
+            age_seconds: How old the trail is in seconds (default 0.0 = now)
+        """
+        import json
+        from pathlib import Path
+
+        skill_lower = skill.lower()
+        breadcrumb_file = Path(
+            f"P:/packages/skill-guard/.state/breadcrumb_{skill_lower}.json"
+        )
+
+        trail = {
+            "skill": skill_lower,
+            "terminal_id": "test-terminal",
+            "initialized_at": time.time() - age_seconds,
+            "workflow_steps": workflow_steps,
+            "completed_steps": [],
+            "current_step": None,
+            "last_updated": time.time(),
+            "tool_count": tool_count,
+        }
+
+        breadcrumb_file.parent.mkdir(parents=True, exist_ok=True)
+        breadcrumb_file.write_text(json.dumps(trail, indent=2))
+
     def test_minimal_level_pass(self):
         """Test MINIMAL level passes with duration and tool count."""
         skill = "test_minimal_pass"
 
-        # Setup: Initialize trail with workflow steps
+        # Setup: Create trail with MINIMAL requirements met
         clear_breadcrumb_trail(skill)
-        initialize_breadcrumb_trail(
+        self._create_test_trail(
             skill,
             workflow_steps=["step1", "step2", "step3"],
+            tool_count=3,  # >= 2 tools
+            age_seconds=15.0,  # > 10s
         )
-
-        # Mark only one step complete (MINIMAL doesn't check workflow)
-        set_breadcrumb(skill, "step1")
-
-        # Manually update trail to simulate MINIMAL requirements
-        trail = get_breadcrumb_trail(skill)
-        if trail:
-            trail["tool_count"] = 3  # >= 2 tools
-            trail["initialized_at"] = time.time() - 15.0  # > 10s ago
-            import json
-            from pathlib import Path
-
-            breadcrumb_file = Path(
-                f"P:/packages/skill-guard/.state/breadcrumb_{skill.lower()}.json"
-            )
-            breadcrumb_file.write_text(json.dumps(trail, indent=2))
 
         try:
             # Verify: Should pass MINIMAL (duration > 10s, tools >= 2)
@@ -64,25 +81,14 @@ class TestT005TieredVerification:
         """Test MINIMAL level fails on short duration."""
         skill = "test_minimal_duration"
 
-        # Setup: Initialize trail
+        # Setup: Create trail with short duration
         clear_breadcrumb_trail(skill)
-        initialize_breadcrumb_trail(
+        self._create_test_trail(
             skill,
             workflow_steps=["step1", "step2"],
+            tool_count=5,  # >= 2 tools (OK)
+            age_seconds=5.0,  # <= 10s (FAIL)
         )
-
-        # Manually update trail to simulate short duration
-        trail = get_breadcrumb_trail(skill)
-        if trail:
-            trail["tool_count"] = 5  # >= 2 tools (OK)
-            trail["initialized_at"] = time.time() - 5.0  # <= 10s (FAIL)
-            import json
-            from pathlib import Path
-
-            breadcrumb_file = Path(
-                f"P:/packages/skill-guard/.state/breadcrumb_{skill.lower()}.json"
-            )
-            breadcrumb_file.write_text(json.dumps(trail, indent=2))
 
         try:
             # Verify: Should fail MINIMAL (duration <= 10s)
@@ -96,29 +102,16 @@ class TestT005TieredVerification:
         """Test STANDARD level passes with workflow phases."""
         skill = "test_standard_pass"
 
-        # Setup: Initialize trail
+        # Setup: Create trail and mark >= 2 steps complete including verification
         clear_breadcrumb_trail(skill)
-        initialize_breadcrumb_trail(
+        self._create_test_trail(
             skill,
             workflow_steps=["step1", "step2", "verify", "step3"],
+            tool_count=3,  # >= 2 tools
+            age_seconds=15.0,  # > 10s
         )
-
-        # Mark >= 2 steps complete including verification
         set_breadcrumb(skill, "step1")
         set_breadcrumb(skill, "verify")
-
-        # Manually update trail to meet MINIMAL requirements
-        trail = get_breadcrumb_trail(skill)
-        if trail:
-            trail["tool_count"] = 3  # >= 2 tools
-            trail["initialized_at"] = time.time() - 15.0  # > 10s
-            import json
-            from pathlib import Path
-
-            breadcrumb_file = Path(
-                f"P:/packages/skill-guard/.state/breadcrumb_{skill.lower()}.json"
-            )
-            breadcrumb_file.write_text(json.dumps(trail, indent=2))
 
         try:
             # Verify: Should pass STANDARD (>=2 steps + verification)
@@ -132,14 +125,12 @@ class TestT005TieredVerification:
         """Test STRICT level passes with all steps complete."""
         skill = "test_strict_pass"
 
-        # Setup: Initialize trail
+        # Setup: Create trail and mark ALL steps complete
         clear_breadcrumb_trail(skill)
-        initialize_breadcrumb_trail(
+        self._create_test_trail(
             skill,
             workflow_steps=["step1", "step2", "step3"],
         )
-
-        # Mark ALL steps complete
         set_breadcrumb(skill, "step1")
         set_breadcrumb(skill, "step2")
         set_breadcrumb(skill, "step3")
@@ -156,14 +147,12 @@ class TestT005TieredVerification:
         """Test STRICT level fails with incomplete steps."""
         skill = "test_strict_fail"
 
-        # Setup: Initialize trail
+        # Setup: Create trail and mark only 2 of 3 steps complete
         clear_breadcrumb_trail(skill)
-        initialize_breadcrumb_trail(
+        self._create_test_trail(
             skill,
             workflow_steps=["step1", "step2", "step3"],
         )
-
-        # Mark only 2 of 3 steps complete
         set_breadcrumb(skill, "step1")
         set_breadcrumb(skill, "step2")
 
