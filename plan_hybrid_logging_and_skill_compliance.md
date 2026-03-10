@@ -323,7 +323,15 @@ def cleanup_stale_breadcrumbs() -> int:
 
 ## Proposed Solution
 
-### Architecture: Hybrid Logging System (Terminal-Scoped)
+### Architecture: Hybrid Logging System (Terminal-Scoped + Production-Grade)
+
+**Inspired by production observability research** (see: https://getathenic.com/blog/ai-agent-logging-observability-production)
+
+This hybrid system combines:
+- **Event Sourcing pattern** (immutable append-only log)
+- **Terminal-scoped isolation** (multi-terminal safety)
+- **Production-grade logging** (structlog, standardized schema)
+- **Lightweight query interface** (grep/jq, no custom infrastructure)
 
 **Component 1: Append-Only Log**
 
