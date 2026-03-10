@@ -105,7 +105,10 @@ class TestT005TieredVerification:
 
             # Verify: Should fail MINIMAL (duration <= 10s)
             is_complete, message = verify_breadcrumb_trail(skill)
-            assert not is_complete, "Should fail MINIMAL on short duration"
+            if is_complete:
+                # Debug: See why it passed when it should fail
+                print(f"DEBUG: Unexpected pass. Message: {message}")
+            assert not is_complete, f"Should fail MINIMAL on short duration. Got message: {message}"
             assert "too short" in message.lower()
         finally:
             if original is None:
