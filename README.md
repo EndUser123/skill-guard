@@ -68,17 +68,22 @@ from skill_guard import discover_all_skills, get_skill_config
 # In your PreToolUse or UserPromptSubmit hooks:
 from skill_guard import discover_all_skills, get_skill_config
 
-# Discover all skills automatically
-skills = discover_all_skills()
-print(f"Discovered {len(skills)} skills")
+# When a user invokes a skill (e.g., /package skill-guard):
+# 1. UserPromptSubmit hook detects skill invocation
+# 2. PreToolUse hook enforces execution pattern
 
-# Get skill configuration with auto-discovery fallback
-config = get_skill_config("my-skill", {})
-print(f"Tools: {config.get('tools')}")
-print(f"Pattern: {config.get('pattern')}")
+# Get skill configuration for enforcement
+config = get_skill_config("package", {})
+print(f"First tool must be: {config.get('tools')}")  # e.g., ["Skill"]
+print(f"Expected pattern: {config.get('pattern')}")    # e.g., call Skill first
 ```
 
-**That's it!** No skill invocation, no junctions, no Claude discovery needed. It's just a Python package that hooks import.
+**How it works:**
+1. User types `/package skill-guard`
+2. UserPromptSubmit hook detects skill invocation
+3. PreToolUse hook enforces first tool must be `Skill`
+4. Breadcrumb system tracks execution steps
+5. Skill self-verifies it's following documented workflow
 
 ## 🔧 Development (Windows)
 
