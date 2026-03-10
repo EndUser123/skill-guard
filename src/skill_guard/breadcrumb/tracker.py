@@ -19,7 +19,6 @@ v2.0 CHANGES:
 - Automatic cleanup on SessionEnd (all trails for this terminal)
 - Automatic cleanup on PreCompact (stale trails)
 - Age-based cleanup for orphaned trails (>2 hours old)
-- No TTL - cleanup based on lifecycle events, not time
 """
 
 from __future__ import annotations
