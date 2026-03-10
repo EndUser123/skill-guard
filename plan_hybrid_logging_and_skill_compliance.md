@@ -1216,3 +1216,295 @@ def test_cross_terminal_isolation():
 - **Low risk**: Phase 1 (backward compatible, optional)
 - **Medium risk**: Phase 2 (core changes, mitigated by tests)
 - **Low risk**: Phase 3 (new features, no breaking changes)
+
+---
+
+## Feature Flag Removal Plan
+
+### Overview
+
+Use environment-based feature flags to enable gradual rollout of hybrid logging. This allows:
+- Testing in specific terminals without affecting others
+- Easy rollback if issues are discovered
+- Safe migration path from old breadcrumb system
+- Production validation before full deployment
+
+### Phase-by-Phase Migration
+
+#### Phase 1: Implementation (Feature Flag OFF)
+
+**Implementation with feature flag:**
+```python
+# src/skill_guard/breadcrumb/tracker.py
+import os
+
+USE_HYBRID_LOGGING = os.environ.get("SKILL_GUARD_HYBRID_LOGGING", "false") == "true"
+
+def initialize_breadcrumb_trail(skill_name: str) -> None:
+    """Initialize breadcrumb trail for a skill."""
+    if USE_HYBRID_LOGGING:
+        # New system: StructlogBreadcrumbLog
+        log = StructlogBreadcrumbLog(skill_name, terminal_id)
+        log.append(
+            "trail_initialized",
+            workflow_steps=workflow_steps,
+            current_step="initialize"
+        )
+    else:
+        # Old system: Breadcrumb files
+        trail = {
+            "skill": skill_lower,
+            "terminal_id": detect_terminal_id(),
+            "initialized_at": time.time(),
+            "workflow_steps": workflow_steps,
+            "completed_steps": [],
+            "current_step": "initialize",
+            "last_updated": time.time()
+        }
+        breadcrumb_file.write_text(json.dumps(trail, indent=2))
+```
+
+**Configuration:**
+- Default: `USE_HYBRID_LOGGING = false` (old system active)
+- Test: `SKILL_GUARD_HYBRID_LOGGING=true claude` (new system in specific terminal)
+
+#### Phase 2: Testing & Gradual Rollout
+
+**Test in specific terminals:**
+```bash
+# Terminal 1: Test new system
+SKILL_GUARD_HYBRID_LOGGING=true claude
+
+# Terminal 2: Keep using old system
+claude  # No environment variable
+```
+
+**Run tests with both systems:**
+```bash
+# Test old system (default)
+pytest tests/ -v
+
+# Test new system
+SKILL_GUARD_HYBRID_LOGGING=true pytest tests/ -v
+
+# Verify both work correctly
+```
+
+**Benefits:**
+- Terminal 1 validates new system
+- Terminal 2 provides rollback safety
+- Compare behavior side-by-side
+- Zero risk to production workflow
+
+#### Phase 3: Enable by Default (Reversible)
+
+**Flip the default value:**
+```python
+# src/skill_guard/breadcrumb/tracker.py
+USE_HYBRID_LOGGING = os.environ.get("SKILL_GUARD_HYBRID_LOGGING", "true") == "true"
+```
+
+**Migration script for existing breadcrumb files:**
+```python
+# scripts/migrate_to_hybrid_logging.py
+def migrate_existing_breadcrumbs():
+    """Convert old breadcrumb files to log format."""
+    breadcrumb_dir = Path.home() / ".claude" / "breadcrumbs" / terminal_id
+
+    for old_file in breadcrumb_dir.glob("*.json"):
+        try:
+            data = json.loads(old_file.read_text())
+
+            # Append to log as historical event
+            log_path = _get_log_file(data["skill"], terminal_id)
+            with open(log_path, 'a') as f:
+                f.write(json.dumps({
+                    "timestamp": data.get("created_at", time.time()),
+                    "level": "INFO",
+                    "service": "skill-guard",
+                    "terminal_id": data["terminal_id"],
+                    "skill_id": data["skill"],
+                    "event": "migrated_from_old_system",
+                    "message": f"Migrated from breadcrumb file: {old_file.name}",
+                    "metadata": data
+                }) + '\n')
+
+            # Archive old file (don't delete yet)
+            archive_path = old_file.with_suffix(f".json.migrated.{int(time.time())}")
+            old_file.rename(archive_path)
+
+        except Exception as e:
+            print(f"Failed to migrate {old_file}: {e}")
+```
+
+**Verification:**
+```bash
+# 1. All tests pass
+pytest tests/ -v
+
+# 2. No references to old system
+grep -r "breadcrumb_file.write_text" src/  # Should return empty
+
+# 3. Hooks work with new system
+claude  # Should use hybrid logging by default
+```
+
+#### Phase 4: Cleanup (Remove Old Code)
+
+**Step 1: Remove feature flag entirely**
+```python
+# src/skill_guard/breadcrumb/tracker.py - BEFORE
+USE_HYBRID_LOGGING = os.environ.get("SKILL_GUARD_HYBRID_LOGGING", "true") == "true"
+
+def initialize_breadcrumb_trail(skill_name: str) -> None:
+    if USE_HYBRID_LOGGING:
+        StructlogBreadcrumbLog(skill_name, terminal_id).append(...)
+    else:
+        # Old breadcrumb file system...
+
+# src/skill_guard/breadcrumb/tracker.py - AFTER
+def initialize_breadcrumb_trail(skill_name: str) -> None:
+    """Initialize breadcrumb trail for a skill."""
+    StructlogBreadcrumbLog(skill_name, terminal_id).append(
+        "trail_initialized",
+        workflow_steps=workflow_steps,
+        current_step="initialize"
+    )
+```
+
+**Step 2: Remove old breadcrumb file functions**
+```python
+# DELETE these functions from tracker.py:
+# - _read_breadcrumb_file()
+# - _write_breadcrumb_file()
+# - _update_breadcrumb_file()
+# - Any function using read-modify-write pattern
+```
+
+**Step 3: Remove old tests**
+```bash
+# Archive old breadcrumb tests
+mkdir tests/legacy_breadcrumb_tests
+mv tests/test_breadcrumb_files.py tests/legacy_breadcrumb_tests/
+
+# Keep tests for new system
+# tests/test_hybrid_logging.py
+# tests/test_structlog_breadcrumb.py
+```
+
+**Step 4: Update documentation**
+```python
+# CLAUDE.md - Remove old documentation
+# breadcrumb_files.md → DELETE or ARCHIVE
+# hybrid_logging.md → UPDATE (remove "experimental" label)
+```
+
+#### Phase 5: Final Cleanup (After 30 days)
+
+```bash
+# Remove archived breadcrumb files
+find ~/.claude/breadcrumbs_*/ -name "*.json.migrated.*" -mtime +30 -delete
+
+# Remove archived tests
+rm -rf tests/legacy_breadcrumb_tests/
+
+# Confirm cleanup
+pytest tests/ -v  # All tests should pass
+```
+
+### Safety Checks During Migration
+
+**Pre-removal checklist:**
+```bash
+# 1. Verify all tests pass with new system
+pytest tests/ -v
+
+# 2. Verify no references to old functions
+grep -r "_read_breadcrumb_file" src/
+grep -r "breadcrumb_file.write_text" src/
+
+# 3. Verify no feature flag references
+grep -r "USE_HYBRID_LOGGING" src/
+grep -r "SKILL_GUARD_HYBRID_LOGGING" src/
+
+# 4. Check hooks don't reference old system
+grep -r "breadcrumb_file" .claude/hooks/
+```
+
+**If any references found, update or remove them.**
+
+### Rollback Plan
+
+**If issues discovered after removal:**
+
+```bash
+# Option 1: Restore from git tag
+git checkout hybrid-logging-pre-removal
+
+# Option 2: Cherry-pick the commit
+git cherry-pick abc123  # Commit before removal
+
+# Option 3: Re-enable feature flag temporarily
+export SKILL_GUARD_HYBRID_LOGGING=false
+```
+
+### Timeline Suggestion
+
+- **Week 1**: Implement with flag (default false)
+- **Week 2**: Test with flag enabled in 1-2 terminals
+- **Week 3**: Enable flag by default (reversible)
+- **Week 4**: Monitor for issues
+- **Week 5**: Remove feature flag if no issues
+- **Week 9**: Final cleanup of archived files (30 days later)
+
+### Key Principle
+
+**Keep old code paths until new system is proven in production.** Feature flags make this easy — just flip the default value. This approach provides:
+
+- ✅ Zero breaking changes during transition
+- ✅ Easy rollback if issues discovered
+- ✅ Side-by-side testing in production
+- ✅ Gradual rollout across terminals
+- ✅ Production validation before full commitment
+
+---
+
+## Complete Migration Checklist
+
+### Pre-Migration
+- [ ] All existing tests pass
+- [ ] Documentation updated with new system
+- [ ] Backup of current breadcrumb files created
+- [ ] Feature flag implementation reviewed
+
+### Phase 1: Implementation
+- [ ] Feature flag added to tracker.py
+- [ ] New StructlogBreadcrumbLog class implemented
+- [ ] Tests for both old and new paths
+- [ ] Documentation updated with flag usage
+
+### Phase 2: Testing
+- [ ] Test in specific terminal with flag enabled
+- [ ] Run full test suite with both flag values
+- [ ] Performance benchmarks compared
+- [ ] Multi-terminal isolation verified
+
+### Phase 3: Enable by Default
+- [ ] Flip feature flag default to true
+- [ ] Migration script created and tested
+- [ ] Run migration on existing breadcrumb files
+- [ ] Verify production workflows work
+
+### Phase 4: Remove Old Code
+- [ ] Remove feature flag entirely
+- [ ] Delete old breadcrumb file functions
+- [ ] Archive old tests
+- [ ] Update all documentation
+- [ ] Run safety check checklist
+
+### Phase 5: Final Cleanup
+- [ ] Wait 30 days for validation period
+- [ ] Remove archived breadcrumb files
+- [ ] Remove archived tests
+- [ ] Final verification: all tests pass
+- [ ] Create git tag for post-migration state
