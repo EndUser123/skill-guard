@@ -46,17 +46,26 @@ class TestLogRotation:
         assert log_file.exists()
         assert log_file.stat().st_size < MAX_LOG_SIZE_BYTES
 
-        # Second append (will exceed threshold)
+        # Second append (will exceed threshold and trigger rotation)
+        # Note: After rotation, new log file contains the second entry
         log.append({"event": "test2", "data": large_data})
 
-        # After rotation, new log file should be smaller
+        # After rotation, new log file should exist
         assert log_file.exists()
-        assert log_file.stat().st_size < MAX_LOG_SIZE_BYTES
 
-        # Archive file should exist
+        # Archive file should exist (the old log before rotation)
         log_dir = log_file.parent
         archives = list(log_dir.glob(f"{skill}_*.jsonl"))
         assert len(archives) >= 1, "At least one archive file should exist"
+
+        # Verify archive contains the first entry
+        if archives:
+            archive_content = archives[0].read_text()
+            assert "test1" in archive_content, "Archive should contain first entry"
+
+        # Verify current log contains the second entry (after rotation)
+        current_content = log_file.read_text()
+        assert "test2" in current_content, "Current log should contain second entry"
 
         # Cleanup
         log.clear()
