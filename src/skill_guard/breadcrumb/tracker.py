@@ -137,6 +137,7 @@ def initialize_breadcrumb_trail(skill_name: str) -> None:
         "completed_steps": [],
         "current_step": None,
         "last_updated": time.time(),
+        "tool_count": 0,  # Track number of tools used (for MINIMAL level)
     }
 
     # Write breadcrumb file
