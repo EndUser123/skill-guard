@@ -27,9 +27,9 @@ class TestT004EnforcementLevel:
 
     def test_enforcement_level_enum(self):
         """Test that EnforcementLevel enum has three values."""
-        assert EnforcementLevel.MINIMAL.value == "minimal"
-        assert EnforcementLevel.STANDARD.value == "standard"
-        assert EnforcementLevel.STRICT.value == "strict"
+        assert EnforcementLevel.MINIMAL.value == "MINIMAL"
+        assert EnforcementLevel.STANDARD.value == "STANDARD"
+        assert EnforcementLevel.STRICT.value == "STRICT"
 
     def test_get_enforcement_level_default(self):
         """Test that default enforcement level is STANDARD."""
