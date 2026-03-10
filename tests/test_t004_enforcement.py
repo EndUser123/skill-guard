@@ -91,7 +91,7 @@ class TestT004EnforcementLevel:
         # Should pass: MINIMAL checks + >=2 steps + verification
         is_complete, message = _verify_standard(
             workflow_steps=["step1", "step2", "step3", "verify"],
-            completed_steps=["step1", "step2"],  # >= 2 steps
+            completed_steps=["step1", "step2", "verify"],  # >= 2 steps + verification
             duration_seconds=15.0,  # > 10s
             tool_count=3,  # >= 2
         )
