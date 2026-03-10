@@ -119,13 +119,14 @@ class TestLogRotation:
         log.clear()
 
         # Add entries before rotation
+        large_data = "x" * (MAX_LOG_SIZE_BYTES // 2)
         log.append({"event": "step_complete", "step": "analyze"})
         log.append({"event": "step_complete", "step": "design"})
 
-        # Trigger rotation with large entry
-        large_data = "x" * (MAX_LOG_SIZE_BYTES // 2)
+        # Trigger rotation with large entry (need 3 appends total)
         log.append({"event": "test1", "data": large_data})
         log.append({"event": "test2", "data": large_data})
+        log.append({"event": "test3", "data": large_data})  # Triggers rotation
 
         # Add entries after rotation
         log.append({"event": "step_complete", "step": "implement"})
