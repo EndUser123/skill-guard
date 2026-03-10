@@ -123,21 +123,32 @@ pip install -e .
 ```mermaid
 graph TD
     A[User invokes skill] --> B[UserPromptSubmit Hook]
-    B --> C[Inject: MUST call Skill first]
-    C --> D[PreToolUse Hook]
-    D --> E[get_skill_config]
-    E --> F{Explicit registry?}
-    F -->|Yes| G[Use explicit config]
-    F -->|No| H[Auto-discover from filesystem]
-    H --> I[Scan SKILL.md frontmatter]
-    I --> J[Build config from metadata]
-    J --> K[Check allowed_first_tools]
-    K --> L[Detect scripts for patterns]
-    L --> M[Return skill config]
-    M --> N{Tool in allowed_tools?}
-    N -->|Yes| O[Allow action]
-    N -->|No| P[Block with hint]
+    B --> C[Detect skill invocation]
+    C --> D[Initialize breadcrumb tracking]
+    D --> E[PreToolUse Hook]
+    E --> F[get_skill_config]
+    F --> G{Explicit registry?}
+    G -->|Yes| H[Use explicit config]
+    G -->|No| I[Read SKILL.md frontmatter]
+    I --> J[Extract allowed_first_tools]
+    J --> K[Check breadcrumb state]
+    K --> L{First tool correct?}
+    L -->|Yes| M[Allow tool use]
+    L -->|No| N[Block with hint]
+    M --> O[Update breadcrumb]
+    N --> P[Show error message]
+    O --> Q{Skill complete?}
+    Q -->|No| E
+    Q -->|Yes| R[Verify execution followed pattern]
 ```
+
+### Execution Flow
+
+1. **User invokes skill**: User types `/package skill-guard`
+2. **Breadcrumb initialization**: Tracking begins from skill invocation
+3. **Tool enforcement**: PreToolUse hook checks if `Skill` tool called first
+4. **Pattern verification**: Breadcrumb system tracks each step
+5. **Self-verification**: Skill can verify it followed documented workflow
 
 ### Configuration Sources (Priority Order)
 
