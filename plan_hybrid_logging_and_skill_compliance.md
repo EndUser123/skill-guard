@@ -1250,17 +1250,19 @@ def test_cross_terminal_isolation():
 
 ## Next Steps
 
-1. **Implement Phase 1** - Simple binary tracking for all skills
-2. **Implement Phase 2** - Configurable enforcement levels (minimal/standard/strict)
-3. **Implement Phase 3** - Auto-inference from tool patterns
-4. **Test with critical skills** - Add `enforcement_level: strict` to 5-10 skills
-5. **Document SKILL.md usage** - Show how to add enforcement_level and workflow_steps
+1. **Implement Phase 1** - Core tracking with T-001, T-002, T-003
+2. **Implement Phase 2** - Enforcement levels with T-004, T-005, T-006, T-007
+3. **Implement Phase 3** - Performance hardening with T-008, T-009, T-010, T-011, T-012, T-013
+4. **Implement Phase 4** - Auto-inference with T-014, T-015, T-016
+5. **Test with critical skills** - Add `enforcement_level: strict` to 5-10 skills
+6. **Document SKILL.md usage** - Show how to add enforcement_level and workflow_steps
 
 **Estimated timeline**:
 - Phase 1: 2-3 hours (core tracking, works for all 234 skills)
 - Phase 2: 2-3 hours (enforcement levels, default STANDARD)
-- Phase 3: 1-2 hours (auto-inference from tools)
-- **Total**: 5-8 hours (vs. 10-15 hours for original complex approach)
+- Phase 3: 2-3 hours (performance hardening, terminal isolation)
+- Phase 4: 1-2 hours (auto-inference from tools)
+- **Total**: 7-11 hours (updated from 5-8 hours, includes Phase 3 improvements)
 
 **Risk assessment**:
 - **Low risk**: Phase 1 (backward compatible, zero manual work)
