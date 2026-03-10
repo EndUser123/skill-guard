@@ -1,0 +1,337 @@
+#!/usr/bin/env python3
+"""
+Skill Execution State Management
+=================================
+
+Shared state management for skill execution tracking.
+Used by both PreToolUse_skill_pattern_gate and skill_execution_tracker.
+
+Provides terminal-isolated state storage for skill execution validation.
+
+v3.5 CHANGES:
+- Added first_tool_coherence tracking for intent-tool validation
+- Skills declaring allowed_first_tools in frontmatter get first-tool gating
+- Knowledge/consultation skills (ask, discover, etc.) now participate in
+  coherence checking when they declare allowed_first_tools metadata
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import sys
+import time
+from pathlib import Path
+from typing import Any
+
+# =============================================================================
+# CONFIGURATION
+# =============================================================================
+
+STATE_DIR = Path("P:/.claude/state")
+
+# =============================================================================
+# SKILL EXECUTION REGISTRY (Reference for validation)
+# =============================================================================
+# Import registry for validation - loaded lazily to avoid circular imports
+_SKILL_EXECUTION_REGISTRY = None
+
+def _get_skill_execution_registry():
+    """Lazy load SKILL_EXECUTION_REGISTRY to avoid circular imports."""
+    global _SKILL_EXECUTION_REGISTRY
+    if _SKILL_EXECUTION_REGISTRY is None:
+        try:
+            sys.path.insert(0, str(Path(__file__).parent / "PreToolUse"))
+            from PreToolUse_skill_pattern_gate import SKILL_EXECUTION_REGISTRY
+            _SKILL_EXECUTION_REGISTRY = SKILL_EXECUTION_REGISTRY
+        except ImportError:
+            _SKILL_EXECUTION_REGISTRY = {}
+    return _SKILL_EXECUTION_REGISTRY
+
+# =============================================================================
+# TERMINAL DETECTION
+# =============================================================================
+
+def detect_terminal_id() -> str:
+    """Detect terminal ID for state isolation.
+
+    Uses terminal_detection.py for consistent ID detection across all hooks.
+    """
+    try:
+        # Import shared terminal detection
+        sys.path.insert(0, str(Path(__file__).parent))
+        from terminal_detection import detect_terminal_id as shared_detect
+        return shared_detect()
+    except ImportError:
+        # Fallback if terminal_detection not available
+        terminal_id = os.environ.get("CLAUDE_TERMINAL_ID")
+        if terminal_id:
+            return terminal_id
+        return f"term_{os.getpid()}"
+
+
+# =============================================================================
+# STATE MANAGEMENT
+# =============================================================================
+
+def _get_state_file() -> Path:
+    """Get the state file path for this terminal."""
+    terminal_id = detect_terminal_id()
+    state_subdir = STATE_DIR / f"skill_execution_{terminal_id}"
+    state_subdir.mkdir(parents=True, exist_ok=True)
+    return state_subdir / "skill_execution_pending.json"
+
+
+def _get_state_dir() -> Path:
+    """Get the state directory for this terminal."""
+    terminal_id = detect_terminal_id()
+    state_subdir = STATE_DIR / f"skill_execution_{terminal_id}"
+    state_subdir.mkdir(parents=True, exist_ok=True)
+    return state_subdir
+
+
+def _load_skill_frontmatter(skill_name: str) -> dict[str, Any]:
+    """Load allowed_first_tools from a skill's SKILL.md frontmatter.
+
+    Reads the skill's YAML frontmatter and extracts the allowed_first_tools
+    field if present. This metadata is captured by the skill_registry's
+    catch-all metadata dict.
+
+    Args:
+        skill_name: Skill name (without slash)
+
+    Returns:
+        Dict with 'allowed_first_tools' list (empty if not declared)
+    """
+    result: dict[str, Any] = {"allowed_first_tools": []}
+    skill_dir = Path("P:/.claude/skills") / skill_name
+    skill_file = skill_dir / "SKILL.md"
+    if not skill_file.exists():
+        return result
+
+    try:
+        import yaml  # noqa: PLC0415
+        content = skill_file.read_text(encoding="utf-8", errors="replace")
+        parts = content.split("---")
+        if len(parts) < 3:
+            return result
+        fm_data = yaml.safe_load(parts[1])
+        if not isinstance(fm_data, dict):
+            return result
+        aft = fm_data.get("allowed_first_tools", [])
+        if isinstance(aft, list):
+            result["allowed_first_tools"] = [str(t) for t in aft]
+    except Exception:
+        pass
+    return result
+
+
+def set_skill_loaded(
+    skill_name: str,
+    required_tools: list[str] | None = None,
+    pattern: str | None = None,
+    hint: str = "",
+    intent_enabled: bool = False,
+    prompt_fingerprint: str = "",
+    task_id: str = "",
+) -> None:
+    """Called when Skill tool is used.
+
+    Args:
+        skill_name: Name of the skill being loaded
+        required_tools: List of tools that count as execution
+        pattern: Regex pattern that must match in commands
+        hint: User-facing hint message when blocked
+        intent_enabled: Whether daemon semantic validation is enabled
+    """
+    skill_lower = skill_name.lower()
+
+    # Load frontmatter metadata (allowed_first_tools) for ALL skills,
+    # including knowledge skills — this enables first-tool coherence
+    # checking even for consultation/discovery skills like /ask.
+    frontmatter = _load_skill_frontmatter(skill_lower)
+    allowed_first_tools = frontmatter.get("allowed_first_tools", [])
+
+    # Load registry if config not provided
+    if required_tools is None or pattern is None:
+        try:
+            # Import registry from PreToolUse hook
+            sys.path.insert(0, str(Path(__file__).parent / "PreToolUse"))
+            from PreToolUse_skill_pattern_gate import (
+                SKILL_EXECUTION_REGISTRY,  # type: ignore[import-not-found]
+            )
+            skill_config = SKILL_EXECUTION_REGISTRY.get(skill_lower, {})
+            required_tools = skill_config.get("tools", [])
+            pattern = skill_config.get("pattern", "")
+            hint = skill_config.get("hint", "")
+            intent_enabled = skill_config.get("intent_enabled", False)
+
+            # VALIDATION: Detect skills in registry with empty required_tools
+            # This is RISK:9 mitigation - prevent security gaps from misconfigured skills
+            if skill_lower in SKILL_EXECUTION_REGISTRY and not required_tools:
+                warning_msg = (
+                    f"[skill_execution_state] WARNING: Skill '{skill_lower}' is in "
+                    f"SKILL_EXECUTION_REGISTRY but has empty required_tools. This will be treated "
+                    f"as a knowledge skill (no execution validation). Fix: Add 'tools' field to "
+                    f"registry entry or remove from registry if this is a knowledge skill."
+                )
+                sys.stderr.write(warning_msg + "\n")
+        except ImportError:
+            # Registry not available, default to knowledge skill (empty required_tools)
+            # All skills are knowledge skills by default unless they explicitly declare execution requirements
+            required_tools = required_tools or []
+            pattern = pattern or ""
+            hint = hint or ""
+            intent_enabled = intent_enabled
+
+    # Only write state if skill has execution requirements or first-tool coherence
+    # Knowledge skills (required_tools=[] and no allowed_first_tools) don't need state tracking
+    # This makes the system multi-terminal safe and immune to stale data
+    if not required_tools and not allowed_first_tools:
+        return  # Pure knowledge skill - no state needed
+
+    # Create state
+    state = {
+        "skill": skill_lower,
+        "loaded_at": time.time(),
+        "required_tools": required_tools,
+        "pattern": pattern,
+        "output_markers": [],
+        # v3.2 extended schema
+        "required_pattern": pattern,  # Same as pattern
+        "hint": hint,
+        "intent_enabled": intent_enabled,
+        "prompt_fingerprint": str(prompt_fingerprint or ""),
+        "task_id": str(task_id or ""),
+        "tools_used": [],
+        "commands_run": [],
+        "execution_satisfied": False,
+        # v3.5: first-tool coherence tracking
+        "allowed_first_tools": allowed_first_tools,
+        "first_tool_validated": False,
+    }
+
+    # Write state
+    state_file = _get_state_file()
+    state_file.write_text(json.dumps(state, indent=2))
+
+
+def record_tool_use(tool_name: str, tool_input: dict[str, Any]) -> None:
+    """Record tool usage for execution validation.
+
+    Args:
+        tool_name: Name of the tool being used
+        tool_input: Input parameters passed to the tool
+    """
+    state_file = _get_state_file()
+    if not state_file.exists():
+        return
+
+    try:
+        state = json.loads(state_file.read_text())
+
+        # Record tool usage
+        state["tools_used"].append(tool_name)
+
+        # Extract command for specific tools
+        command = ""
+        if tool_name == "Bash":
+            command = tool_input.get("command", "")
+        elif tool_name == "Task":
+            command = tool_input.get("prompt", "")
+
+        if command:
+            state["commands_run"].append(str(command))
+
+        # Write updated state
+        state_file.write_text(json.dumps(state, indent=2))
+
+    except (json.JSONDecodeError, OSError):
+        pass
+
+
+def read_pending_state() -> dict | None:
+    """Read current skill execution state from state file.
+
+    Returns:
+        State dict or None if no skill loaded
+    """
+    state_file = _get_state_file()
+    if not state_file.exists():
+        return None
+
+    try:
+        return json.loads(state_file.read_text())
+    except (json.JSONDecodeError, OSError):
+        return None
+
+
+def mark_first_tool_validated() -> None:
+    """Mark that the first tool call passed coherence check.
+
+    Called by PreToolUse_skill_pattern_gate after validating the first
+    non-investigation tool matches the skill's allowed_first_tools.
+    Subsequent tool calls skip the coherence check.
+    """
+    state_file = _get_state_file()
+    if not state_file.exists():
+        return
+
+    try:
+        state = json.loads(state_file.read_text())
+        state["first_tool_validated"] = True
+        state_file.write_text(json.dumps(state, indent=2))
+    except (json.JSONDecodeError, OSError):
+        pass
+
+
+def clear_state() -> None:
+    """Clear the current skill execution state."""
+    state_file = _get_state_file()
+    state_file.unlink(missing_ok=True)
+
+
+# =============================================================================
+# MIGRATION HELPERS
+# =============================================================================
+
+def migrate_legacy_state() -> None:
+    """Migrate state from old location to new terminal-isolated location.
+
+    This handles backward compatibility with state files created
+    before v3.2 terminal isolation.
+    """
+    # Check for legacy state file
+    legacy_state = STATE_DIR / "skill_execution_pending.json"
+    if not legacy_state.exists():
+        return
+
+    try:
+        # Read legacy state
+        legacy_data = json.loads(legacy_state.read_text())
+
+        # Extend schema if missing fields (v3.2 backward compatibility)
+        if "required_pattern" not in legacy_data:
+            legacy_data["required_pattern"] = legacy_data.get("pattern", "")
+        if "hint" not in legacy_data:
+            legacy_data["hint"] = ""
+        if "intent_enabled" not in legacy_data:
+            legacy_data["intent_enabled"] = False
+
+        # Write to new location
+        new_state_file = _get_state_file()
+        new_state_file.parent.mkdir(parents=True, exist_ok=True)
+        new_state_file.write_text(json.dumps(legacy_data, indent=2))
+
+        # Remove legacy file
+        legacy_state.unlink()
+
+    except (json.JSONDecodeError, OSError):
+        pass
+
+
+# Auto-migrate on import
+try:
+    migrate_legacy_state()
+except Exception:
+    pass
