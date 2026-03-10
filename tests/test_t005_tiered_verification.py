@@ -57,7 +57,12 @@ class TestT005TieredVerification:
 
         breadcrumb_file.parent.mkdir(parents=True, exist_ok=True)
         try:
-            breadcrumb_file.write_text(json.dumps(trail, indent=2))
+            trail_json = json.dumps(trail, indent=2)
+            print(f"DEBUG: Writing trail JSON (first 300 chars): {trail_json[:300]}")
+            breadcrumb_file.write_text(trail_json)
+            # Verify write
+            written = breadcrumb_file.read_text()
+            print(f"DEBUG: Written content length: {len(written)} chars")
         except Exception as e:
             print(f"ERROR: Failed to write breadcrumb file: {e}")
             raise
