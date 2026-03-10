@@ -306,6 +306,15 @@ def clear_breadcrumb_trail(skill_name: str) -> None:
         skill_name: Name of the skill
     """
     skill_lower = skill_name.lower()
+
+    # HYBRID LOGGING: Clear cache
+    _cache.invalidate(skill_lower)
+
+    # HYBRID LOGGING: Clear log
+    log = AppendOnlyBreadcrumbLog(skill_lower)
+    log.clear()
+
+    # HYBRID LOGGING: Clear breadcrumb file (backward compatibility)
     breadcrumb_file = _get_breadcrumb_file(skill_lower)
     breadcrumb_file.unlink(missing_ok=True)
 
