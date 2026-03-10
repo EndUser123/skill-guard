@@ -1134,44 +1134,33 @@ def test_cross_terminal_isolation():
 
 **Objective**: Implement three-tier enforcement levels (minimal/standard/strict)
 
-**Tasks**:
-1. Create enforcement level system (`src/skill_guard/breadcrumb/enforcement.py`)
-   - Class: `EnforcementLevel` (enum: MINIMAL, STANDARD, STRICT)
-   - Function: `get_enforcement_level(skill_name)` - Read from SKILL.md or default to STANDARD
-   - Function: `verify_with_enforcement()` - Apply appropriate level checks
-   - Tests: All three enforcement levels, default behavior, SKILL.md overrides
+**T-004**: Create enforcement level system
+- File: `src/skill_guard/breadcrumb/enforcement.py` (new)
+- Action: Create EnforcementLevel enum (MINIMAL/STANDARD/STRICT), get_enforcement_level(), verify_with_enforcement()
+- Prerequisites: T-003
+- Acceptance: All three enforcement levels work, SKILL.md overrides respected, default is STANDARD
+- Effort: M
 
-2. Update `verify_breadcrumb_trail()` with tiered checks:
-   - **MINIMAL**: Duration > 10s + tools_used ≥ 2
-   - **STANDARD**: MINIMAL + workflow has ≥2 phases + verification phase required
-   - **STRICT**: STANDARD + declared workflow_steps must all be completed
-   - Default: STANDARD for all skills (configurable via SKILL.md)
+**T-005**: Update verify_breadcrumb_trail() with tiered checks
+- File: `src/skill_guard/breadcrumb/tracker.py`
+- Action: Add MINIMAL (duration>10s + tools≥2), STANDARD (+workflow≥2 +verification), STRICT (+all workflow_steps)
+- Prerequisites: T-004
+- Acceptance: All three enforcement levels work correctly, backward compatible
+- Effort: M
 
-3. Add enforcement level to SKILL.md schema:
-   ```yaml
-   ---
-   name: code
-   enforcement_level: strict  # optional: minimal, standard (default), strict
-   workflow_steps:
-     - requirements
-     - design
-     - tdd
-     - refactor
-     - verification
-   ---
-   ```
+**T-006**: Add enforcement level to SKILL.md schema
+- File: `.claude/skills/*/SKILL.md` (documentation)
+- Action: Document enforcement_level field, show examples for minimal/standard/strict
+- Prerequisites: T-004
+- Acceptance: Schema documented, examples provided for all three levels
+- Effort: S
 
-4. Update StopHook_breadcrumb_verifier with tiered messages:
-   - Show which enforcement level is active
-   - Show missing steps for STRICT level
-   - Show missing phases for STANDARD level
-   - Tests: All three enforcement levels, appropriate messaging
-
-**Acceptance criteria**:
-- All existing tests pass (backward compatible)
-- New enforcement level tests pass
-- Default STANDARD level prevents incomplete workflows
-- STRICT level enforces all declared workflow_steps
+**T-007**: Update StopHook_breadcrumb_verifier with tiered messages
+- File: `.claude/hooks/StopHook_breadcrumb_verifier.py`
+- Action: Show active enforcement level, missing steps (STRICT), missing phases (STANDARD)
+- Prerequisites: T-004, T-005
+- Acceptance: Appropriate messaging for each level, tests pass
+- Effort: M
 
 **Objective**: Replace read-modify-write with append-only log + cache + snapshot
 
