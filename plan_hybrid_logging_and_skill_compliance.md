@@ -878,16 +878,19 @@ def test_cross_terminal_isolation():
 1. Create new log module (`src/skill_guard/breadcrumb/log.py`)
    - Class: AppendOnlyBreadcrumbLog
    - Methods: append(), replay()
-   - Tests: JSONL format, atomicity, replay correctness
+   - **CRITICAL**: Pass terminal_id to all functions, use terminal-scoped paths
+   - Tests: JSONL format, atomicity, replay correctness, **terminal isolation**
 
 2. Create cache module (`src/skill_guard/breadcrumb/cache.py`)
    - Class: BreadcrumbStateCache
    - Methods: get_state(), update_state()
-   - Tests: Lazy loading, cache hit/miss, periodic snapshot
+   - **CRITICAL**: Cache key includes terminal_id (e.g., `f"{skill_name}:{terminal_id}"`)
+   - Tests: Lazy loading, cache hit/miss, periodic snapshot, **terminal-scoped cache keys**
 
 3. Modify tracker.py for backward compatibility
    - Keep existing API: set_breadcrumb(), verify_breadcrumb_trail()
    - Delegate to hybrid system internally
+   - **CRITICAL**: Verify terminal_id validation on all read paths
    - Optional: Legacy mode flag to use old format
 
 4. Add log rotation support
@@ -895,7 +898,13 @@ def test_cross_terminal_isolation():
    - Archive old logs with timestamp
    - Tests: Rotation triggers at correct size
 
-5. Performance testing
+5. **Multi-terminal isolation testing** (CRITICAL for safety)
+   - Test: Two terminals create separate logs, no cross-contamination
+   - Test: Terminal A cannot read Terminal B's breadcrumb state
+   - Test: Cleanup only removes current terminal's trails
+   - Test: Concurrent terminals running same skill, no conflicts
+
+6. Performance testing
    - Benchmark: 100 steps, compare hybrid vs old
    - Benchmark: 1000 reads, measure cache hit rate
    - Goal: 10x write improvement, 100x read improvement
@@ -903,6 +912,7 @@ def test_cross_terminal_isolation():
 **Acceptance criteria**:
 - All existing tests pass (backward compatibility)
 - New tests for log and cache modules pass
+- **Multi-terminal isolation tests pass** (no cross-contamination)
 - Performance benchmarks show improvement
 - Log rotation works correctly
 
