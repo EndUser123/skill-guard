@@ -157,6 +157,50 @@ graph TD
 3. **Script Detection**: Auto-detects `scripts/*.py` for pattern matching
 4. **Category Defaults**: Sensible defaults based on skill category
 
+### SKILL.md Frontmatter Schema
+
+Skills can declare their execution requirements in SKILL.md frontmatter:
+
+```yaml
+---
+name: my-skill
+category: development
+allowed_first_tools:
+  - Bash
+workflow_steps:
+  - detect
+  - analyze
+  - generate
+  - verify
+enforcement_level: STANDARD
+---
+```
+
+**Supported fields:**
+
+- **allowed_first_tools**: List of tools that must be called first when invoking this skill
+- **workflow_steps**: List of step names that will be tracked by breadcrumb system
+- **enforcement_level**: Verification strictness (optional, defaults to STANDARD)
+
+**Enforcement Levels:**
+
+1. **MINIMAL** - Fastest, least friction
+   - Checks: Session duration > 10s, tools used ≥ 2
+   - Use case: Simple skills where workflow steps aren't critical
+   - Example: Quick refactoring skills
+
+2. **STANDARD** (default) - Balanced verification
+   - Checks: MINIMAL + ≥2 workflow phases + verification step
+   - Use case: Most skills where structured workflow matters
+   - Example: Code review, feature development
+
+3. **STRICT** - Maximum verification
+   - Checks: ALL workflow_steps must complete
+   - Use case: Critical skills where nothing can be skipped
+   - Example: Deployment, migration
+
+**Global override:** Set `BREADCRUMB_ENFORCEMENT_LEVEL` environment variable to override all skills.
+
 ### Knowledge Skills Exemption
 
 Reference/documentation skills are automatically exempt from enforcement:
