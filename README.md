@@ -6,11 +6,11 @@
 ![Tests](https://img.shields.io/badge/tests-10%20passing-brightgreen)
 ![Coverage](https://img.shields.io/badge/coverage-36%25-yellow)
 
-**Python Library: Universal skill auto-discovery and enforcement for Claude Code hooks**
+**Python Library: Skill execution enforcement with breadcrumb-based verification**
 
-> **⚠️ IMPORTANT**: This is a **Python library**, NOT a user-facing skill. You cannot invoke `/skill-guard` as a command. This package is used **internally by Claude Code hooks** to auto-discover and enforce skill execution patterns.
+> **⚠️ IMPORTANT**: This is a **Python library**, NOT a user-facing skill. You cannot invoke `/skill-guard` as a command. This package is used **internally by Claude Code hooks** to enforce skill execution patterns when users invoke skills.
 
-Automatically discovers and enforces **ALL skills** without manual registration, replacing manual `SKILL_EXECUTION_REGISTRY` with dynamic discovery from filesystem.
+Enforces skill execution patterns through breadcrumb tracking, ensuring skills follow their documented workflows and providing self-verification.
 
 ## 📚 What This Is
 
@@ -22,21 +22,22 @@ from skill_guard import discover_all_skills, get_skill_config
 ```
 
 **What it does:**
-- Auto-discovers all skills from `.claude/skills/*/SKILL.md` frontmatter
-- Enforces skill execution patterns (via PreToolUse hooks)
-- Provides script pattern detection for skill gate enforcement
+- Enforces skill execution patterns when users invoke skills (e.g., `/package`, `/gto`)
+- Uses breadcrumb system to track skill execution steps
+- Verifies skills follow their documented workflows
+- Provides self-verification capabilities for skills
 
 **What it does NOT do:**
 - ❌ You cannot invoke `/skill-guard` as a command
 - ❌ There's no user-facing interface
 - ❌ It's purely a backend library for hooks
 
-- 🔍 **Zero-Maintenance Auto-Discovery**: Scans `.claude/skills/*/SKILL.md` frontmatter automatically
-- 🔒 **Dual-Layer Enforcement**: UserPromptSubmit + PreToolUse hooks cooperate to enforce workflows
-- 🎯 **Script Pattern Detection**: Auto-detects scripts in `scripts/` directories for pattern matching
+- 🔒 **Execution Enforcement**: Ensures skills are invoked via their documented patterns
+- 🍞 **Breadcrumb Tracking**: Monitors skill execution flow step-by-step
+- ✅ **Self-Verification**: Helps skills verify they're working as intended
 - 📚 **Knowledge Skill Exemption**: Distinguishes execution skills (enforced) from reference skills (not enforced)
-- 🔄 **Backwards Compatible**: Explicit registry takes precedence over auto-discovery
-- ⚡ **Fast**: Discovers 184+ skills in milliseconds
+- 🔄 **Backwards Compatible**: Works with explicit SKILL_EXECUTION_REGISTRY
+- ⚡ **Fast**: Validates skill execution in milliseconds
 
 ## 📦 Installation
 
