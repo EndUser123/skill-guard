@@ -298,6 +298,9 @@ def migrate_legacy_state() -> None:
 
     This handles backward compatibility with state files created
     before v3.2 terminal isolation.
+
+    Call this function explicitly from hooks or scripts when needed.
+    Migration is no longer automatic on import to avoid side effects.
     """
     # Check for legacy state file
     legacy_state = STATE_DIR / "skill_execution_pending.json"
@@ -326,10 +329,3 @@ def migrate_legacy_state() -> None:
 
     except (json.JSONDecodeError, OSError):
         pass
-
-
-# Auto-migrate on import
-try:
-    migrate_legacy_state()
-except Exception:
-    pass
