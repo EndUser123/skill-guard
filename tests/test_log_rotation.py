@@ -127,16 +127,16 @@ class TestLogRotation:
         log.append({"event": "step_complete", "step": "implement"})
         log.append({"event": "step_complete", "step": "test"})
 
-        # Replay should return entries (only from current log)
+        # Replay should return entries (only from current log, newest first)
         entries = list(log.replay())
 
         # At minimum, should have the entries after rotation
         # (entries before rotation are in archive file, not replayed by default)
         assert len(entries) >= 2
 
-        # Most recent entries should be last
-        assert entries[-1]["event"] == "step_complete"
-        assert entries[-1]["step"] == "test"
+        # Most recent entry should be FIRST (replay returns newest first)
+        assert entries[0]["event"] == "step_complete"
+        assert entries[0]["step"] == "test"
 
         # Cleanup
         log_file = _get_log_file(skill)
