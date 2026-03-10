@@ -12,7 +12,6 @@ Acceptance Criteria:
 import json
 import os
 import time
-from pathlib import Path
 
 import pytest
 
@@ -116,12 +115,13 @@ class TestT005TieredVerification:
             # Verify: Should fail MINIMAL (duration <= 10s)
             # Debug: Check what get_breadcrumb_trail returns
             from skill_guard.breadcrumb.tracker import (
+                _get_breadcrumb_file,
                 detect_terminal_id,
                 get_breadcrumb_trail,
             )
 
             # Check if file exists
-            breadcrumb_file = Path(f"P:/packages/skill-guard/.state/breadcrumb_{skill.lower()}.json")
+            breadcrumb_file = _get_breadcrumb_file(skill)
             print(f"DEBUG: File exists: {breadcrumb_file.exists()}")
             if breadcrumb_file.exists():
                 file_content = breadcrumb_file.read_text()
