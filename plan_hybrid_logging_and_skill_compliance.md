@@ -1130,7 +1130,48 @@ def test_cross_terminal_isolation():
 - Breadcrumb files created when skills invoked
 - Verification warns on incomplete workflows
 
-### Phase 2: Hybrid Logging Implementation (6-8 hours)
+### Phase 2: Configurable Enforcement System (2-3 hours)
+
+**Objective**: Implement three-tier enforcement levels (minimal/standard/strict)
+
+**Tasks**:
+1. Create enforcement level system (`src/skill_guard/breadcrumb/enforcement.py`)
+   - Class: `EnforcementLevel` (enum: MINIMAL, STANDARD, STRICT)
+   - Function: `get_enforcement_level(skill_name)` - Read from SKILL.md or default to STANDARD
+   - Function: `verify_with_enforcement()` - Apply appropriate level checks
+   - Tests: All three enforcement levels, default behavior, SKILL.md overrides
+
+2. Update `verify_breadcrumb_trail()` with tiered checks:
+   - **MINIMAL**: Duration > 10s + tools_used ≥ 2
+   - **STANDARD**: MINIMAL + workflow has ≥2 phases + verification phase required
+   - **STRICT**: STANDARD + declared workflow_steps must all be completed
+   - Default: STANDARD for all skills (configurable via SKILL.md)
+
+3. Add enforcement level to SKILL.md schema:
+   ```yaml
+   ---
+   name: code
+   enforcement_level: strict  # optional: minimal, standard (default), strict
+   workflow_steps:
+     - requirements
+     - design
+     - tdd
+     - refactor
+     - verification
+   ---
+   ```
+
+4. Update StopHook_breadcrumb_verifier with tiered messages:
+   - Show which enforcement level is active
+   - Show missing steps for STRICT level
+   - Show missing phases for STANDARD level
+   - Tests: All three enforcement levels, appropriate messaging
+
+**Acceptance criteria**:
+- All existing tests pass (backward compatible)
+- New enforcement level tests pass
+- Default STANDARD level prevents incomplete workflows
+- STRICT level enforces all declared workflow_steps
 
 **Objective**: Replace read-modify-write with append-only log + cache + snapshot
 
