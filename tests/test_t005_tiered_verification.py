@@ -108,6 +108,13 @@ class TestT005TieredVerification:
             # Verify: Should fail MINIMAL (duration <= 10s)
             # Debug: Check what get_breadcrumb_trail returns
             from skill_guard.breadcrumb.tracker import get_breadcrumb_trail
+
+            # Check if file exists
+            breadcrumb_file = Path(f"P:/packages/skill-guard/.state/breadcrumb_{skill.lower()}.json")
+            print(f"DEBUG: File exists: {breadcrumb_file.exists()}")
+            if breadcrumb_file.exists():
+                print(f"DEBUG: File content: {breadcrumb_file.read_text()[:200]}")
+
             trail_debug = get_breadcrumb_trail(skill)
             print(f"DEBUG: trail after create: {trail_debug}")
 
