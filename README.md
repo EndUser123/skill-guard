@@ -201,6 +201,50 @@ enforcement_level: STANDARD
 
 **Global override:** Set `BREADCRUMB_ENFORCEMENT_LEVEL` environment variable to override all skills.
 
+**Examples:**
+
+MINIMAL level (fast refactoring):
+```yaml
+---
+name: quick-refactor
+category: development
+workflow_steps:
+  - analyze
+  - refactor
+enforcement_level: MINIMAL
+---
+```
+
+STANDARD level (code review - default):
+```yaml
+---
+name: code-review
+category: quality
+workflow_steps:
+  - detect_files
+  - analyze_changes
+  - verify_quality
+  - report_findings
+enforcement_level: STANDARD  # or omit (defaults to STANDARD)
+---
+```
+
+STRICT level (deployment):
+```yaml
+---
+name: deploy-production
+category: deployment
+workflow_steps:
+  - backup_database
+  - run_migrations
+  - deploy_code
+  - smoke_tests
+  - monitor_rollout
+  - rollback_on_failure
+enforcement_level: STRICT
+---
+```
+
 ### Knowledge Skills Exemption
 
 Reference/documentation skills are automatically exempt from enforcement:
