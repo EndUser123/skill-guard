@@ -32,12 +32,9 @@ import tracemalloc
 from typing import Any
 
 import pytest
-from skill_guard.breadcrumb.state import BreadcrumbStateManager
 
-from skill_guard.breadcrumb.cache import BreadcrumbCache
 from skill_guard.breadcrumb.log import AppendOnlyBreadcrumbLog
 from skill_guard.breadcrumb.tracker import (
-    BreadcrumbTracker,
     get_breadcrumb,
     set_breadcrumb,
 )
