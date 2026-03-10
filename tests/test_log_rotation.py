@@ -85,9 +85,11 @@ class TestLogRotation:
         log.clear()
 
         # Create large entry to trigger rotation
+        # Note: Need 3 appends to trigger rotation (check happens before write)
         large_data = "x" * (MAX_LOG_SIZE_BYTES // 2)
         log.append({"event": "test1", "data": large_data})
         log.append({"event": "test2", "data": large_data})
+        log.append({"event": "test3", "data": large_data})  # Triggers rotation
 
         # Check for archive files
         log_file = _get_log_file(skill)
