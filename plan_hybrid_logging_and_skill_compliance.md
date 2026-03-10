@@ -1279,6 +1279,121 @@ def test_cross_terminal_isolation():
 
 ---
 
+## Architecture Decision Record: Simplified Enforcement
+
+**Date**: 2026-03-10
+**Status**: Accepted
+**Decision**: Use simple binary tracking + configurable enforcement levels
+
+### Problem Statement
+
+Original plan proposed 3-level compliance detection (Level 0-3) requiring:
+- Compliance detection logic for all 234 skills
+- Manual workflow_steps addition to each skill
+- Complex feedback system about compliance levels
+- High implementation cost (10-15 hours)
+
+### Alternative Considered
+
+**Option A: Complex 3-Level Compliance** (Original plan)
+- Level 0: Skill not found
+- Level 1: Generic tracking (no workflow_steps)
+- Level 2: Declared only (workflow_steps exist, no hooks)
+- Level 3: Full tracking (workflow_steps + hooks)
+
+**Rejected because**:
+- Too complex for the actual problem
+- Requires manual work for all 234 skills
+- Over-engineering for "prevent false completion claims"
+
+**Option B: Just-in-Time Declaration** (Rejected)
+- Prompt user to define workflow_steps on first invocation
+- Rejected: Interrupts workflow, inconsistent quality
+
+### Decision: Hybrid Enforcement
+
+**Three enforcement levels** (minimal/standard/strict):
+
+| Level | Duration | Tools | Workflow | workflow_steps | Default |
+|-------|----------|-------|----------|----------------|--------|
+| **minimal** | ✅ | ✅ | ❌ | ❌ | Opt-in |
+| **standard** | ✅ | ✅ | ✅ | ❌ | **✅ Yes** |
+| **strict** | ✅ | ✅ | ✅ | ✅ | Opt-in |
+
+**Key features**:
+- ✅ **Default STANDARD works for all skills immediately** (zero manual work)
+- ✅ **Auto-inference from tool patterns** (no manual step tracking)
+- ✅ **Opt-in STRICT for critical skills** (add `enforcement_level: strict` to SKILL.md)
+- ✅ **Simple implementation** (5-8 hours vs. 10-15 hours)
+
+### Enforcement Rules
+
+**MINIMAL** (for simple utilities):
+```python
+if duration < 10 seconds: BLOCK
+if tool_count < 2: BLOCK
+```
+
+**STANDARD** (default for most skills):
+```python
+if duration < 10 seconds: BLOCK
+if tool_count < 2: BLOCK
+if len(inferred_workflow) < 2: BLOCK
+if "verification" not in inferred_workflow: BLOCK
+```
+
+**STRICT** (for critical skills like /code, /tdd):
+```python
+if duration < 10 seconds: BLOCK
+if tool_count < 2: BLOCK
+if len(inferred_workflow) < 2: BLOCK
+if "verification" not in inferred_workflow: BLOCK
+# PLUS: check declared workflow_steps
+if step not in completed_steps: BLOCK
+```
+
+### Consequences
+
+**Positive**:
+- ✅ All 234 skills get protection immediately (default STANDARD)
+- ✅ Zero manual work for most skills
+- ✅ Simple implementation (5-8 hours)
+- ✅ Can upgrade critical skills to STRICT later
+
+**Negative**:
+- ⚠️ STANDARD level doesn't enforce specific step order
+- ⚠️ Need to add `enforcement_level: strict` for critical skills
+
+### Migration Path
+
+**Week 1**: Implement with STANDARD default
+- All skills protected immediately
+- No SKILL.md changes required
+
+**Week 2**: Add STRICT to 5-10 critical skills
+```yaml
+---
+name: code
+enforcement_level: strict
+workflow_steps:
+  - requirements
+  - design
+  - tdd
+  - refactor
+  - verification
+---
+```
+
+**Week 3+**: Expand based on real usage patterns
+
+### References
+
+- User conversation: 2026-03-10
+- Architecture discussion: `/arch "do you think it will still accomplish what I want for skill enforcement?"`
+- Decision rationale: Prevents false completion claims without over-engineering
+
+---
+
 ## Feature Flag Removal Plan
 
 ### Overview
