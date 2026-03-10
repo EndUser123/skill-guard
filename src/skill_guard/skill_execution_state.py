@@ -152,35 +152,25 @@ def set_skill_loaded(
 
     # Load registry if config not provided
     if required_tools is None or pattern is None:
-        try:
-            # Import registry from PreToolUse hook
-            sys.path.insert(0, str(Path(__file__).parent / "PreToolUse"))
-            from PreToolUse_skill_pattern_gate import (
-                SKILL_EXECUTION_REGISTRY,  # type: ignore[import-not-found]
-            )
-            skill_config = SKILL_EXECUTION_REGISTRY.get(skill_lower, {})
-            required_tools = skill_config.get("tools", [])
-            pattern = skill_config.get("pattern", "")
-            hint = skill_config.get("hint", "")
-            intent_enabled = skill_config.get("intent_enabled", False)
+        # Try to load from PreToolUse_skill_pattern_gate if available
+        # Use _get_skill_execution_registry() which handles import failures gracefully
+        registry = _get_skill_execution_registry()
+        skill_config = registry.get(skill_lower, {})
+        required_tools = skill_config.get("tools", [])
+        pattern = skill_config.get("pattern", "")
+        hint = skill_config.get("hint", "")
+        intent_enabled = skill_config.get("intent_enabled", False)
 
-            # VALIDATION: Detect skills in registry with empty required_tools
-            # This is RISK:9 mitigation - prevent security gaps from misconfigured skills
-            if skill_lower in SKILL_EXECUTION_REGISTRY and not required_tools:
-                warning_msg = (
-                    f"[skill_execution_state] WARNING: Skill '{skill_lower}' is in "
-                    f"SKILL_EXECUTION_REGISTRY but has empty required_tools. This will be treated "
-                    f"as a knowledge skill (no execution validation). Fix: Add 'tools' field to "
-                    f"registry entry or remove from registry if this is a knowledge skill."
-                )
-                sys.stderr.write(warning_msg + "\n")
-        except ImportError:
-            # Registry not available, default to knowledge skill (empty required_tools)
-            # All skills are knowledge skills by default unless they explicitly declare execution requirements
-            required_tools = required_tools or []
-            pattern = pattern or ""
-            hint = hint or ""
-            intent_enabled = intent_enabled
+        # VALIDATION: Detect skills in registry with empty required_tools
+        # This is RISK:9 mitigation - prevent security gaps from misconfigured skills
+        if skill_lower in registry and not required_tools:
+            warning_msg = (
+                f"[skill_execution_state] WARNING: Skill '{skill_lower}' is in "
+                f"SKILL_EXECUTION_REGISTRY but has empty required_tools. This will be treated "
+                f"as a knowledge skill (no execution validation). Fix: Add 'tools' field to "
+                f"registry entry or remove from registry if this is a knowledge skill."
+            )
+            sys.stderr.write(warning_msg + "\n")
 
     # Only write state if skill has execution requirements or first-tool coherence
     # Knowledge skills (required_tools=[] and no allowed_first_tools) don't need state tracking
