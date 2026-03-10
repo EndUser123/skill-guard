@@ -157,9 +157,173 @@ triggers:
 
 ---
 
+## Multi-Terminal Isolation Architecture
+
+**CRITICAL REQUIREMENT**: The hybrid logging system MUST maintain terminal isolation to prevent context bleed and stale data in multi-terminal environments.
+
+### Terminal-Scoped State Storage
+
+**Directory structure** (same as current system):
+```
+P:/.claude/state/
+├── breadcrumbs_term_abc123/
+│   ├── breadcrumb_code.log
+│   ├── breadcrumb_code.json
+│   ├── breadcrumb_trace.log
+│   └── breadcrumb_trace.json
+├── breadcrumbs_def456/
+│   ├── breadcrumb_code.log
+│   └── breadcrumb_code.json
+└── breadcrumbs_ghi789/
+    └── breadcrumb_package.log
+```
+
+**Key principle**: Each terminal has its own isolated breadcrumb directory. No sharing, no cross-terminal reads.
+
+### How Terminal Isolation Works
+
+**1. Terminal Detection** (from `skill_guard.utils.terminal_detection`)
+```python
+def detect_terminal_id() -> str:
+    """Detect terminal ID for state isolation."""
+    # Uses terminal_detection.py from utils for consistent ID detection
+    # Returns: "term_12345" (unique per terminal session)
+    terminal_id = shared_detect()
+    return terminal_id
+```
+
+**2. Terminal-Scoped File Paths**
+```python
+def _get_log_file(skill_name: str, terminal_id: str) -> Path:
+    """Get log file path for this terminal only."""
+    state_subdir = STATE_DIR / f"breadcrumbs_{terminal_id}"
+    log_path = state_subdir / f"breadcrumb_{skill_name}.log"
+    return log_path
+```
+
+**3. No Cross-Terminal Access**
+- Terminal A (`term_abc123`) reads/writes `breadcrumbs_term_abc123/breadcrumb_code.log`
+- Terminal B (`term_def456`) reads/writes `breadcrumbs_term_def456/breadcrumb_code.log`
+- **Never** cross paths between terminals
+
+### Stale Data Prevention
+
+**Problem**: In multi-terminal environments, terminals can see each other's stale state if not isolated.
+
+**Solution**: Terminal-scoped state + validation
+
+**Validation in tracker.py** (already implemented):
+```python
+def get_breadcrumb_trail(skill_name: str) -> dict[str, Any] | None:
+    """Get current breadcrumb trail for a skill.
+
+    Verifies session isolation to prevent cross-terminal contamination.
+    """
+    trail = json.loads(breadcrumb_file.read_text())
+
+    # Verify session isolation (multi-terminal safety)
+    if not verify_session_isolation(trail):
+        # Remove stale trail from different session/terminal
+        breadcrumb_file.unlink(missing_ok=True)
+        return None
+
+    return trail
+```
+
+**Session isolation verification**:
+```python
+def verify_session_isolation(trail: dict[str, Any]) -> bool:
+    """Verify that a breadcrumb trail belongs to this terminal.
+
+    CRITICAL: Only checks terminal_id, not session_id.
+    Session ID is global across terminals and changes during compaction.
+
+    Returns:
+        True if trail belongs to this terminal, False otherwise
+    """
+    current_terminal_id = detect_terminal_id()
+    trail_terminal = trail.get("terminal_id")
+
+    # Only check terminal_id (session_id changes during compaction)
+    return trail_terminal == current_terminal_id
+```
+
+### Concurrent Access Safety
+
+**Scenario**: Two terminals running same skill simultaneously
+
+**Terminal A**:
+```
+Invokes /code skill
+→ initialize_breadcrumb_trail("code")
+→ Creates breadcrumbs_term_abc123/breadcrumb_code.log
+→ Appends: {"event": "step_completed", "step": "plan"}
+```
+
+**Terminal B** (same time):
+```
+Invokes /code skill
+→ initialize_breadcrumb_trail("code")
+→ Creates breadcrumbs_term_def456/breadcrumb_code.log
+→ Appends: {"event": "step_completed", "step": "tdd"}
+```
+
+**Result**: No conflict, no cross-contamination. Each terminal has its own log file.
+
+### Cleanup Protocol
+
+**Automatic cleanup on SessionEnd**:
+```python
+def cleanup_session_breadcrumbs() -> int:
+    """Clean up all breadcrumb trails for this terminal (SessionEnd hook).
+
+    Called by SessionEnd hook to clean up trails when session terminates.
+    This prevents stale breadcrumb trails from littering the filesystem.
+
+    Only cleans up trails from THIS terminal, not other terminals.
+    """
+    current_terminal_id = detect_terminal_id()
+    breadcrumb_dir = _get_breadcrumb_dir()
+
+    for file in breadcrumb_dir.glob("breadcrumb_*.json"):
+        trail = json.loads(file.read_text())
+        trail_terminal = trail.get("terminal_id")
+
+        # Only clean up trails from this terminal
+        if trail_terminal == current_terminal_id:
+            file.unlink(missing_ok=True)
+```
+
+**Stale trail cleanup on PreCompact**:
+```python
+def cleanup_stale_breadcrumbs() -> int:
+    """Clean up stale breadcrumb trails (PreCompact hook).
+
+    Removes breadcrumb trails that are older than MAX_TRAIL_AGE_SECONDS.
+    Also cleans up trails from other terminals (cross-terminal contamination).
+
+    This ensures that stale data from old terminals doesn't accumulate.
+    """
+    current_terminal_id = detect_terminal_id()
+
+    for file in breadcrumb_dir.glob("breadcrumb_*.json"):
+        trail = json.loads(file.read_text())
+
+        # Clean up stale trails (age-based)
+        if trail_age > MAX_TRAIL_AGE_SECONDS:
+            file.unlink(missing_ok=True)
+
+        # Clean up trails from other terminals
+        trail_terminal = trail.get("terminal_id")
+        if trail_terminal != current_terminal_id:
+            file.unlink(missing_ok=True)
+```
+
+---
+
 ## Proposed Solution
 
-### Architecture: Hybrid Logging System
+### Architecture: Hybrid Logging System (Terminal-Scoped)
 
 **Component 1: Append-Only Log**
 
