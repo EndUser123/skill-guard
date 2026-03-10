@@ -51,9 +51,9 @@ class EnforcementLevel(Enum):
         - Blocks completion if any step missing
     """
 
-    MINIMAL = "minimal"
-    STANDARD = "standard"
-    STRICT = "strict"
+    MINIMAL = "MINIMAL"
+    STANDARD = "STANDARD"
+    STRICT = "STRICT"
 
     def __str__(self) -> str:
         return self.value
