@@ -1093,9 +1093,19 @@ def test_cross_terminal_isolation():
 
 ---
 
-## Implementation Plan
+## Implementation Plan (Updated: Hybrid Enforcement Approach)
 
-### Phase 1: Quick Wins (2-3 hours)
+**Decision**: Use simplified binary tracking + configurable enforcement levels instead of complex 3-level compliance detection.
+
+**Key Changes from Original Plan**:
+- ❌ Removed: 3-level compliance detection (Level 0-3)
+- ❌ Removed: Complex compliance detection logic
+- ✅ Added: Simple binary tracking (invoked → completed)
+- ✅ Added: Configurable enforcement levels (minimal/standard/strict)
+- ✅ Added: Auto-inference from tool patterns
+- ✅ Added: Zero manual work for most skills
+
+### Phase 1: Core Tracking Implementation (2-3 hours)
 
 **Objective**: Enable immediate skill compliance with minimal risk
 
