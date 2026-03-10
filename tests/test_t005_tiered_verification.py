@@ -56,7 +56,11 @@ class TestT005TieredVerification:
         }
 
         breadcrumb_file.parent.mkdir(parents=True, exist_ok=True)
-        breadcrumb_file.write_text(json.dumps(trail, indent=2))
+        try:
+            breadcrumb_file.write_text(json.dumps(trail, indent=2))
+        except Exception as e:
+            print(f"ERROR: Failed to write breadcrumb file: {e}")
+            raise
 
     def test_minimal_level_pass(self):
         """Test MINIMAL level passes with duration and tool count."""
