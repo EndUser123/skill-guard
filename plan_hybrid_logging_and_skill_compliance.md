@@ -594,6 +594,14 @@ PreToolUse hook before completion → verify_breadcrumb_trail("code")
 3. `test_log_rotation` - Large log triggers archival
 4. `test_backward_compatibility` - Old JSON files still readable
 
+**Multi-Terminal Isolation Tests** (critical for safety):
+1. `test_cross_terminal_isolation` - Terminal A cannot read Terminal B's breadcrumbs
+2. `test_terminal_scoped_directories` - Each terminal uses separate directory
+3. `test_cleanup_only_current_terminal` - SessionEnd only cleans current terminal's trails
+4. `test_stale_trail_removal_on_compaction` - PreCompact removes other terminals' stale trails
+5. `test_concurrent_terminals_same_skill` - Two terminals running /code simultaneously, no conflicts
+6. `test_terminal_id_validation` - Reject breadcrumb trail with different terminal_id
+
 **Performance Tests**:
 1. `test_write_performance` - 100 steps, measure time (hybrid vs old)
 2. `test_read_performance` - 1000 reads, measure cache hit rate
