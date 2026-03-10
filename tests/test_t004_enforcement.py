@@ -42,7 +42,7 @@ class TestT004EnforcementLevel:
         # Set environment variable
         original_value = os.environ.get("BREADCRUMB_ENFORCEMENT_LEVEL")
         try:
-            os.environ["BREADCRUMB_ENFORCEMENT_LEVEL"] = "minimal"
+            os.environ["BREADCRUMB_ENFORCEMENT_LEVEL"] = "MINIMAL"
             level = get_enforcement_level("test_skill")
             assert level == EnforcementLevel.MINIMAL
         finally:
