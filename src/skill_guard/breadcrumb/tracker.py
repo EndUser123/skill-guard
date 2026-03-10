@@ -146,7 +146,17 @@ def initialize_breadcrumb_trail(skill_name: str) -> None:
         "tool_count": 0,  # Track number of tools used (for MINIMAL level)
     }
 
-    # Write breadcrumb file
+    # HYBRID LOGGING: Append initialization event to log
+    log = AppendOnlyBreadcrumbLog(skill_lower)
+    log.append({
+        "event": "trail_initialized",
+        "workflow_steps": workflow_steps,
+    })
+
+    # HYBRID LOGGING: Update cache
+    _cache.update_state(skill_lower, trail)
+
+    # HYBRID LOGGING: Write breadcrumb file (backward compatibility snapshot)
     breadcrumb_file = _get_breadcrumb_file(skill_lower)
     breadcrumb_file.write_text(json.dumps(trail, indent=2))
 
