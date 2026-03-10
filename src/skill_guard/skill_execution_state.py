@@ -37,15 +37,14 @@ STATE_DIR = Path("P:/.claude/state")
 _SKILL_EXECUTION_REGISTRY = None
 
 def _get_skill_execution_registry():
-    """Lazy load SKILL_EXECUTION_REGISTRY to avoid circular imports."""
+    """Load SKILL_EXECUTION_REGISTRY from PreToolUse hook if available.
+
+    Returns empty dict if PreToolUse_skill_pattern_gate is not found.
+    This allows the library to work without hook dependencies.
+    """
     global _SKILL_EXECUTION_REGISTRY
     if _SKILL_EXECUTION_REGISTRY is None:
-        try:
-            sys.path.insert(0, str(Path(__file__).parent / "PreToolUse"))
-            from PreToolUse_skill_pattern_gate import SKILL_EXECUTION_REGISTRY
-            _SKILL_EXECUTION_REGISTRY = SKILL_EXECUTION_REGISTRY
-        except ImportError:
-            _SKILL_EXECUTION_REGISTRY = {}
+        _SKILL_EXECUTION_REGISTRY = {}
     return _SKILL_EXECUTION_REGISTRY
 
 # =============================================================================
