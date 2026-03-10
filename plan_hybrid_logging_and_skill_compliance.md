@@ -1162,42 +1162,51 @@ def test_cross_terminal_isolation():
 - Acceptance: Appropriate messaging for each level, tests pass
 - Effort: M
 
+### Phase 3: Performance & Security Hardening (2-3 hours)
+
 **Objective**: Replace read-modify-write with append-only log + cache + snapshot
 
-**Tasks**:
-1. Create new log module (`src/skill_guard/breadcrumb/log.py`)
-   - Class: AppendOnlyBreadcrumbLog
-   - Methods: append(), replay()
-   - **CRITICAL**: Pass terminal_id to all functions, use terminal-scoped paths
-   - Tests: JSONL format, atomicity, replay correctness, **terminal isolation**
+**T-008**: Create append-only log module
+- File: `src/skill_guard/breadcrumb/log.py` (new)
+- Action: Create AppendOnlyBreadcrumbLog class with append(), replay(), terminal-scoped paths
+- Prerequisites: T-005
+- Acceptance: JSONL format, atomic writes, replay correctness, terminal isolation verified
+- Effort: M
 
-2. Create cache module (`src/skill_guard/breadcrumb/cache.py`)
-   - Class: BreadcrumbStateCache
-   - Methods: get_state(), update_state()
-   - **CRITICAL**: Cache key includes terminal_id (e.g., `f"{skill_name}:{terminal_id}"`)
-   - Tests: Lazy loading, cache hit/miss, periodic snapshot, **terminal-scoped cache keys**
+**T-009**: Create cache module with terminal-scoped keys
+- File: `src/skill_guard/breadcrumb/cache.py` (new)
+- Action: Create BreadcrumbStateCache with get_state(), update_state(), cache keys include terminal_id
+- Prerequisites: T-008
+- Acceptance: Lazy loading works, cache hit/miss tracked, periodic snapshots, terminal-scoped keys
+- Effort: M
 
-3. Modify tracker.py for backward compatibility
-   - Keep existing API: set_breadcrumb(), verify_breadcrumb_trail()
-   - Delegate to hybrid system internally
-   - **CRITICAL**: Verify terminal_id validation on all read paths
-   - Optional: Legacy mode flag to use old format
+**T-010**: Modify tracker.py for backward compatibility
+- File: `src/skill_guard/breadcrumb/tracker.py`
+- Action: Keep existing API (set_breadcrumb, verify_breadcrumb_trail), delegate to hybrid system internally, verify terminal_id validation
+- Prerequisites: T-008, T-009
+- Acceptance: Backward compatible, all existing tests pass, terminal_id validation on all reads
+- Effort: M
 
-4. Add log rotation support
-   - Function: _rotate_log() when size > threshold
-   - Archive old logs with timestamp
-   - Tests: Rotation triggers at correct size
+**T-011**: Add log rotation support
+- File: `src/skill_guard/breadcrumb/log.py`
+- Action: Implement _rotate_log() when size > threshold, archive old logs with timestamp
+- Prerequisites: T-008
+- Acceptance: Rotation triggers at correct size, old logs archived properly
+- Effort: S
 
-5. **Multi-terminal isolation testing** (CRITICAL for safety)
-   - Test: Two terminals create separate logs, no cross-contamination
-   - Test: Terminal A cannot read Terminal B's breadcrumb state
-   - Test: Cleanup only removes current terminal's trails
-   - Test: Concurrent terminals running same skill, no conflicts
+**T-012**: Multi-terminal isolation testing (CRITICAL)
+- File: `tests/test_breadcrumb_isolation.py` (new)
+- Action: Test 2 terminals create separate logs, Terminal A cannot read Terminal B, cleanup only removes current terminal's trails
+- Prerequisites: T-008, T-009, T-010
+- Acceptance: All isolation tests pass, no cross-contamination possible
+- Effort: M
 
-6. Performance testing
-   - Benchmark: 100 steps, compare hybrid vs old
-   - Benchmark: 1000 reads, measure cache hit rate
-   - Goal: 10x write improvement, 100x read improvement
+**T-013**: Performance benchmarking
+- File: `tests/test_benchmark_hybrid_vs_old.py` (new)
+- Action: Benchmark 100 steps (write), 1000 reads (cache), measure 10x write improvement, 100x read improvement
+- Prerequisites: T-008, T-009, T-010
+- Acceptance: Performance goals met (10x write, 100x read), benchmarks documented
+- Effort: M
 
 **Acceptance criteria**:
 - All existing tests pass (backward compatibility)
@@ -1206,7 +1215,7 @@ def test_cross_terminal_isolation():
 - Performance benchmarks show improvement
 - Log rotation works correctly
 
-### Phase 3: Auto-Inference & Tool Tracking (1-2 hours)
+### Phase 4: Auto-Inference & Tool Tracking (1-2 hours)
 
 **Objective**: Automatically infer workflow steps from tool usage patterns
 
