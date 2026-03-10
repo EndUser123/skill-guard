@@ -37,12 +37,11 @@ class TestT005TieredVerification:
             tool_count: Number of tools used (default 0)
             age_seconds: How old the trail is in seconds (default 0.0 = now)
         """
-        from skill_guard.breadcrumb.tracker import detect_terminal_id
+        from skill_guard.breadcrumb.tracker import _get_breadcrumb_file, detect_terminal_id
 
         skill_lower = skill.lower()
-        breadcrumb_file = Path(
-            f"P:/packages/skill-guard/.state/breadcrumb_{skill_lower}.json"
-        )
+        # Use the actual breadcrumb file path from tracker module
+        breadcrumb_file = _get_breadcrumb_file(skill_lower)
 
         trail = {
             "skill": skill_lower,
