@@ -428,6 +428,153 @@ class StructlogBreadcrumbLog:
 - Production-ready (used in production systems at scale)
 - Easy integration with future log aggregation tools
 
+### Multi-Run Lifecycle: Halted, Resumed, and Multiple Executions
+
+**Critical question**: What happens when a skill is halted mid-execution and run again later?
+
+**Scenario 1: Halted and Resumed in Same Terminal**
+
+```
+Day 1, 10:00 AM - Terminal A (term_abc123):
+  User invokes /code feature
+  → initialize_breadcrumb_trail("code")
+  → Creates: breadcrumbs_term_abc123/breadcrumb_code.log
+  → Appends: {"event": "step_completed", "step": "requirements"}
+  → Appends: {"event": "step_completed", "step": "pre-flight"}
+  → User halts execution (Ctrl+C or closes terminal)
+
+Day 1, 2:00 PM - Terminal A (term_abc123):
+  User invokes /code feature again
+  → initialize_breadcrumb_trail("code")
+  → Checks: Does breadcrumbs_term_abc123/breadcrumb_code.log exist? YES
+  → Verifies: terminal_id matches (term_abc123 == term_abc123) ✓
+  → REPLACES log (starts fresh execution):
+      • Archives old log: breadcrumb_code.log.20260310_100000
+      • Creates new log: breadcrumb_code.log
+      → Appends: {"event": "step_completed", "step": "requirements"}
+```
+
+**Behavior**: NEW EXECUTION (not resume). Each skill invocation starts fresh.
+
+**Rationale**: Skills are stateless workflows. If halted, you're starting over, not resuming. The old log is archived for debugging but not used for enforcement.
+
+**Scenario 2: Multiple Runs Over Days (Same Terminal)**
+
+```
+Day 1 - Terminal A:
+  /code feature → breadcrumb_code.log (run 1)
+  /trace code:src/file.py → breadcrumb_trace.log (run 1)
+
+Day 2 - Terminal A (same terminal_id):
+  /code feature → breadcrumb_code.log (run 2)
+  /arch design API → breadcrumb_arch.log (run 1)
+
+Day 3 - Terminal A (same terminal_id):
+  /code feature → breadcrumb_code.log (run 3)
+  Logs accumulate: breadcrumb_code.log, breadcrumb_trace.log, breadcrumb_arch.log
+```
+
+**Cleanup Process**:
+1. **SessionEnd cleanup**: When Claude Code session ends, removes ALL breadcrumb logs for current terminal
+   - `cleanup_session_breadcrumbs()` called by SessionEnd hook
+   - Deletes: `breadcrumbs_term_abc123/breadcrumb_*.json`
+   - Result: Clean slate for next session
+
+2. **PreCompact cleanup**: Every 10 minutes (PreCompact hook), removes stale logs
+   - `cleanup_stale_breadcrumbs()` removes logs older than MAX_TRAIL_AGE_SECONDS (2 hours)
+   - Also removes logs from OTHER terminals (cross-terminal contamination prevention)
+   - Result: No accumulation of stale logs
+
+**Net effect**: Logs don't accumulate indefinitely. SessionEnd cleans current terminal; PreCompact cleans old/stale logs.
+
+**Scenario 3: Concurrent Terminals (Multi-Terminal Isolation)**
+
+```
+Terminal A (term_abc123): Runs /code
+  → Creates: breadcrumbs_term_abc123/breadcrumb_code.log
+  → Appends: {"terminal_id": "term_abc123", "step": "plan"}
+
+Terminal B (term_def456): Runs /code (same time)
+  → Creates: breadcrumbs_term_def456/breadcrumb_code.log
+  → Appends: {"terminal_id": "term_def456", "step": "tdd"}
+
+Terminal C (term_ghi789): Runs /code (same time)
+  → Creates: breadcrumbs_term_ghi789/breadcrumb_code.log
+  → Appends: {"terminal_id": "term_ghi789", "step": "audit"}
+```
+
+**Behavior**: COMPLETE ISOLATION. No conflicts, no cross-contamination.
+
+**Enforcement Impact**:
+- Terminal A's verification only checks Terminal A's breadcrumb
+- Terminal B's verification only checks Terminal B's breadcrumb
+- Each terminal has independent enforcement state
+
+**Scenario 4: Skill Guard Enforcement on Resumed Execution**
+
+```
+Terminal A: User halts /code during TDD phase (step 5 of 9)
+
+Verification check:
+  verify_breadcrumb_trail("code")
+  → Reads: breadcrumbs_term_abc123/breadcrumb_code.log
+  → Parses completed_steps: ["requirements", "pre-flight", "explore", "plan"]
+  → Checks workflow_steps: [9 steps total]
+  → Result: FAIL - "Missing workflow steps: tdd, test, audit, trace, done"
+  → Action: Block or warn about incomplete workflow
+
+Terminal A: User re-runs /code (fresh execution)
+  → NEW log created (old log archived)
+  → Verification passes only if ALL 9 steps complete in NEW execution
+```
+
+**Key principle**: Verification is stateless. It checks the CURRENT log, not historical logs. If halted, you must complete ALL steps in the new execution.
+
+**Log Accumulation Prevention**:
+
+```
+SessionEnd (immediate cleanup):
+  User closes Claude Code
+  → cleanup_session_breadcrumbs()
+  → Deletes: breadcrumbs_term_abc123/* (all logs for this terminal)
+  → Result: No stale logs left behind
+
+PreCompact (periodic cleanup):
+  Runs every ~10 minutes during compaction
+  → cleanup_stale_breadcrumbs()
+  → Deletes logs older than 2 hours (zombie sessions)
+  → Deletes logs from OTHER terminals (cross-terminal contamination)
+  → Result: Clean state directory
+```
+
+**Summary Table**:
+
+| Scenario | Log Behavior | Enforcement |
+|----------|-------------|-------------|
+| **Halted mid-execution** | Log archived on next run | New execution starts fresh |
+| **Multiple runs same day** | Same log file (overwritten) | Each run independent |
+| **Multiple runs over days** | Cleaned by SessionEnd/PreCompact | No accumulation |
+| **Concurrent terminals** | Separate logs per terminal | Independent enforcement |
+| **Same terminal, next day** | Same terminal_id, same log path | Fresh execution, log replaced |
+
+**Implementation Note**: On `initialize_breadcrumb_trail()`, check if log exists and archive it before creating new log:
+
+```python
+def initialize_breadcrumb_trail(skill_name: str) -> None:
+    """Initialize breadcrumb trail for a skill."""
+    log_path = _get_log_file(skill_name, terminal_id)
+
+    # Archive existing log if present (previous incomplete execution)
+    if log_path.exists():
+        archive_path = log_path.with_suffix(f".log.{int(time.time())}")
+        log_path.rename(archive_path)
+
+    # Create new log for fresh execution
+    log_path.touch()
+```
+
+This ensures each skill invocation starts with a clean slate.
+
 **Component 1: Append-Only Log**
 
 ```python
