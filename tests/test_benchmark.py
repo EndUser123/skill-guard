@@ -177,43 +177,69 @@ class TestHybridSystemPerformance:
         """Test end-to-end performance of hybrid system."""
         skill = "benchmark_hybrid_e2e"
 
-        # Clear existing
-        log = AppendOnlyBreadcrumbLog(skill)
-        log.clear()
+        # Create SKILL.md with workflow_steps for this test skill
+        skill_dir = Path("P:/.claude/skills") / skill.lower()
+        skill_dir.mkdir(parents=True, exist_ok=True)
+        skill_file = skill_dir / "SKILL.md"
 
-        # Benchmark: Write 100 breadcrumbs through tracker
-        start = time.perf_counter()
+        # Create workflow_steps for testing
+        workflow_steps = [f"step_{i}" for i in range(100)]
+        skill_file.write_text(f"""---
+workflow_steps:
+  {chr(10).join(f'  - {step}' for step in workflow_steps)}
+---
+# Benchmark Test Skill
 
-        for i in range(100):
-            set_breadcrumb(skill, f"step_{i}")
+This is a test skill for benchmarking.
+""")
 
-        end = time.perf_counter()
-        write_duration_ms = (end - start) * 1000
+        try:
+            # Clear existing
+            log = AppendOnlyBreadcrumbLog(skill)
+            log.clear()
 
-        # Benchmark: Read breadcrumb trail
-        start = time.perf_counter()
+            # Initialize breadcrumb trail
+            initialize_breadcrumb_trail(skill)
 
-        for _ in range(10):
+            # Benchmark: Write 100 breadcrumbs through tracker
+            start = time.perf_counter()
+
+            for i in range(100):
+                set_breadcrumb(skill, f"step_{i}")
+
+            end = time.perf_counter()
+            write_duration_ms = (end - start) * 1000
+
+            # Benchmark: Read breadcrumb trail
+            start = time.perf_counter()
+
+            for _ in range(10):
+                trail = get_breadcrumb_trail(skill)
+
+            end = time.perf_counter()
+            read_duration_ms = (end - start) * 1000
+
+            print(f"\n✓ Wrote 100 breadcrumbs in {write_duration_ms:.2f}ms")
+            print(f"  Average: {write_duration_ms / 100:.2f}ms per write")
+            print(f"✓ Read trail 10 times in {read_duration_ms:.2f}ms")
+            print(f"  Average: {read_duration_ms / 10:.2f}ms per read")
+
+            # Assert: Performance should be reasonable
+            assert write_duration_ms < 1000, f"Writes took {write_duration_ms:.2f}ms, exceeds 1000ms threshold"
+            assert read_duration_ms < 500, f"Reads took {read_duration_ms:.2f}ms, exceeds 500ms threshold"
+
+            # Verify trail was created
             trail = get_breadcrumb_trail(skill)
+            assert trail is not None, "Breadcrumb trail should exist"
+            assert len(trail.get("completed_steps", [])) == 100, "Should have 100 completed steps"
 
-        end = time.perf_counter()
-        read_duration_ms = (end - start) * 1000
-
-        print(f"\n✓ Wrote 100 breadcrumbs in {write_duration_ms:.2f}ms")
-        print(f"  Average: {write_duration_ms / 100:.2f}ms per write")
-        print(f"✓ Read trail 10 times in {read_duration_ms:.2f}ms")
-        print(f"  Average: {read_duration_ms / 10:.2f}ms per read")
-
-        # Assert: Performance should be reasonable
-        assert write_duration_ms < 1000, f"Writes took {write_duration_ms:.2f}ms, exceeds 1000ms threshold"
-        assert read_duration_ms < 500, f"Reads took {read_duration_ms:.2f}ms, exceeds 500ms threshold"
-
-        # Verify trail was created
-        trail = get_breadcrumb_trail(skill)
-        assert trail is not None, "Breadcrumb trail should exist"
-
-        # Cleanup
-        log.clear()
+        finally:
+            # Cleanup
+            log.clear()
+            if skill_file.exists():
+                skill_file.unlink()
+            if skill_dir.exists():
+                skill_dir.rmdir()
 
     def test_memory_usage_active_session(self):
         """Test memory usage for active session."""
