@@ -52,7 +52,24 @@ def _get_breadcrumb_dir() -> Path:
 
 
 def _get_breadcrumb_file(skill_name: str) -> Path:
-    """Get the breadcrumb trail file for a skill."""
+    """Get the breadcrumb trail file for a skill.
+
+    Args:
+        skill_name: Name of the skill
+
+    Returns:
+        Path to breadcrumb state file
+
+    Raises:
+        ValueError: If skill_name contains path traversal characters (. or ..)
+    """
+    # Security: Block path traversal attempts
+    if "." in skill_name or ".." in skill_name:
+        raise ValueError(
+            f"Invalid skill name '{skill_name}': contains path traversal characters. "
+            "Skill names cannot contain '.' or '..' for security reasons."
+        )
+
     skill_lower = skill_name.lower().replace("/", "_").replace(" ", "_")
     return _get_breadcrumb_dir() / f"breadcrumb_{skill_lower}.json"
 
