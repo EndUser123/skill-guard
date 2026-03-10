@@ -26,12 +26,14 @@ from __future__ import annotations
 import statistics
 import time
 import tracemalloc
+from pathlib import Path
 
 import pytest
 
 from skill_guard.breadcrumb.log import AppendOnlyBreadcrumbLog
 from skill_guard.breadcrumb.tracker import (
     get_breadcrumb_trail,
+    initialize_breadcrumb_trail,
     set_breadcrumb,
 )
 
