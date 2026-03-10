@@ -1217,35 +1217,34 @@ def test_cross_terminal_isolation():
 - Performance benchmarks show improvement
 - Log rotation works correctly
 
-### Phase 3: Query Interface & Debugging (1-2 hours)
+### Phase 3: Auto-Inference & Tool Tracking (1-2 hours)
 
-**Objective**: Enable log inspection using standard Unix tools (grep, jq) instead of custom CLI
-
-**Rationale** (from research): Production systems use log aggregation tools (Loki, Elasticsearch) with grep/jq for debugging. For local development, we don't need a custom CLI - standard tools are sufficient and more portable.
+**Objective**: Automatically infer workflow steps from tool usage patterns
 
 **Tasks**:
-1. Add query helper functions (`src/skill_guard/breadcrumb/query.py`)
-   - Function: `get_log_path(skill_name)` - Returns path to .log file
-   - Function: `get_snapshot_path(skill_name)` - Returns path to .json file
-   - Tests: Path resolution for different terminals
+1. Create tool pattern inference system (`src/skill_guard/breadcrumb/inference.py`)
+   - Function: `_infer_step_from_tool(tool_name, tool_input)` - Map tools to workflow steps
+   - Patterns: WebSearch→research, Read(SKILL.md)→requirements, Edit(test*)→tdd, Bash(pytest)→verification
+   - Tests: All major tool types, step mapping accuracy, edge cases
 
-2. Document debugging commands (README.md)
-   - Show current state: `jq . breadcrumbs_term_abc123/breadcrumb_code.json`
-   - Show all events: `cat breadcrumbs_term_abc123/breadcrumb_code.log | jq`
-   - Filter by event type: `grep '"event": "step_completed"' breadcrumb_code.log | jq`
-   - Time travel: `jq 'select(.timestamp < 1234567890)' breadcrumb_code.log`
-   - Tests: Documentation examples work
+2. Create PostToolUse hook for automatic tracking
+   - Hook: `PostToolUse_breadcrumb_tracker.py`
+   - Track: Every tool usage with inferred step
+   - Build: Unique inferred workflow (preserve order, dedupe)
+   - Tests: Tool tracking, inference accuracy, workflow building
 
-3. Add integration tests with real skills
-   - Test: Invoke /code skill, verify breadcrumb trail created
-   - Test: Kill mid-execution, verify recovery works (new log created)
-   - Test: Concurrent terminals, verify no corruption
+3. Update UserPromptSubmit hook for initialization
+   - Hook: `UserPromptSubmit_breadcrumb_init.py` (update existing)
+   - Detect: Skill invocation via regex (`^/\w+`)
+   - Initialize: Simple binary trail (invoked → completed)
+   - Set: Active skill in session state
+   - Tests: Skill detection, trail initialization, state management
 
 **Acceptance criteria**:
-- Query helper functions return correct paths
-- Documentation has working grep/jq examples
-- Integration tests pass with real skills
-- No custom CLI required (use standard tools)
+- Tool inference maps major tools to correct steps
+- Inferred workflows match actual execution patterns
+- PostToolUse tracking doesn't interfere with tool execution
+- Integration tests pass with real skill invocations
 
 ---
 
