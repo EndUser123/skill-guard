@@ -219,7 +219,9 @@ def get_breadcrumb_trail(skill_name: str) -> dict[str, Any] | None:
 
 
 def verify_breadcrumb_trail(skill_name: str) -> tuple[bool, str]:
-    """Verify that all workflow steps have been completed.
+    """Verify breadcrumb trail completion using tiered enforcement.
+
+    Uses enforcement levels (MINIMAL/STANDARD/STRICT) to verify completion.
 
     Args:
         skill_name: Name of the skill
@@ -227,25 +229,29 @@ def verify_breadcrumb_trail(skill_name: str) -> tuple[bool, str]:
     Returns:
         (is_complete, message) tuple
     """
+    from skill_guard.breadcrumb.enforcement import verify_with_enforcement
+
     trail = get_breadcrumb_trail(skill_name)
 
-    if not trail:
-        # No breadcrumb trail means no workflow steps declared
-        return True, "No workflow steps declared"
+    # Calculate duration and tool count for enforcement levels
+    duration_seconds = 0.0
+    tool_count = 0
 
-    workflow_steps = trail.get("workflow_steps", [])
-    completed_steps = trail.get("completed_steps", [])
+    if trail:
+        # Calculate session duration
+        initialized_at = trail.get("initialized_at", time.time())
+        duration_seconds = time.time() - initialized_at
 
-    if not workflow_steps:
-        return True, "No workflow steps declared"
+        # Get tool count (tracked in trail)
+        tool_count = trail.get("tool_count", 0)
 
-    # Check for missing steps
-    missing_steps = [step for step in workflow_steps if step not in completed_steps]
-
-    if missing_steps:
-        return False, f"Missing workflow steps: {', '.join(missing_steps)}"
-
-    return True, "All workflow steps completed"
+    # Use tiered enforcement verification
+    return verify_with_enforcement(
+        skill_name=skill_name,
+        trail=trail,
+        duration_seconds=duration_seconds,
+        tool_count=tool_count,
+    )
 
 
 def clear_breadcrumb_trail(skill_name: str) -> None:
