@@ -31,6 +31,8 @@ from typing import Any
 from skill_guard.breadcrumb.cache import BreadcrumbStateCache
 
 # Import hybrid logging components
+from skill_guard.breadcrumb.log import AppendOnlyBreadcrumbLog
+
 # Import terminal detection from skill_guard utilities
 from skill_guard.utils.terminal_detection import detect_terminal_id
 
