@@ -237,25 +237,25 @@ MIT License - see [LICENSE](LICENSE) file.
 
 ## 🎯 Use Cases
 
-- **Claude Code Hook Development**: Enforce skill execution patterns
-- **Multi-Agent Systems**: Auto-discover agent capabilities
-- **Plugin Systems**: Dynamic plugin registration
-- **Workflow Automation**: Enforce execution patterns
+- **Skill Execution Enforcement**: Ensure skills are invoked via their documented patterns
+- **Breadcrumb Tracking**: Monitor skill execution flow step-by-step
+- **Self-Verification**: Help skills verify they're working as intended
+- **Workflow Compliance**: Ensure skills follow their documented workflows
 
 ## 💡 Design Philosophy
 
 **Principles:**
-1. **Zero Maintenance**: Auto-discovery eliminates manual registry updates
-2. **Backwards Compatible**: Explicit registry still works
-3. **Fail Open**: Unknown skills don't block execution
-4. **Explicit First**: Frontmatter beats automatic detection
+1. **Enforcement over Discovery**: Focus on ensuring correct skill usage, not just finding skills
+2. **Breadcrumb-Based**: Track execution flow for verification and debugging
+3. **Backwards Compatible**: Explicit SKILL_EXECUTION_REGISTRY still works
+4. **Fail Clear**: Provide helpful error messages when enforcement blocks execution
+5. **Explicit First**: Frontmatter declarations beat automatic detection
 
 **What Makes This Unique:**
-- Universal filesystem-based auto-discovery (novel approach)
-- Automatic script pattern detection
-- Dual-layer enforcement (UserPromptSubmit + PreToolUse)
-- Knowledge skill categorization
-- Self-registering from frontmatter
+- Breadcrumb-based execution tracking (novel approach)
+- Integration between UserPromptSubmit and PreToolUse hooks
+- Self-verification capabilities for skills
+- Knowledge skill categorization for selective enforcement
 
 ---
 
