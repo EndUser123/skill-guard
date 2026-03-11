@@ -131,17 +131,20 @@ def _read_from_state_file() -> str | None:
 
 def detect_terminal_id() -> str:
     """
-    Detect terminal ID.
+    Detect terminal ID with multi-terminal isolation.
 
     Returns normalized format: {source}_{id}, or "" if not detectable.
 
     Priority:
-    1. Read from SessionStart's authoritative state file (.claude/state/terminal_id.json)
+    1. Read from terminal-specific state file (SessionStart wrote this)
     2. CLAUDE_TERMINAL_ID and other env vars
     3. Windows GetConsoleWindow() handle
     4. "" — PID fallback is intentionally absent; callers must handle empty string.
+
+    MULTI-TERMINAL ISOLATION: Each terminal reads from its own state file,
+    preventing cross-terminal contamination when running 5+ concurrent terminals.
     """
-    # Priority 1: Read from SessionStart's state file (authoritative source)
+    # Priority 1: Read from terminal-specific state file (authoritative source)
     terminal_id = _read_from_state_file()
     if terminal_id:
         # State file already contains normalized ID
@@ -153,7 +156,7 @@ def detect_terminal_id() -> str:
         if value:
             return _normalize_id(value, SOURCE_ENV)
 
-    # Priority 3: Windows GetConsoleWindow() handle
+    # Priority 3: Windows GetConsoleWindow() handle (direct detection)
     handle = _detect_console_window()
     if handle:
         return _normalize_id(handle, SOURCE_CONSOLE)
