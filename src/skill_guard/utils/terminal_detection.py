@@ -2,31 +2,30 @@
 Terminal ID detection module for skill-guard package.
 
 Provides terminal identification with consistent format across all sources.
-This is a simplified version adapted from the hooks/terminal_detection.py
-module for use as a library dependency.
 
 FORMAT: {source}_{id}
-  - env_{uuid}        : From CLAUDE_TERMINAL_ID environment variable
-  - fallback_{pid}    : Fallback using process ID
+  - env_{id}      : From CLAUDE_TERMINAL_ID or other env vars
+  - console_{hex} : Windows GetConsoleWindow() handle (stable per terminal)
 
 Priority order:
-1. CLAUDE_TERMINAL_ID environment variable (process-scoped, inherited)
+1. CLAUDE_TERMINAL_ID environment variable (explicit user/system override)
 2. TERMINAL_ID, TERM_ID, SESSION_TERMINAL environment variables
-3. Fallback: process ID
-
-This simplified version is designed for library use where hooks
-state files may not be available.
+3. Windows GetConsoleWindow() handle (stable across all subprocesses in same console)
+4. Returns "" — callers must handle missing terminal ID; PID fallback is forbidden
+   because PID differs per subprocess and silently breaks cross-hook state sharing.
 """
 
 import os
+import sys
 
 # Source prefixes for normalized format
 SOURCE_ENV = "env"
-SOURCE_FALLBACK = "fallback"
+SOURCE_CONSOLE = "console"
+SOURCE_FALLBACK = "fallback"  # Deprecated: kept for backward compat only; not used in detection
 
 # Environment variable priority order (highest to lowest)
 TERMINAL_ENV_VARS = [
-    "CLAUDE_TERMINAL_ID",  # Priority 1 (process-scoped, inherited by subprocesses)
+    "CLAUDE_TERMINAL_ID",  # Priority 1 (explicit override)
     "TERMINAL_ID",         # Priority 2
     "TERM_ID",             # Priority 2
     "SESSION_TERMINAL",    # Priority 2
@@ -38,53 +37,65 @@ def _normalize_id(raw_id: str, source: str) -> str:
     Normalize terminal ID to consistent format: {source}_{id}.
 
     If ID already has a known prefix, preserve it (idempotent).
-
-    Args:
-        raw_id: Raw terminal ID from detection source
-        source: Source identifier (env, fallback)
-
-    Returns:
-        Normalized ID in format {source}_{id}
     """
-    known_prefixes = (f"{SOURCE_ENV}_", f"{SOURCE_FALLBACK}_")
+    known_prefixes = (f"{SOURCE_ENV}_", f"{SOURCE_CONSOLE}_")
 
-    # Already normalized - return as-is (idempotent)
     if raw_id.startswith(known_prefixes):
         return raw_id
 
-    # Legacy format: ConsoleHost_XXXX -> treat as env source
+    # Legacy format: ConsoleHost_XXXX -> console source
     if raw_id.startswith("ConsoleHost_"):
-        return f"{SOURCE_ENV}_{raw_id[12:]}"
+        return f"{SOURCE_CONSOLE}_{raw_id[12:]}"
 
-    # Legacy format: session_XXXX -> treat as env source (came from SessionStart)
+    # Legacy format: session_XXXX -> env source (came from SessionStart)
     if raw_id.startswith("session_"):
         return f"{SOURCE_ENV}_{raw_id[8:]}"
 
-    # Standard normalization
     return f"{source}_{raw_id}"
+
+
+def _detect_console_window() -> str:
+    """
+    Detect Windows console window handle via GetConsoleWindow().
+
+    Returns the hex handle string (without prefix) if successful, "" otherwise.
+
+    All subprocesses attached to the same console share the same handle,
+    making this stable across sibling hook invocations with different PIDs.
+    """
+    if sys.platform != "win32":
+        return ""
+    try:
+        import ctypes
+        handle = ctypes.windll.kernel32.GetConsoleWindow()
+        if handle:
+            return hex(handle)[2:]  # e.g. "1a2b3c" — caller adds prefix
+    except Exception:
+        pass
+    return ""
 
 
 def detect_terminal_id() -> str:
     """
-    Detect terminal ID using priority order.
+    Detect terminal ID.
 
-    Returns normalized format: {source}_{id}
+    Returns normalized format: {source}_{id}, or "" if not detectable.
 
-    Priority order:
-    1. Environment variables (process-scoped, inherited correctly)
-    2. Fallback using process ID
-
-    Returns:
-        str: Normalized terminal identifier string
+    Priority:
+    1. CLAUDE_TERMINAL_ID and other env vars
+    2. Windows GetConsoleWindow() handle
+    3. "" — PID fallback is intentionally absent; callers must handle empty string.
     """
-    # Try environment variables first (most reliable)
     for env_var in TERMINAL_ENV_VARS:
-        terminal_id = os.environ.get(env_var)
-        if terminal_id:
-            return _normalize_id(terminal_id, SOURCE_ENV)
+        value = os.environ.get(env_var)
+        if value:
+            return _normalize_id(value, SOURCE_ENV)
 
-    # Fallback: use process ID
-    return _normalize_id(f"term_{os.getpid()}", SOURCE_FALLBACK)
+    handle = _detect_console_window()
+    if handle:
+        return _normalize_id(handle, SOURCE_CONSOLE)
+
+    return ""
 
 
 def detect_terminal_id_with_source() -> tuple[str, str]:
@@ -92,13 +103,15 @@ def detect_terminal_id_with_source() -> tuple[str, str]:
     Detect terminal ID and return both ID and detection source.
 
     Returns:
-        tuple[str, str]: (terminal_id, source) where source is 'env' or 'fallback'
+        tuple[str, str]: (terminal_id, source) — terminal_id may be "" if undetectable.
     """
-    # Try environment variables first (most reliable)
     for env_var in TERMINAL_ENV_VARS:
-        terminal_id = os.environ.get(env_var)
-        if terminal_id:
-            return terminal_id, SOURCE_ENV
+        value = os.environ.get(env_var)
+        if value:
+            return _normalize_id(value, SOURCE_ENV), SOURCE_ENV
 
-    # Fallback: use process ID
-    return f"term_{os.getpid()}", SOURCE_FALLBACK
+    handle = _detect_console_window()
+    if handle:
+        return _normalize_id(handle, SOURCE_CONSOLE), SOURCE_CONSOLE
+
+    return "", ""
