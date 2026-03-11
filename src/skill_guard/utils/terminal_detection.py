@@ -75,6 +75,49 @@ def _detect_console_window() -> str:
     return ""
 
 
+def _read_from_state_file() -> str | None:
+    """
+    Read terminal_id from SessionStart's authoritative state file.
+
+    SessionStart_terminal_id.py writes terminal_id to:
+    {PROJECT_ROOT}/.claude/state/terminal_id.json
+
+    This is the authoritative source - we should use it if available.
+
+    Returns:
+        Terminal ID string if found and valid, None otherwise.
+    """
+    try:
+        import json
+        from pathlib import Path
+
+        # Try to find project root
+        project_root = os.environ.get("PROJECT_ROOT")
+        if not project_root:
+            return None
+
+        state_file = Path(project_root) / ".claude" / "state" / "terminal_id.json"
+        if not state_file.exists():
+            return None
+
+        # Read state file
+        with open(state_file, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+
+        terminal_id = data.get("terminal_id")
+        if terminal_id:
+            # Validate timestamp (state file must be recent - within 24 hours)
+            import time
+            timestamp = data.get("timestamp", 0)
+            if time.time() - timestamp < 86400:  # 24 hours
+                return terminal_id
+
+    except Exception:
+        pass
+
+    return None
+
+
 def detect_terminal_id() -> str:
     """
     Detect terminal ID.
@@ -82,19 +125,29 @@ def detect_terminal_id() -> str:
     Returns normalized format: {source}_{id}, or "" if not detectable.
 
     Priority:
-    1. CLAUDE_TERMINAL_ID and other env vars
-    2. Windows GetConsoleWindow() handle
-    3. "" — PID fallback is intentionally absent; callers must handle empty string.
+    1. Read from SessionStart's authoritative state file (.claude/state/terminal_id.json)
+    2. CLAUDE_TERMINAL_ID and other env vars
+    3. Windows GetConsoleWindow() handle
+    4. "" — PID fallback is intentionally absent; callers must handle empty string.
     """
+    # Priority 1: Read from SessionStart's state file (authoritative source)
+    terminal_id = _read_from_state_file()
+    if terminal_id:
+        # State file already contains normalized ID
+        return terminal_id
+
+    # Priority 2: CLAUDE_TERMINAL_ID and other env vars
     for env_var in TERMINAL_ENV_VARS:
         value = os.environ.get(env_var)
         if value:
             return _normalize_id(value, SOURCE_ENV)
 
+    # Priority 3: Windows GetConsoleWindow() handle
     handle = _detect_console_window()
     if handle:
         return _normalize_id(handle, SOURCE_CONSOLE)
 
+    # Priority 4: Return "" if no detection method succeeded
     return ""
 
 
