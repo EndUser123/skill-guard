@@ -36,14 +36,19 @@ def test_skill_invocation_indicator():
         print(result.context)
         print()
 
+        # Extract additionalContext if it's a dict
+        context_text = result.context
+        if isinstance(result.context, dict):
+            context_text = result.context.get("additionalContext", "")
+
         # Check for 🔧 emoji
-        if "🔧" in result.context:
+        if "🔧" in context_text:
             print("✅ SUCCESS: Skill invocation indicator present!")
         else:
             print("❌ FAIL: No 🔧 emoji found")
 
         # Check for "Invoking Skill" text
-        if "Invoking Skill" in result.context:
+        if "Invoking Skill" in context_text:
             print("✅ SUCCESS: 'Invoking Skill' text present!")
         else:
             print("❌ FAIL: No 'Invoking Skill' text found")
