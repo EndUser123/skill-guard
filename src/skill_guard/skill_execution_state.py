@@ -61,11 +61,12 @@ def detect_terminal_id() -> str:
         from skill_guard.utils.terminal_detection import detect_terminal_id as shared_detect
         return shared_detect()
     except ImportError:
-        # Fallback if terminal_detection not available
+        # Fallback if terminal_detection not available. Do not synthesize
+        # PID-based IDs because they break cross-hook state sharing.
         terminal_id = os.environ.get("CLAUDE_TERMINAL_ID")
         if terminal_id:
             return terminal_id
-        return f"term_{os.getpid()}"
+        return ""
 
 
 # =============================================================================
