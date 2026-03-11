@@ -77,12 +77,15 @@ def _detect_console_window() -> str:
 
 def _read_from_state_file() -> str | None:
     """
-    Read terminal_id from SessionStart's authoritative state file.
+    Read terminal_id from SessionStart's terminal-specific state file.
 
-    SessionStart_terminal_id.py writes terminal_id to:
-    {PROJECT_ROOT}/.claude/state/terminal_id.json
+    MULTI-TERMINAL ISOLATION: Each terminal has its own state file.
+    Filename format: terminal_{hex_handle}.json
 
-    This is the authoritative source - we should use it if available.
+    This function:
+    1. Detects the current console handle via GetConsoleWindow()
+    2. Looks for terminal_{handle}.json matching this handle
+    3. Returns the normalized terminal_id if found and valid
 
     Returns:
         Terminal ID string if found and valid, None otherwise.
@@ -96,11 +99,19 @@ def _read_from_state_file() -> str | None:
         if not project_root:
             return None
 
-        state_file = Path(project_root) / ".claude" / "state" / "terminal_id.json"
+        # Step 1: Detect console handle to find our terminal-specific file
+        handle = _detect_console_window()
+        if not handle:
+            return None
+
+        # Step 2: Look for terminal-specific state file
+        state_dir = Path(project_root) / ".claude" / "state"
+        state_file = state_dir / f"terminal_{handle}.json"
+
         if not state_file.exists():
             return None
 
-        # Read state file
+        # Step 3: Read and validate state file
         with open(state_file, 'r', encoding='utf-8') as f:
             data = json.load(f)
 
