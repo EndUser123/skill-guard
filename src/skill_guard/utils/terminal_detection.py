@@ -56,13 +56,26 @@ def _normalize_id(raw_id: str, source: str) -> str:
 
 def _detect_console_window() -> str:
     """
-    Detect Windows console window handle via GetConsoleWindow().
+    Detect Windows terminal ID via WT_SESSION or GetConsoleWindow().
 
-    Returns the hex handle string (without prefix) if successful, "" otherwise.
+    Priority:
+    1. WT_SESSION (Windows Terminal) - UUID environment variable
+    2. GetConsoleWindow() - Fallback for other terminals
 
-    All subprocesses attached to the same console share the same handle,
+    Returns the hex handle/UUID string (without prefix) if successful, "" otherwise.
+
+    All subprocesses attached to the same terminal share the same identifier,
     making this stable across sibling hook invocations with different PIDs.
+
+    Note: GetConsoleWindow() returns None in hook subprocess context, so
+    WT_SESSION is the primary method for Windows Terminal.
     """
+    # Priority 1: WT_SESSION (Windows Terminal - most reliable on Windows)
+    wt_session = os.environ.get('WT_SESSION')
+    if wt_session:
+        return wt_session  # Return UUID, caller adds prefix
+
+    # Priority 2: GetConsoleWindow() fallback (for non-Windows Terminal scenarios)
     if sys.platform != "win32":
         return ""
     try:
