@@ -6,6 +6,7 @@ common functionality used across the skill-guard package.
 """
 
 from .terminal_detection import (
+    SOURCE_CONSOLE,
     SOURCE_ENV,
     SOURCE_FALLBACK,
     TERMINAL_ENV_VARS,
@@ -18,6 +19,7 @@ __all__ = [
     "detect_terminal_id",
     "detect_terminal_id_with_source",
     "SOURCE_ENV",
+    "SOURCE_CONSOLE",
     "SOURCE_FALLBACK",
     "TERMINAL_ENV_VARS",
     "_normalize_id",
