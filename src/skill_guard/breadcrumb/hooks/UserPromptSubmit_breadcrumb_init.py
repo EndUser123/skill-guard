@@ -111,8 +111,12 @@ def process_prompt_for_breadcrumbs(prompt: str, data: dict) -> str | None:
     success = initialize_breadcrumb_for_skill(skill_name)
 
     if success:
-        # Return informational context injection
-        return f"[Breadcrumbs initialized for /{skill_name}]"
+        # Return user-facing skill invocation indicator
+        indicator = (
+            f"**🔧 Invoking Skill** /{skill_name}\n\n"
+            f"Initializing breadcrumb trail for skill execution..."
+        )
+        return indicator
 
     return None
 
