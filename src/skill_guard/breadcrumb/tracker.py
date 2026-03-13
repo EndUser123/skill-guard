@@ -24,6 +24,7 @@ v2.0 CHANGES:
 from __future__ import annotations
 
 import json
+import sys
 import time
 from pathlib import Path
 from typing import Any
@@ -46,6 +47,33 @@ MAX_TRAIL_AGE_SECONDS = 7200
 
 # Global cache instance (terminal-scoped keys for multi-terminal safety)
 _cache = BreadcrumbStateCache()
+
+HOOKS_LIB_DIR = Path("P:/.claude/hooks/__lib")
+
+
+def _append_ledger_event(event_type: str, payload: dict[str, Any]) -> None:
+    """Write breadcrumb lifecycle events through the shared hook ledger."""
+    terminal_id = detect_terminal_id()
+    if not terminal_id:
+        return
+
+    try:
+        if HOOKS_LIB_DIR.exists() and str(HOOKS_LIB_DIR) not in sys.path:
+            sys.path.insert(0, str(HOOKS_LIB_DIR))
+        import hook_ledger  # type: ignore
+
+        turn_id = hook_ledger.get_active_turn(terminal_id) or ""
+        if not turn_id:
+            return
+        hook_ledger.append_event(
+            terminal_id,
+            str(turn_id),
+            "Breadcrumb",
+            event_type,
+            payload,
+        )
+    except Exception:
+        pass
 
 # =============================================================================
 # STATE MANAGEMENT
@@ -161,6 +189,13 @@ def initialize_breadcrumb_trail(skill_name: str) -> None:
     # HYBRID LOGGING: Write breadcrumb file (backward compatibility snapshot)
     breadcrumb_file = _get_breadcrumb_file(skill_lower)
     breadcrumb_file.write_text(json.dumps(trail, indent=2))
+    _append_ledger_event(
+        "breadcrumb_initialized",
+        {
+            "skill": skill_lower,
+            "workflow_steps": workflow_steps,
+        },
+    )
 
 
 def set_breadcrumb(skill_name: str, step_name: str) -> None:
@@ -212,6 +247,14 @@ def set_breadcrumb(skill_name: str, step_name: str) -> None:
         # for backward compatibility with existing systems that read JSON files
         breadcrumb_file = _get_breadcrumb_file(skill_lower)
         breadcrumb_file.write_text(json.dumps(trail, indent=2))
+        _append_ledger_event(
+            "breadcrumb_step_complete",
+            {
+                "skill": skill_lower,
+                "step": step_name,
+                "completed_steps": completed,
+            },
+        )
 
 
 def get_breadcrumb_trail(skill_name: str) -> dict[str, Any] | None:
@@ -319,6 +362,10 @@ def clear_breadcrumb_trail(skill_name: str) -> None:
     # HYBRID LOGGING: Clear breadcrumb file (backward compatibility)
     breadcrumb_file = _get_breadcrumb_file(skill_lower)
     breadcrumb_file.unlink(missing_ok=True)
+    _append_ledger_event(
+        "breadcrumb_cleared",
+        {"skill": skill_lower},
+    )
 
 
 def clear_all_breadcrumb_trails() -> None:
