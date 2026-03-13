@@ -29,6 +29,7 @@ from typing import Any
 # =============================================================================
 
 STATE_DIR = Path("P:/.claude/state")
+HOOKS_LIB_DIR = Path("P:/.claude/hooks/__lib")
 
 # =============================================================================
 # SKILL EXECUTION REGISTRY (Reference for validation)
@@ -74,7 +75,7 @@ def detect_terminal_id() -> str:
 # =============================================================================
 
 def _get_state_file() -> Path:
-    """Get the state file path for this terminal."""
+    """Legacy path retained for compatibility only."""
     terminal_id = detect_terminal_id()
     state_subdir = STATE_DIR / f"skill_execution_{terminal_id}"
     state_subdir.mkdir(parents=True, exist_ok=True)
@@ -100,9 +101,13 @@ def _load_skill_frontmatter(skill_name: str) -> dict[str, Any]:
         skill_name: Skill name (without slash)
 
     Returns:
-        Dict with 'allowed_first_tools' list (empty if not declared)
+        Dict with frontmatter fields used by execution/governance tracking.
     """
-    result: dict[str, Any] = {"allowed_first_tools": []}
+    result: dict[str, Any] = {
+        "allowed_first_tools": [],
+        "layer1_enforcement": False,
+        "usage_markers": [],
+    }
     skill_dir = Path("P:/.claude/skills") / skill_name
     skill_file = skill_dir / "SKILL.md"
     if not skill_file.exists():
@@ -120,9 +125,34 @@ def _load_skill_frontmatter(skill_name: str) -> dict[str, Any]:
         aft = fm_data.get("allowed_first_tools", [])
         if isinstance(aft, list):
             result["allowed_first_tools"] = [str(t) for t in aft]
+        usage_markers = fm_data.get("usage_markers", [])
+        if isinstance(usage_markers, list):
+            result["usage_markers"] = [str(marker) for marker in usage_markers if str(marker).strip()]
+        result["layer1_enforcement"] = bool(fm_data.get("layer1_enforcement"))
     except Exception:
         pass
     return result
+
+
+def _get_ledger_module():
+    """Import hook_ledger from the hooks library."""
+    if HOOKS_LIB_DIR.exists() and str(HOOKS_LIB_DIR) not in sys.path:
+        sys.path.insert(0, str(HOOKS_LIB_DIR))
+    import hook_ledger  # type: ignore
+    return hook_ledger
+
+
+def _get_active_turn_scope() -> tuple[str, str]:
+    """Return (terminal_id, turn_id) for the current terminal."""
+    terminal_id = detect_terminal_id()
+    if not terminal_id:
+        return "", ""
+    try:
+        ledger = _get_ledger_module()
+        turn_id = ledger.get_active_turn(terminal_id) or ""
+        return terminal_id, str(turn_id)
+    except Exception:
+        return terminal_id, ""
 
 
 def set_skill_loaded(
@@ -179,7 +209,7 @@ def set_skill_loaded(
     if not required_tools and not allowed_first_tools:
         return  # Pure knowledge skill - no state needed
 
-    # Create state
+    # Create state payload
     state = {
         "skill": skill_lower,
         "loaded_at": time.time(),
@@ -200,9 +230,32 @@ def set_skill_loaded(
         "first_tool_validated": False,
     }
 
-    # Write state
-    state_file = _get_state_file()
-    state_file.write_text(json.dumps(state, indent=2))
+    terminal_id, turn_id = _get_active_turn_scope()
+    if not terminal_id or not turn_id:
+        return
+
+    try:
+        ledger = _get_ledger_module()
+        ledger.append_event(
+            terminal_id,
+            turn_id,
+            "PostToolUse",
+            "skill_loaded",
+            state,
+        )
+        if frontmatter.get("layer1_enforcement") and frontmatter.get("usage_markers"):
+            ledger.append_event(
+                terminal_id,
+                turn_id,
+                "PostToolUse",
+                "governance_expected",
+                {
+                    "skill": skill_lower,
+                    "markers": frontmatter.get("usage_markers", []),
+                },
+            )
+    except Exception:
+        pass
 
 
 def record_tool_use(tool_name: str, tool_input: dict[str, Any]) -> None:
@@ -212,30 +265,29 @@ def record_tool_use(tool_name: str, tool_input: dict[str, Any]) -> None:
         tool_name: Name of the tool being used
         tool_input: Input parameters passed to the tool
     """
-    state_file = _get_state_file()
-    if not state_file.exists():
+    terminal_id, turn_id = _get_active_turn_scope()
+    if not terminal_id or not turn_id:
         return
 
     try:
-        state = json.loads(state_file.read_text())
-
-        # Record tool usage
-        state["tools_used"].append(tool_name)
-
-        # Extract command for specific tools
         command = ""
         if tool_name == "Bash":
             command = tool_input.get("command", "")
         elif tool_name == "Task":
             command = tool_input.get("prompt", "")
-
-        if command:
-            state["commands_run"].append(str(command))
-
-        # Write updated state
-        state_file.write_text(json.dumps(state, indent=2))
-
-    except (json.JSONDecodeError, OSError):
+        ledger = _get_ledger_module()
+        ledger.append_event(
+            terminal_id,
+            turn_id,
+            "PostToolUse",
+            "skill_tool_used",
+            {
+                "tool_name": tool_name,
+                "command": str(command or ""),
+                "tool_input": tool_input if isinstance(tool_input, dict) else {},
+            },
+        )
+    except Exception:
         pass
 
 
@@ -245,14 +297,18 @@ def read_pending_state() -> dict | None:
     Returns:
         State dict or None if no skill loaded
     """
-    state_file = _get_state_file()
-    if not state_file.exists():
-        return None
-
     try:
-        return json.loads(state_file.read_text())
-    except (json.JSONDecodeError, OSError):
+        terminal_id, turn_id = _get_active_turn_scope()
+        if not terminal_id or not turn_id:
+            return None
+        ledger = _get_ledger_module()
+        snapshot = ledger.materialize_turn(terminal_id, turn_id)
+        state = snapshot.get("skill_state")
+        if isinstance(state, dict):
+            return state
+    except Exception:
         return None
+    return None
 
 
 def mark_first_tool_validated() -> None:
@@ -262,22 +318,39 @@ def mark_first_tool_validated() -> None:
     non-investigation tool matches the skill's allowed_first_tools.
     Subsequent tool calls skip the coherence check.
     """
-    state_file = _get_state_file()
-    if not state_file.exists():
+    terminal_id, turn_id = _get_active_turn_scope()
+    if not terminal_id or not turn_id:
         return
 
     try:
-        state = json.loads(state_file.read_text())
-        state["first_tool_validated"] = True
-        state_file.write_text(json.dumps(state, indent=2))
-    except (json.JSONDecodeError, OSError):
+        ledger = _get_ledger_module()
+        ledger.append_event(
+            terminal_id,
+            turn_id,
+            "PreToolUse",
+            "skill_first_tool_validated",
+            {"validated": True},
+        )
+    except Exception:
         pass
 
 
 def clear_state() -> None:
-    """Clear the current skill execution state."""
-    state_file = _get_state_file()
-    state_file.unlink(missing_ok=True)
+    """Clear current skill execution state for the active turn."""
+    terminal_id, turn_id = _get_active_turn_scope()
+    if not terminal_id or not turn_id:
+        return
+    try:
+        ledger = _get_ledger_module()
+        ledger.append_event(
+            terminal_id,
+            turn_id,
+            "Stop",
+            "skill_state_cleared",
+            {"cleared_at": time.time()},
+        )
+    except Exception:
+        pass
 
 
 # =============================================================================
