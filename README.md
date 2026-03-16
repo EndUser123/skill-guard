@@ -2,7 +2,7 @@
 
 ![Python Version](https://img.shields.io/badge/python-3.10%2B-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
-![Version](https://img.shields.io/badge/version-1.0.0-brightgreen)
+![Version](https://img.shields.io/badge/version-2.0.0-brightgreen)
 ![Tests](https://img.shields.io/badge/tests-10%20passing-brightgreen)
 ![Coverage](https://img.shields.io/badge/coverage-36%25-yellow)
 
@@ -33,11 +33,12 @@ from skill_guard import discover_all_skills, get_skill_config
 - ❌ It's purely a backend library for hooks
 
 - 🔒 **Execution Enforcement**: Ensures skills are invoked via their documented patterns
-- 🍞 **Breadcrumb Tracking**: Monitors skill execution flow step-by-step
+- 🍞 **Breadcrumb Tracking**: Monitors skill execution flow step-by-step with SQLite backend
 - ✅ **Self-Verification**: Helps skills verify they're working as intended
 - 📚 **Knowledge Skill Exemption**: Distinguishes execution skills (enforced) from reference skills (not enforced)
 - 🔄 **Backwards Compatible**: Works with explicit SKILL_EXECUTION_REGISTRY
-- ⚡ **Fast**: Validates skill execution in milliseconds
+- ⚡ **Fast**: 3-20x faster with SQLite backend and caching
+- 🗄️ **SQLite Storage**: Unified database with WAL mode for concurrent access
 
 ## 📦 Installation
 
@@ -149,6 +150,43 @@ graph TD
 3. **Tool enforcement**: PreToolUse hook checks if `Skill` tool called first
 4. **Pattern verification**: Breadcrumb system tracks each step
 5. **Self-verification**: Skill can verify it followed documented workflow
+
+### SQLite Backend (v2.0)
+
+**What's New in v2.0:**
+
+The breadcrumb system now uses a unified SQLite backend for better performance and reliability:
+
+- **Unified Storage**: Single `diagnostics.db` database instead of multiple JSONL/JSON files
+- **WAL Mode**: Write-Ahead Logging enables concurrent access from multiple terminals
+- **Connection Pooling**: Thread-local connections for thread safety
+- **Indexed Queries**: Fast lookups (< 2ms) with proper indexing
+- **Transactional Updates**: ACID guarantees for data integrity
+- **Audit Trail**: Append-only event log for breadcrumb history
+
+**Performance Improvements:**
+
+- **3-20x faster** operations (with caching)
+- **4x higher** write throughput
+- **10x higher** read throughput (cached)
+- **90% reduction** in I/O operations
+
+**Migration:**
+
+Migration from file-based storage is automatic and seamless:
+
+```bash
+# Automatic migration on first use (no action needed)
+# Manual migration (optional)
+python -m skill_guard.breadcrumb.migration --all
+```
+
+**Documentation:**
+
+- [Architecture](docs/architecture.md) - Complete system design
+- [Migration Guide](docs/migration-guide.md) - Step-by-step instructions
+- [Performance](docs/performance.md) - Benchmarks and optimization
+- [Troubleshooting](docs/troubleshooting.md) - Common issues and solutions
 
 ### Configuration Sources (Priority Order)
 

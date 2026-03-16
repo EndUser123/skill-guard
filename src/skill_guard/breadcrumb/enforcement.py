@@ -115,6 +115,23 @@ def get_enforcement_level(skill_name: str) -> EnforcementLevel:
 # TIERED VERIFICATION
 # =============================================================================
 
+def _normalize_workflow_step_ids(workflow_steps: list) -> list[str]:
+    """Normalize workflow_steps to list of step IDs.
+
+    Handles both string format and dict format with 'id' field.
+
+    Args:
+        workflow_steps: List of workflow steps (str or dict)
+
+    Returns:
+        List of step IDs as strings
+    """
+    return [
+        step["id"] if isinstance(step, dict) else step
+        for step in workflow_steps
+    ]
+
+
 def verify_with_enforcement(
     skill_name: str,
     trail: dict[str, Any] | None,
@@ -146,18 +163,21 @@ def verify_with_enforcement(
     if not workflow_steps:
         return True, f"No workflow steps declared (level: {level.value})"
 
+    # Normalize workflow_steps to list of step IDs (handles both str and dict formats)
+    workflow_step_ids = _normalize_workflow_step_ids(workflow_steps)
+
     # Apply tiered verification
     if level == EnforcementLevel.MINIMAL:
         return _verify_minimal(
-            workflow_steps, completed_steps, duration_seconds, tool_count
+            workflow_step_ids, completed_steps, duration_seconds, tool_count
         )
     elif level == EnforcementLevel.STANDARD:
         return _verify_standard(
-            workflow_steps, completed_steps, duration_seconds, tool_count
+            workflow_step_ids, completed_steps, duration_seconds, tool_count
         )
     else:  # STRICT
         return _verify_strict(
-            workflow_steps, completed_steps, duration_seconds, tool_count
+            workflow_step_ids, completed_steps, duration_seconds, tool_count
         )
 
 

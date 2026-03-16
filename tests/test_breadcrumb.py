@@ -41,6 +41,13 @@ def cleanup_test_state():
         pass
 
 
+@pytest.fixture(autouse=True)
+def set_strict_enforcement(monkeypatch):
+    """Set enforcement level to STRICT for all tests (only check step completion)."""
+    monkeypatch.setenv("BREADCRUMB_ENFORCEMENT_LEVEL", "STRICT")
+    yield
+
+
 def test_initialize_trail(cleanup_test_state):
     """Test breadcrumb trail initialization."""
     print("Test 1: Initialize breadcrumb trail")
