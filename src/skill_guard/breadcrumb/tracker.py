@@ -41,6 +41,11 @@ from skill_guard.breadcrumb.log import AppendOnlyBreadcrumbLog
 # Import terminal detection from skill_guard utilities
 from skill_guard.utils.terminal_detection import detect_terminal_id
 
+try:
+    import yaml
+except ImportError:
+    yaml = None  # pyyaml declared as optional dependency
+
 # =============================================================================
 # CONFIGURATION
 # =============================================================================
@@ -109,9 +114,11 @@ def _append_ledger_event(event_type: str, payload: dict[str, Any]) -> None:
     except Exception:
         pass
 
+
 # =============================================================================
 # STATE MANAGEMENT
 # =============================================================================
+
 
 def _get_breadcrumb_dir() -> Path:
     """Get the breadcrumb state directory for this terminal."""
@@ -162,8 +169,10 @@ def _load_workflow_steps(skill_name: str) -> list[dict]:
     if not skill_file.exists():
         return steps
 
+    if yaml is None:
+        return steps
+
     try:
-        import yaml  # noqa: PLC0415
         content = skill_file.read_text(encoding="utf-8", errors="replace")
         parts = content.split("---")
         if len(parts) < 3:
@@ -259,12 +268,14 @@ def initialize_breadcrumb_trail(skill_name: str) -> None:
     # This ensures tools that expect files can still work
     # HYBRID LOGGING: Append initialization event to log
     log = AppendOnlyBreadcrumbLog(skill_lower)
-    log.append({
-        "event": "trail_initialized",
-        "run_id": run_id,
-        "workflow_steps": workflow_steps,
-        "steps": steps,
-    })
+    log.append(
+        {
+            "event": "trail_initialized",
+            "run_id": run_id,
+            "workflow_steps": workflow_steps,
+            "steps": steps,
+        }
+    )
 
     # HYBRID LOGGING: Update cache
     _cache.update_state(skill_lower, trail)
@@ -352,11 +363,13 @@ def set_breadcrumb(skill_name: str, step_name: str, evidence: dict[str, Any] | N
     # ALWAYS: Write file for backward compatibility (even if SQLite succeeds)
     # HYBRID LOGGING: Append to log (atomic write, no read-modify-write)
     log = AppendOnlyBreadcrumbLog(skill_lower)
-    log.append({
-        "event": "step_complete",
-        "step": step_name,
-        "evidence": evidence,
-    })
+    log.append(
+        {
+            "event": "step_complete",
+            "step": step_name,
+            "evidence": evidence,
+        }
+    )
 
     # HYBRID LOGGING: Update cache (in-memory, fast)
     _cache.update_state(skill_lower, trail)
@@ -524,6 +537,7 @@ def clear_all_breadcrumb_trails() -> None:
 # =============================================================================
 # CLEANUP PROTOCOL
 # =============================================================================
+
 
 def cleanup_session_breadcrumbs() -> int:
     """Clean up all breadcrumb trails for this terminal (SessionEnd hook).
@@ -695,6 +709,7 @@ def verify_session_isolation(trail: dict[str, Any]) -> bool:
 # UTILITY FUNCTIONS
 # =============================================================================
 
+
 def get_active_breadcrumb_trails() -> list[dict[str, Any]]:
     """Get all active breadcrumb trails for this terminal.
 
@@ -739,10 +754,7 @@ def format_breadcrumb_status(trail: dict[str, Any]) -> str:
     completed_steps = trail.get("completed_steps", [])
 
     # Normalize workflow_steps to list of step IDs (handles both str and dict formats)
-    workflow_step_ids = [
-        step["id"] if isinstance(step, dict) else step
-        for step in workflow_steps
-    ]
+    workflow_step_ids = [step["id"] if isinstance(step, dict) else step for step in workflow_steps]
 
     status = f"Skill: {skill}\n"
     status += f"Workflow: {len(completed_steps)}/{len(workflow_step_ids)} steps complete\n"

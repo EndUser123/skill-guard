@@ -24,6 +24,11 @@ import time
 from pathlib import Path
 from typing import Any
 
+try:
+    import yaml
+except ImportError:
+    yaml = None  # pyyaml declared as optional dependency
+
 # =============================================================================
 # CONFIGURATION
 # =============================================================================
@@ -37,6 +42,7 @@ HOOKS_LIB_DIR = Path("P:/.claude/hooks/__lib")
 # Import registry for validation - loaded lazily to avoid circular imports
 _SKILL_EXECUTION_REGISTRY = None
 
+
 def _get_skill_execution_registry():
     """Load SKILL_EXECUTION_REGISTRY from PreToolUse hook if available.
 
@@ -48,9 +54,11 @@ def _get_skill_execution_registry():
         _SKILL_EXECUTION_REGISTRY = {}
     return _SKILL_EXECUTION_REGISTRY
 
+
 # =============================================================================
 # TERMINAL DETECTION
 # =============================================================================
+
 
 def detect_terminal_id() -> str:
     """Detect terminal ID for state isolation.
@@ -60,6 +68,7 @@ def detect_terminal_id() -> str:
     try:
         # Import shared terminal detection from utils
         from skill_guard.utils.terminal_detection import detect_terminal_id as shared_detect
+
         return shared_detect()
     except ImportError:
         # Fallback if terminal_detection not available. Do not synthesize
@@ -73,6 +82,7 @@ def detect_terminal_id() -> str:
 # =============================================================================
 # STATE MANAGEMENT
 # =============================================================================
+
 
 def _get_state_file() -> Path:
     """Legacy path retained for compatibility only."""
@@ -113,8 +123,10 @@ def _load_skill_frontmatter(skill_name: str) -> dict[str, Any]:
     if not skill_file.exists():
         return result
 
+    if yaml is None:
+        return result
+
     try:
-        import yaml  # noqa: PLC0415
         content = skill_file.read_text(encoding="utf-8", errors="replace")
         parts = content.split("---")
         if len(parts) < 3:
@@ -127,7 +139,9 @@ def _load_skill_frontmatter(skill_name: str) -> dict[str, Any]:
             result["allowed_first_tools"] = [str(t) for t in aft]
         usage_markers = fm_data.get("usage_markers", [])
         if isinstance(usage_markers, list):
-            result["usage_markers"] = [str(marker) for marker in usage_markers if str(marker).strip()]
+            result["usage_markers"] = [
+                str(marker) for marker in usage_markers if str(marker).strip()
+            ]
         result["layer1_enforcement"] = bool(fm_data.get("layer1_enforcement"))
     except Exception:
         pass
@@ -139,6 +153,7 @@ def _get_ledger_module():
     if HOOKS_LIB_DIR.exists() and str(HOOKS_LIB_DIR) not in sys.path:
         sys.path.insert(0, str(HOOKS_LIB_DIR))
     import hook_ledger  # type: ignore
+
     return hook_ledger
 
 
@@ -356,6 +371,7 @@ def clear_state() -> None:
 # =============================================================================
 # MIGRATION HELPERS
 # =============================================================================
+
 
 def migrate_legacy_state() -> None:
     """Migrate state from old location to new terminal-isolated location.

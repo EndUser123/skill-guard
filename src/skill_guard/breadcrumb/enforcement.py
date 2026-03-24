@@ -17,6 +17,11 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
+try:
+    import yaml
+except ImportError:
+    yaml = None  # pyyaml declared as optional dependency
+
 # =============================================================================
 # CONFIGURATION
 # =============================================================================
@@ -31,6 +36,7 @@ ENFORCEMENT_LEVEL_ENV = "BREADCRUMB_ENFORCEMENT_LEVEL"
 # =============================================================================
 # ENUMERATION
 # =============================================================================
+
 
 class EnforcementLevel(Enum):
     """Breadcrumb enforcement levels.
@@ -63,6 +69,7 @@ class EnforcementLevel(Enum):
 # LEVEL DETECTION
 # =============================================================================
 
+
 def get_enforcement_level(skill_name: str) -> EnforcementLevel:
     """Get enforcement level for a skill.
 
@@ -89,9 +96,8 @@ def get_enforcement_level(skill_name: str) -> EnforcementLevel:
     skill_dir = Path("P:/.claude/skills") / skill_name.lower()
     skill_file = skill_dir / "SKILL.md"
 
-    if skill_file.exists():
+    if skill_file.exists() and yaml is not None:
         try:
-            import yaml  # noqa: PLC0415
             content = skill_file.read_text(encoding="utf-8", errors="replace")
             parts = content.split("---")
             if len(parts) >= 3:
@@ -115,6 +121,7 @@ def get_enforcement_level(skill_name: str) -> EnforcementLevel:
 # TIERED VERIFICATION
 # =============================================================================
 
+
 def _normalize_workflow_step_ids(workflow_steps: list) -> list[str]:
     """Normalize workflow_steps to list of step IDs.
 
@@ -126,10 +133,7 @@ def _normalize_workflow_step_ids(workflow_steps: list) -> list[str]:
     Returns:
         List of step IDs as strings
     """
-    return [
-        step["id"] if isinstance(step, dict) else step
-        for step in workflow_steps
-    ]
+    return [step["id"] if isinstance(step, dict) else step for step in workflow_steps]
 
 
 def verify_with_enforcement(
@@ -168,17 +172,11 @@ def verify_with_enforcement(
 
     # Apply tiered verification
     if level == EnforcementLevel.MINIMAL:
-        return _verify_minimal(
-            workflow_step_ids, completed_steps, duration_seconds, tool_count
-        )
+        return _verify_minimal(workflow_step_ids, completed_steps, duration_seconds, tool_count)
     elif level == EnforcementLevel.STANDARD:
-        return _verify_standard(
-            workflow_step_ids, completed_steps, duration_seconds, tool_count
-        )
+        return _verify_standard(workflow_step_ids, completed_steps, duration_seconds, tool_count)
     else:  # STRICT
-        return _verify_strict(
-            workflow_step_ids, completed_steps, duration_seconds, tool_count
-        )
+        return _verify_strict(workflow_step_ids, completed_steps, duration_seconds, tool_count)
 
 
 def _verify_minimal(
@@ -198,12 +196,14 @@ def _verify_minimal(
     # Tool count check: at least 2 tools
     if tool_count < 2:
         return False, (
-            f"MINIMAL: Too few tools used ({tool_count} < 2). "
-            "Use more tools or use STANDARD level."
+            f"MINIMAL: Too few tools used ({tool_count} < 2). Use more tools or use STANDARD level."
         )
 
     # Workflow steps are not checked at MINIMAL level
-    return True, f"MINIMAL: Duration {duration_seconds:.1f}s, {tool_count} tools (workflow steps not checked)"
+    return (
+        True,
+        f"MINIMAL: Duration {duration_seconds:.1f}s, {tool_count} tools (workflow steps not checked)",
+    )
 
 
 def _verify_standard(
@@ -230,8 +230,7 @@ def _verify_standard(
     # Verification step check: look for verification-related steps
     verification_keywords = ["verify", "check", "validate", "test", "review"]
     has_verification = any(
-        any(kw in step.lower() for kw in verification_keywords)
-        for step in completed_steps
+        any(kw in step.lower() for kw in verification_keywords) for step in completed_steps
     )
 
     if not has_verification:
@@ -240,7 +239,10 @@ def _verify_standard(
             "Complete verification, testing, or review step."
         )
 
-    return True, f"STANDARD: {len(completed_steps)}/{len(workflow_steps)} steps complete (with verification)"
+    return (
+        True,
+        f"STANDARD: {len(completed_steps)}/{len(workflow_steps)} steps complete (with verification)",
+    )
 
 
 def _verify_strict(
