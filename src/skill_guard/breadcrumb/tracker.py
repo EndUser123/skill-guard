@@ -24,6 +24,7 @@ v2.0 CHANGES:
 from __future__ import annotations
 
 import json
+import os
 import sys
 import time
 import uuid
@@ -210,6 +211,25 @@ def initialize_breadcrumb_trail(skill_name: str) -> None:
     """
     skill_lower = skill_name.lower()
 
+    # HYBRID LOGGING: Check if breadcrumb file already exists
+    # This prevents overwriting manually-created trails in tests
+    breadcrumb_file = _get_breadcrumb_file(skill_lower)
+    if breadcrumb_file.exists():
+        try:
+            existing_trail = json.loads(breadcrumb_file.read_text(encoding="utf-8"))
+            # Verify terminal_id matches (multi-terminal safety)
+            if existing_trail.get("terminal_id") == detect_terminal_id():
+                # Load existing trail into cache and return early
+                _cache.update_state(skill_lower, existing_trail)
+                return
+            # Terminal ID mismatch - stale file from different terminal, delete and recreate
+            try:
+                breadcrumb_file.unlink(missing_ok=True)
+            except OSError:
+                pass
+        except (json.JSONDecodeError, OSError):
+            pass
+
     # Load workflow steps from frontmatter
     workflow_steps = _load_workflow_steps(skill_lower)
 
@@ -281,8 +301,10 @@ def initialize_breadcrumb_trail(skill_name: str) -> None:
     _cache.update_state(skill_lower, trail)
 
     # HYBRID LOGGING: Write breadcrumb file (backward compatibility snapshot)
-    breadcrumb_file = _get_breadcrumb_file(skill_lower)
-    breadcrumb_file.write_text(json.dumps(trail, indent=2))
+    with open(breadcrumb_file, "w", encoding="utf-8") as f:
+        f.write(json.dumps(trail, indent=2))
+        f.flush()
+        os.fsync(f.fileno())
     _append_ledger_event(
         "breadcrumb_initialized",
         {
@@ -378,7 +400,10 @@ def set_breadcrumb(skill_name: str, step_name: str, evidence: dict[str, Any] | N
     # Note: This could be optimized to only write periodically, but keeping
     # for backward compatibility with existing systems that read JSON files
     breadcrumb_file = _get_breadcrumb_file(skill_lower)
-    breadcrumb_file.write_text(json.dumps(trail, indent=2))
+    with open(breadcrumb_file, "w", encoding="utf-8") as f:
+        f.write(json.dumps(trail, indent=2))
+        f.flush()
+        os.fsync(f.fileno())
     _append_ledger_event(
         "breadcrumb_step_complete",
         {
@@ -388,6 +413,33 @@ def set_breadcrumb(skill_name: str, step_name: str, evidence: dict[str, Any] | N
             "evidence": evidence,
         },
     )
+
+
+def _windows_safe_unlink(path: Path) -> None:
+    """Delete a file with Windows handle release workaround.
+
+    On Windows, Python 3.14 holds file handles open after context manager exit.
+    This can prevent unlink() from actually deleting files. Applies gc.collect()
+    + rename workaround to ensure file deletion.
+    """
+    import gc as gc_module
+    import time as time_module
+
+    for _ in range(3):
+        gc_module.collect()
+    if path.exists():
+        try:
+            path.unlink(missing_ok=True)
+        except OSError:
+            time_module.sleep(0.05)
+            try:
+                path.unlink(missing_ok=True)
+            except OSError:
+                tmp_name = str(path) + f".orphaned_{time_module.time_ns()}"
+                try:
+                    path.rename(tmp_name)
+                except OSError:
+                    pass
 
 
 def get_breadcrumb_trail(skill_name: str) -> dict[str, Any] | None:
@@ -402,13 +454,20 @@ def get_breadcrumb_trail(skill_name: str) -> dict[str, Any] | None:
         Trail dict or None if no trail exists or session mismatch
     """
     skill_lower = skill_name.lower()
+    breadcrumb_file = _get_breadcrumb_file(skill_lower)
 
     # HYBRID LOGGING: Try cache first (lazy loads from log if needed)
     trail = _cache.get_state(skill_lower)
 
+    # If cache returned state, verify it has terminal_id (authoritative field).
+    # _load_from_log may reconstruct incomplete state from JSONL log (no terminal_id).
+    # If terminal_id is missing, treat as cache miss and read from breadcrumb file.
+    if trail and not trail.get("terminal_id"):
+        # Cached state incomplete (no terminal_id) - read from authoritative file
+        trail = None
+
     if not trail:
-        # Check if breadcrumb file exists (for backward compatibility)
-        breadcrumb_file = _get_breadcrumb_file(skill_lower)
+        # Cache miss or incomplete: read from authoritative breadcrumb file
         if not breadcrumb_file.exists():
             return None
 
@@ -418,22 +477,36 @@ def get_breadcrumb_trail(skill_name: str) -> dict[str, Any] | None:
             # Verify session isolation (multi-terminal safety)
             if not verify_session_isolation(trail):
                 # Remove stale trail from different session/terminal
-                breadcrumb_file.unlink(missing_ok=True)
+                _windows_safe_unlink(breadcrumb_file)
                 return None
 
-            # Load into cache for next access
+            # Load into cache for next access (with complete state including terminal_id)
             _cache.update_state(skill_lower, trail)
-            return trail
 
         except (json.JSONDecodeError, OSError):
             return None
 
-    # Verify session isolation (multi-terminal safety)
+    # Cache HIT: Verify the file's terminal_id matches the cached terminal_id
+    # to detect external modifications (e.g., another terminal editing the file)
+    try:
+        if breadcrumb_file.exists():
+            file_trail = json.loads(breadcrumb_file.read_text())
+            file_terminal_id = file_trail.get("terminal_id", "")
+            cached_terminal_id = trail.get("terminal_id", "")
+            # If file was modified externally with a different terminal_id, re-verify
+            if file_terminal_id and file_terminal_id != cached_terminal_id:
+                if not verify_session_isolation(file_trail):
+                    _windows_safe_unlink(breadcrumb_file)
+                    _cache.invalidate(skill_lower)
+                    return None
+    except (json.JSONDecodeError, OSError):
+        pass
+
+    # Verify session isolation on cached trail (multi-terminal safety)
     if not verify_session_isolation(trail):
         # Invalidate cache and remove stale file
         _cache.invalidate(skill_lower)
-        breadcrumb_file = _get_breadcrumb_file(skill_lower)
-        breadcrumb_file.unlink(missing_ok=True)
+        _windows_safe_unlink(breadcrumb_file)
         return None
 
     return trail
@@ -493,19 +566,21 @@ def clear_breadcrumb_trail(skill_name: str) -> None:
     if run_id and _db_initialized:
         try:
             sqlite_backend.delete_trail(DB_PATH, run_id)
-
-            # Clear cache
+        except Exception:
+            # Fall back to file-based operations on error
+            pass
+        else:
+            # SQLite delete succeeded - also delete file for complete cleanup
             _cache.invalidate(skill_lower)
-
-            # Log to ledger
+            log = AppendOnlyBreadcrumbLog(skill_lower)
+            log.clear()
+            breadcrumb_file = _get_breadcrumb_file(skill_lower)
+            _windows_safe_unlink(breadcrumb_file)
             _append_ledger_event(
                 "breadcrumb_cleared",
                 {"skill": skill_lower},
             )
-            return  # Success - skip file operations
-        except Exception:
-            # Fall back to file-based operations on error
-            pass
+            return  # Success - both SQLite and file cleaned up
 
     # FALLBACK: File-based operations (backward compatibility)
     # HYBRID LOGGING: Clear cache
@@ -517,7 +592,7 @@ def clear_breadcrumb_trail(skill_name: str) -> None:
 
     # HYBRID LOGGING: Clear breadcrumb file (backward compatibility)
     breadcrumb_file = _get_breadcrumb_file(skill_lower)
-    breadcrumb_file.unlink(missing_ok=True)
+    _windows_safe_unlink(breadcrumb_file)
     _append_ledger_event(
         "breadcrumb_cleared",
         {"skill": skill_lower},
@@ -531,7 +606,7 @@ def clear_all_breadcrumb_trails() -> None:
     """
     breadcrumb_dir = _get_breadcrumb_dir()
     for file in breadcrumb_dir.glob("breadcrumb_*.json"):
-        file.unlink(missing_ok=True)
+        _windows_safe_unlink(file)
 
 
 # =============================================================================
@@ -549,27 +624,22 @@ def cleanup_session_breadcrumbs() -> int:
         Number of trails cleaned up
     """
     current_terminal_id = detect_terminal_id()
+    cleaned_count = 0
 
     # Try SQLite backend first
     if _db_initialized:
         try:
             cleaned_count = sqlite_backend.clear_terminal_trails(DB_PATH, current_terminal_id)
-
-            # Also clear cache for this terminal
-            _cache.clear_all()
-
-            return cleaned_count
         except Exception:
             # Fall back to file-based operations on error
-            pass
+            cleaned_count = 0
 
-    # FALLBACK: File-based operations (backward compatibility)
+    # Always also do file-based cleanup (hybrid logging: both SQLite AND files may exist)
     breadcrumb_dir = _get_breadcrumb_dir()
 
     if not breadcrumb_dir.exists():
-        return 0
+        return cleaned_count
 
-    cleaned_count = 0
     for file in breadcrumb_dir.glob("breadcrumb_*.json"):
         try:
             trail = json.loads(file.read_text())
@@ -584,13 +654,13 @@ def cleanup_session_breadcrumbs() -> int:
                 # Invalidate cache before deleting file
                 _cache.invalidate(skill_name)
 
-                # Delete file
-                file.unlink(missing_ok=True)
+                # Delete file (Windows-safe)
+                _windows_safe_unlink(file)
                 cleaned_count += 1
 
         except (json.JSONDecodeError, OSError):
-            # Cleanup invalid files
-            file.unlink(missing_ok=True)
+            # Cleanup invalid files (Windows-safe)
+            _windows_safe_unlink(file)
             cleaned_count += 1
 
     return cleaned_count
@@ -657,8 +727,8 @@ def cleanup_stale_breadcrumbs() -> int:
                 # Invalidate cache before deleting file
                 _cache.invalidate(skill_name)
 
-                # Delete file
-                file.unlink(missing_ok=True)
+                # Delete file (Windows-safe)
+                _windows_safe_unlink(file)
                 total_cleaned += 1
                 continue
 
@@ -671,13 +741,13 @@ def cleanup_stale_breadcrumbs() -> int:
                 # Invalidate cache before deleting file
                 _cache.invalidate(skill_name)
 
-                # Delete file
-                file.unlink(missing_ok=True)
+                # Delete file (Windows-safe)
+                _windows_safe_unlink(file)
                 total_cleaned += 1
 
         except (json.JSONDecodeError, OSError):
-            # Cleanup invalid files
-            file.unlink(missing_ok=True)
+            # Cleanup invalid files (Windows-safe)
+            _windows_safe_unlink(file)
             total_cleaned += 1
 
     # Clear cache to force reload

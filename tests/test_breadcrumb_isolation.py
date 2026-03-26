@@ -216,7 +216,7 @@ class TestBreadcrumbIsolation:
         assert breadcrumb_file.exists()
 
         # Run stale cleanup (should preserve current terminal)
-        cleaned = cleanup_stale_breadcrumbs()
+        cleanup_stale_breadcrumbs()
 
         # File should still exist (not stale)
         assert breadcrumb_file.exists()

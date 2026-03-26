@@ -41,6 +41,7 @@ MAX_LOG_SIZE_BYTES = 1024 * 1024
 # PATH MANAGEMENT
 # =============================================================================
 
+
 def _get_log_dir() -> Path:
     """Get the breadcrumb log directory for this terminal.
 
@@ -79,6 +80,7 @@ def _get_log_file(skill_name: str) -> Path:
 # =============================================================================
 # APPEND-ONLY LOG
 # =============================================================================
+
 
 class AppendOnlyBreadcrumbLog:
     """Append-only log for breadcrumb trail audit trail.
@@ -199,3 +201,48 @@ class AppendOnlyBreadcrumbLog:
             This permanently deletes the audit trail. Use with caution.
         """
         self.log_file.unlink(missing_ok=True)
+
+
+# =============================================================================
+# LOG DIRECTORY CLEANUP
+# =============================================================================
+
+import time as time_module
+
+
+def cleanup_old_log_dirs(age_days: int = 7) -> dict[str, list[str]]:
+    """Remove breadcrumb log directories older than age_days.
+
+    Opportunistic cleanup prevents unbounded accumulation of orphaned log directories
+    from past terminal sessions (e.g. fallback_term_* IDs).
+
+    Args:
+        age_days: Remove directories older than this many days. Defaults to 7.
+
+    Returns:
+        Dict with 'removed' (list of removed dir paths) and 'errors' (list of error messages).
+    """
+    cutoff = time_module.time() - (age_days * 24 * 3600)
+    removed: list[str] = []
+    errors: list[str] = []
+
+    if not STATE_DIR.exists():
+        return {"removed": removed, "errors": errors}
+
+    for log_dir in STATE_DIR.iterdir():
+        if not (log_dir.is_dir() and log_dir.name.startswith("breadcrumb_logs_")):
+            continue
+        try:
+            mtime = log_dir.stat().st_mtime
+        except OSError:
+            continue
+        if mtime < cutoff:
+            try:
+                import shutil
+
+                shutil.rmtree(log_dir)
+                removed.append(str(log_dir))
+            except OSError as e:
+                errors.append(f"{log_dir}: {e}")
+
+    return {"removed": removed, "errors": errors}

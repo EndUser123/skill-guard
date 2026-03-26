@@ -18,40 +18,18 @@ Priority order:
 import os
 import sys
 
-# Source prefixes for normalized format
-SOURCE_ENV = "env"
-SOURCE_CONSOLE = "console"
+# Canonical terminal ID normalization (single source of truth)
+from skill_guard.utils.terminal_id import SOURCE_CONSOLE, SOURCE_ENV, normalize_terminal_id
+
 SOURCE_FALLBACK = "fallback"  # Deprecated: kept for backward compat only; not used in detection
 
 # Environment variable priority order (highest to lowest)
 TERMINAL_ENV_VARS = [
     "CLAUDE_TERMINAL_ID",  # Priority 1 (explicit override)
-    "TERMINAL_ID",         # Priority 2
-    "TERM_ID",             # Priority 2
-    "SESSION_TERMINAL",    # Priority 2
+    "TERMINAL_ID",  # Priority 2
+    "TERM_ID",  # Priority 2
+    "SESSION_TERMINAL",  # Priority 2
 ]
-
-
-def _normalize_id(raw_id: str, source: str) -> str:
-    """
-    Normalize terminal ID to consistent format: {source}_{id}.
-
-    If ID already has a known prefix, preserve it (idempotent).
-    """
-    known_prefixes = (f"{SOURCE_ENV}_", f"{SOURCE_CONSOLE}_")
-
-    if raw_id.startswith(known_prefixes):
-        return raw_id
-
-    # Legacy format: ConsoleHost_XXXX -> console source
-    if raw_id.startswith("ConsoleHost_"):
-        return f"{SOURCE_CONSOLE}_{raw_id[12:]}"
-
-    # Legacy format: session_XXXX -> env source (came from SessionStart)
-    if raw_id.startswith("session_"):
-        return f"{SOURCE_ENV}_{raw_id[8:]}"
-
-    return f"{source}_{raw_id}"
 
 
 def _detect_console_window() -> str:
@@ -71,7 +49,7 @@ def _detect_console_window() -> str:
     WT_SESSION is the primary method for Windows Terminal.
     """
     # Priority 1: WT_SESSION (Windows Terminal - most reliable on Windows)
-    wt_session = os.environ.get('WT_SESSION')
+    wt_session = os.environ.get("WT_SESSION")
     if wt_session:
         return wt_session  # Return UUID, caller adds prefix
 
@@ -80,6 +58,7 @@ def _detect_console_window() -> str:
         return ""
     try:
         import ctypes
+
         handle = ctypes.windll.kernel32.GetConsoleWindow()
         if handle:
             return hex(handle)[2:]  # e.g. "1a2b3c" — caller adds prefix
@@ -125,13 +104,14 @@ def _read_from_state_file() -> str | None:
             return None
 
         # Step 3: Read and validate state file
-        with open(state_file, 'r', encoding='utf-8') as f:
+        with open(state_file, "r", encoding="utf-8") as f:
             data = json.load(f)
 
         terminal_id = data.get("terminal_id")
         if terminal_id:
             # Validate timestamp (state file must be recent - within 24 hours)
             import time
+
             timestamp = data.get("timestamp", 0)
             if time.time() - timestamp < 86400:  # 24 hours
                 return terminal_id
@@ -167,12 +147,12 @@ def detect_terminal_id() -> str:
     for env_var in TERMINAL_ENV_VARS:
         value = os.environ.get(env_var)
         if value:
-            return _normalize_id(value, SOURCE_ENV)
+            return normalize_terminal_id(value, SOURCE_ENV)
 
     # Priority 3: Windows GetConsoleWindow() handle (direct detection)
     handle = _detect_console_window()
     if handle:
-        return _normalize_id(handle, SOURCE_CONSOLE)
+        return normalize_terminal_id(handle, SOURCE_CONSOLE)
 
     # Priority 4: Return "" if no detection method succeeded
     return ""
@@ -188,10 +168,10 @@ def detect_terminal_id_with_source() -> tuple[str, str]:
     for env_var in TERMINAL_ENV_VARS:
         value = os.environ.get(env_var)
         if value:
-            return _normalize_id(value, SOURCE_ENV), SOURCE_ENV
+            return normalize_terminal_id(value, SOURCE_ENV), SOURCE_ENV
 
     handle = _detect_console_window()
     if handle:
-        return _normalize_id(handle, SOURCE_CONSOLE), SOURCE_CONSOLE
+        return normalize_terminal_id(handle, SOURCE_CONSOLE), SOURCE_CONSOLE
 
     return "", ""
