@@ -36,6 +36,25 @@ except ImportError:
 STATE_DIR = Path("P:/.claude/state")
 HOOKS_LIB_DIR = Path("P:/.claude/hooks/__lib")
 
+# Phase machine states (for workflow_completion_tracker compatibility)
+_PHASE_PENDING = "pending"
+_PHASE_LOADED = "loaded"
+_PHASE_EXECUTING = "executing"
+_PHASE_COMPLETE = "complete"
+_PHASE_STALE = "stale"
+
+# Valid phase transitions: from_state -> [allowed_to_states]
+VALID_TRANSITIONS: dict[str, list[str]] = {
+    _PHASE_PENDING: [_PHASE_LOADED],
+    _PHASE_LOADED: [_PHASE_EXECUTING, _PHASE_STALE],
+    _PHASE_EXECUTING: [_PHASE_COMPLETE, _PHASE_STALE],
+    _PHASE_COMPLETE: [],  # Terminal state
+    _PHASE_STALE: [],  # Terminal state
+}
+
+# Default stale timeout in seconds
+DEFAULT_STALE_TIMEOUT = 300
+
 # =============================================================================
 # SKILL EXECUTION REGISTRY (Reference for validation)
 # =============================================================================
@@ -82,6 +101,27 @@ def detect_terminal_id() -> str:
 # =============================================================================
 # STATE MANAGEMENT
 # =============================================================================
+
+
+def _atomic_write_json(path: Path, data: dict) -> None:
+    """Write JSON data atomically using write-to-temp-then-rename pattern.
+
+    This prevents corruption from concurrent writes or partial writes.
+    """
+    temp = path.with_suffix(path.suffix + ".tmp")
+    temp.write_text(json.dumps(data, indent=2))
+    os.replace(str(temp), str(path))
+
+
+def sanitize_terminal_id(terminal_id: str) -> str:
+    """Sanitize terminal ID for use in file paths.
+
+    Removes characters that are unsafe for filesystem paths.
+    Only allows alphanumeric, underscore, colon, and hyphen.
+    """
+    import re
+
+    return re.sub(r"[^a-zA-Z0-9_:\-]", "_", terminal_id)
 
 
 def _get_state_file() -> Path:
@@ -304,6 +344,44 @@ def record_tool_use(tool_name: str, tool_input: dict[str, Any]) -> None:
         )
     except Exception:
         pass
+
+
+def transition_phase(to_state: str) -> bool:
+    """Transition the current skill state to a new phase.
+
+    Args:
+        to_state: The target phase (pending -> loaded -> executing -> complete/stale)
+
+    Returns:
+        True if transition succeeded, False if invalid transition or no state file
+    """
+    terminal_id, turn_id = _get_active_turn_scope()
+    if not terminal_id or not turn_id:
+        return False
+
+    try:
+        ledger = _get_ledger_module()
+        snapshot = ledger.materialize_turn(terminal_id, turn_id)
+        state = snapshot.get("skill_state", {})
+        from_phase = state.get("phase", _PHASE_PENDING)
+
+        # Validate transition
+        allowed = VALID_TRANSITIONS.get(from_phase, [])
+        if to_state not in allowed:
+            return False
+
+        # Update phase via ledger
+        ledger.append_event(
+            terminal_id,
+            turn_id,
+            "PostToolUse",
+            "skill_phase_transition",
+            {"phase": to_state, "from_phase": from_phase},
+        )
+        return True
+
+    except Exception:
+        return False
 
 
 def read_pending_state() -> dict | None:
