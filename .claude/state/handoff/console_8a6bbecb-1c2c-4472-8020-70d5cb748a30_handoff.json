@@ -1,0 +1,115 @@
+{
+  "resume_snapshot": {
+    "schema_version": 2,
+    "snapshot_id": "520c83ec-33f0-43e2-af5b-4106f6ca34b4",
+    "terminal_id": "console_8a6bbecb-1c2c-4472-8020-70d5cb748a30",
+    "source_session_id": "0fa119bc-d807-4ad3-af7d-f4b49fa3fd7e",
+    "created_at": "2026-04-01T17:05:53.797878+00:00",
+    "expires_at": "2026-04-01T17:25:53.797878+00:00",
+    "status": "pending",
+    "goal": "after you are done, consider \"designed to return early if a trail already exists for the terminal.   This is NOT a bug in the production code\"\n\nare there cases where this would result in a negative outcome?",
+    "current_task": "after you are done, consider \"designed to return early if a trail already exists for the terminal. This is NOT a bug in the production code\" are there cases where this would result in a negative outcome?",
+    "progress_percent": 65,
+    "progress_state": "in_progress",
+    "blockers": [],
+    "active_files": [
+      "P:\\.claude\\settings.json",
+      "P:\\packages\\skill-guard\\src\\skill_guard\\__init__.py",
+      "P:\\packages\\skill-guard\\pyproject.toml",
+      "P:\\.claude\\hooks\\StopHook_skill_execution_gate.py",
+      "P:\\.claude\\hooks\\Stop_router.py",
+      "P:\\.claude\\hooks\\PreToolUse\\PreToolUse_skill_pattern_gate.py",
+      "P:\\.claude\\skills\\rca\\SKILL.md",
+      "P:\\packages\\skill-guard\\src\\skill_guard\\skill_auto_discovery.py",
+      "C:\\Users\\brsth\\.claude\\plans\\twinkling-munching-karp.md",
+      "P:\\.claude\\hooks\\PostToolUse_router.py"
+    ],
+    "pending_operations": [
+      {
+        "type": "skill",
+        "target": "skill: rca",
+        "state": "in_progress"
+      },
+      {
+        "type": "investigation",
+        "target": "search: skill-guard",
+        "state": "in_progress"
+      },
+      {
+        "type": "investigation",
+        "target": "search: skill_guard",
+        "state": "in_progress"
+      },
+      {
+        "type": "investigation",
+        "target": "files: P:\\.claude\\settings.json",
+        "state": "in_progress"
+      },
+      {
+        "type": "investigation",
+        "target": "files: P:/packages/skill-guard/**/*",
+        "state": "in_progress"
+      }
+    ],
+    "next_step": "Resume skill on skill: rca.",
+    "decision_refs": [],
+    "evidence_refs": [
+      "ev_34520d5f79474bd7b6bd224391260116",
+      "ev_feb58273f45d427cb7fbdd5dcc31e98b",
+      "ev_031b9f1476184e6095649b72defecd38",
+      "ev_d4f679902d81422c9e6bdfc1200d7ece",
+      "ev_f5c7700c3b6f46638bbc06332df9c49a",
+      "ev_52ed05df33a6469d92a083679913c9b7"
+    ],
+    "transcript_path": "C:\\Users\\brsth\\.claude\\projects\\P--\\0fa119bc-d807-4ad3-af7d-f4b49fa3fd7e.jsonl",
+    "message_intent": "question",
+    "quality_score": 0.9,
+    "tasks_snapshot": []
+  },
+  "decision_register": [],
+  "evidence_index": [
+    {
+      "id": "ev_34520d5f79474bd7b6bd224391260116",
+      "type": "transcript",
+      "label": "Current compact transcript",
+      "path": "C:\\Users\\brsth\\.claude\\projects\\P--\\0fa119bc-d807-4ad3-af7d-f4b49fa3fd7e.jsonl",
+      "content_hash": "sha256:323ad36d36f00a887448ff285530403223efeebff693bc54900157455d39538c"
+    },
+    {
+      "id": "ev_feb58273f45d427cb7fbdd5dcc31e98b",
+      "type": "file",
+      "label": "settings.json",
+      "path": "P:\\.claude\\settings.json",
+      "content_hash": "sha256:a37a7d27c3c6a2493f940942a39dcf2b812cb3d536ca98c132a10e8f4f150a21"
+    },
+    {
+      "id": "ev_031b9f1476184e6095649b72defecd38",
+      "type": "file",
+      "label": "__init__.py",
+      "path": "P:\\packages\\skill-guard\\src\\skill_guard\\__init__.py",
+      "content_hash": "sha256:fd5366133c6fc5c8ee8b0dae81d75781caf1e90634b336e3e8012fc2dc690a34"
+    },
+    {
+      "id": "ev_d4f679902d81422c9e6bdfc1200d7ece",
+      "type": "file",
+      "label": "pyproject.toml",
+      "path": "P:\\packages\\skill-guard\\pyproject.toml",
+      "content_hash": "sha256:5ad547ea3250f2f1f3088f5ad8599624e309283e09148abadb123528473f4b8a"
+    },
+    {
+      "id": "ev_f5c7700c3b6f46638bbc06332df9c49a",
+      "type": "file",
+      "label": "StopHook_skill_execution_gate.py",
+      "path": "P:\\.claude\\hooks\\StopHook_skill_execution_gate.py",
+      "content_hash": "sha256:7d7de4eb1864d7c8c7e7af86dd97623bd17cd81d56ff725433a3cfd79dc26ac4"
+    },
+    {
+      "id": "ev_52ed05df33a6469d92a083679913c9b7",
+      "type": "file",
+      "label": "Stop_router.py",
+      "path": "P:\\.claude\\hooks\\Stop_router.py",
+      "content_hash": "sha256:7803bad6952792c16c725ff5d43cbc7489544a937e3df565e49097c2dc98d431"
+    }
+  ],
+  "checksum": "sha256:e01d96956dd2d57f67eb74008643429f2388de2364319bf1c73a3c4e1460320e"
+}
