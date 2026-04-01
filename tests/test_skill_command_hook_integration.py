@@ -10,11 +10,8 @@ Tests cover:
 
 from __future__ import annotations
 
-import logging
-import subprocess
 import sys
 from pathlib import Path
-from typing import Any
 from unittest.mock import patch
 
 import pytest
