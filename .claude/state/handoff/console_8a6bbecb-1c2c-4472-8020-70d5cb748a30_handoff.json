@@ -1,14 +1,14 @@
 {
   "resume_snapshot": {
     "schema_version": 2,
-    "snapshot_id": "d0d4ff99-ddda-4ebc-80bd-8351e431895f",
+    "snapshot_id": "aaad7615-d54d-4faf-b219-ca120f8f7b53",
     "terminal_id": "console_8a6bbecb-1c2c-4472-8020-70d5cb748a30",
     "source_session_id": "0fa119bc-d807-4ad3-af7d-f4b49fa3fd7e",
-    "created_at": "2026-04-01T17:17:43.034186+00:00",
-    "expires_at": "2026-04-01T17:37:43.034186+00:00",
+    "created_at": "2026-04-01T17:39:37.328584+00:00",
+    "expires_at": "2026-04-01T17:59:37.328584+00:00",
     "status": "pending",
-    "goal": "the tests should be changed to match our optimal solution design.",
-    "current_task": "the tests should be changed to match our optimal solution design.",
+    "goal": "yes please.  you would add it to a router?",
+    "current_task": "yes please. you would add it to a router?",
     "progress_percent": 65,
     "progress_state": "in_progress",
     "blockers": [],
@@ -52,78 +52,64 @@
       }
     ],
     "next_step": "Resume skill on skill: rca.",
-    "decision_refs": [
-      "dec_a268e3fa1298416eaceb23d0b7c59b79"
-    ],
+    "decision_refs": [],
     "evidence_refs": [
-      "ev_762fb9b089d544dd903fd423b0ea24b3",
-      "ev_f4c69412e71c4b14ada9eb32d6b6f546",
-      "ev_07d4264fba334010a8785b769e7e0b50",
-      "ev_8909525cd9e34014a8fa786516b4de6a",
-      "ev_13494b099d734e63a65d5383755b4c1f",
-      "ev_4c06f15b93094e81b18abd5e97542766"
+      "ev_820dc6d101fe4a29a7aa415e7b83303a",
+      "ev_4f0ac51d8c13429f9788a47dd356135d",
+      "ev_b81b318c47ce4689af07641998b3f10e",
+      "ev_656c95aaca0a4760973551f0d1906566",
+      "ev_4b63975baad94d9f95baf814aeffa96d",
+      "ev_b08d2b1fc95f44b38a7749f89c50ab9b"
     ],
     "transcript_path": "C:\\Users\\brsth\\.claude\\projects\\P--\\0fa119bc-d807-4ad3-af7d-f4b49fa3fd7e.jsonl",
-    "message_intent": "instruction",
+    "message_intent": "question",
     "quality_score": 0.4,
     "tasks_snapshot": []
   },
-  "decision_register": [
-    {
-      "id": "dec_a268e3fa1298416eaceb23d0b7c59b79",
-      "kind": "constraint",
-      "summary": "[ASUM] [ANCH] [INV] **Assumption Check:** - Scope: Fix `initialize_breadcrumb_trail()` with `force` parameter + update failing tests - Behavior: Currently returns early on same-terminal re-invoke - User intent: Optimal design with `force` parameter, tests updated to match **Outcome Anchor:** Tests pass with `force=True` producing fresh UUIDs. No regression in existing multi-terminal safety. **Inversion Risk:** Adding `force` parameter could break callers that don't expect it — need to check all call sites.",
-      "details": "[ASUM] [ANCH] [INV] **Assumption Check:** - Scope: Fix `initialize_breadcrumb_trail()` with `force` parameter + update failing tests - Behavior: Currently returns early on same-terminal re-invoke - User intent: Optimal design with `force` parameter, tests updated to match **Outcome Anchor:** Tests pass with `force=True` producing fresh UUIDs. No regression in existing multi-terminal safety. **Inversion Risk:** Adding `force` parameter could break callers that don't expect it — need to check all call sites.",
-      "priority": "high",
-      "applies_when": "Continue the current task after compact.",
-      "source_refs": [
-        "ev_762fb9b089d544dd903fd423b0ea24b3"
-      ]
-    }
-  ],
+  "decision_register": [],
   "evidence_index": [
     {
-      "id": "ev_762fb9b089d544dd903fd423b0ea24b3",
+      "id": "ev_820dc6d101fe4a29a7aa415e7b83303a",
       "type": "transcript",
       "label": "Current compact transcript",
       "path": "C:\\Users\\brsth\\.claude\\projects\\P--\\0fa119bc-d807-4ad3-af7d-f4b49fa3fd7e.jsonl",
-      "content_hash": "sha256:8429a375a97d6ccd2e5e59f520451a62bf45f7ccdf6fdab4c5e606de7d0a92f0"
+      "content_hash": "sha256:0971a0c61b94484bc2ac24e7d5227a99278972d4171a56cd041ad2580fa4792e"
     },
     {
-      "id": "ev_f4c69412e71c4b14ada9eb32d6b6f546",
+      "id": "ev_4f0ac51d8c13429f9788a47dd356135d",
       "type": "file",
       "label": "settings.json",
       "path": "P:\\.claude\\settings.json",
       "content_hash": "sha256:a37a7d27c3c6a2493f940942a39dcf2b812cb3d536ca98c132a10e8f4f150a21"
     },
     {
-      "id": "ev_07d4264fba334010a8785b769e7e0b50",
+      "id": "ev_b81b318c47ce4689af07641998b3f10e",
       "type": "file",
       "label": "__init__.py",
       "path": "P:\\packages\\skill-guard\\src\\skill_guard\\__init__.py",
       "content_hash": "sha256:fd5366133c6fc5c8ee8b0dae81d75781caf1e90634b336e3e8012fc2dc690a34"
     },
     {
-      "id": "ev_8909525cd9e34014a8fa786516b4de6a",
+      "id": "ev_656c95aaca0a4760973551f0d1906566",
       "type": "file",
       "label": "pyproject.toml",
       "path": "P:\\packages\\skill-guard\\pyproject.toml",
       "content_hash": "sha256:5ad547ea3250f2f1f3088f5ad8599624e309283e09148abadb123528473f4b8a"
     },
     {
-      "id": "ev_13494b099d734e63a65d5383755b4c1f",
+      "id": "ev_4b63975baad94d9f95baf814aeffa96d",
       "type": "file",
       "label": "StopHook_skill_execution_gate.py",
       "path": "P:\\.claude\\hooks\\StopHook_skill_execution_gate.py",
       "content_hash": "sha256:556decd02e16caf73cf58b61303365edcf5f8439e50c87d2b96a32a33731f577"
     },
     {
-      "id": "ev_4c06f15b93094e81b18abd5e97542766",
+      "id": "ev_b08d2b1fc95f44b38a7749f89c50ab9b",
       "type": "file",
       "label": "Stop_router.py",
       "path": "P:\\.claude\\hooks\\Stop_router.py",
       "content_hash": "sha256:7803bad6952792c16c725ff5d43cbc7489544a937e3df565e49097c2dc98d431"
     }
   ],
-  "checksum": "sha256:2a3417ad65f87cda56b3655a173f9f1d65d30ce57ece261e330eff6edcd3a798"
+  "checksum": "sha256:b19b48129f3be420075aa4d28123423a853d082a1aad3bd23bffbb4b957de0a6"
 }
