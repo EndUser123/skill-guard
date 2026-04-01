@@ -146,11 +146,22 @@ def _get_state_file() -> Path:
     return state_subdir / "skill_execution_pending.json"
 
 
+# Cached state directory per terminal_id (avoids repeated mkdir on every call)
+_state_dir_cache: dict[str, Path] = {}
+
+
 def _get_state_dir() -> Path:
-    """Get the state directory for this terminal."""
+    """Get the state directory for this terminal.
+
+    Caches the result per terminal_id to avoid repeated directory
+    creation syscalls on every invocation.
+    """
     terminal_id = detect_terminal_id()
+    if terminal_id in _state_dir_cache:
+        return _state_dir_cache[terminal_id]
     state_subdir = STATE_DIR / f"skill_execution_{terminal_id}"
     state_subdir.mkdir(parents=True, exist_ok=True)
+    _state_dir_cache[terminal_id] = state_subdir
     return state_subdir
 
 
