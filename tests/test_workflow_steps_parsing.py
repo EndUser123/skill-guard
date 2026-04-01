@@ -23,10 +23,10 @@ class TestWorkflowStepsParsing:
         # After T-001 implementation, this should contain actual workflow steps
         # For now, we test the parsing works even if empty
         if steps:
-            # If workflow_steps present, validate structure
-            assert all(isinstance(step, str) for step in steps)
-            # Check for expected /code workflow steps
-            expected_steps = [
+            # If workflow_steps present, validate structure (dict format with id field)
+            assert all(isinstance(step, dict) and "id" in step for step in steps)
+            # Check for expected /code workflow step IDs
+            expected_step_ids = [
                 "analyze_query_intent",
                 "select_execution_model",
                 "resolve_plan_state",
@@ -41,7 +41,8 @@ class TestWorkflowStepsParsing:
                 "trace_manual_verification",
                 "done_final_certification"
             ]
-            assert steps == expected_steps
+            actual_ids = [step["id"] for step in steps]
+            assert actual_ids == expected_step_ids
 
     def test_load_workflow_steps_from_trace_skill(self):
         """Test loading workflow_steps from /trace skill SKILL.md."""
