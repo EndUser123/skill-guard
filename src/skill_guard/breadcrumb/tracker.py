@@ -194,8 +194,16 @@ def _load_workflow_steps(skill_name: str) -> list[dict]:
                     if "id" not in normalized_step:
                         normalized_step["id"] = str(s)
                     steps.append(normalized_step)
-    except Exception:
-        pass
+    except Exception as e:
+        import logging
+
+        logger = logging.getLogger(__name__)
+        logger.warning(
+            "Failed to load workflow_steps for skill %s: %s. "
+            "Returning empty steps list.",
+            skill_name,
+            str(e),
+        )
 
     return steps
 
