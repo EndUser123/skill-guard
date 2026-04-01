@@ -164,6 +164,13 @@ def _load_skill_frontmatter(skill_name: str) -> dict[str, Any]:
         return result
 
     if yaml is None:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.warning(
+            "yaml is not installed - cannot load frontmatter for skill %s. "
+            "Install pyyaml or declare allowed_first_tools inline.",
+            skill_name,
+        )
         return result
 
     try:
