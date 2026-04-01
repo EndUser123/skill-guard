@@ -265,6 +265,8 @@ def _parse_skill_hooks(skill_md: Path, skill_name: str) -> list[dict]:
         List of hook configs for this skill
     """
     try:
+        import yaml
+
         content = skill_md.read_text(encoding="utf-8")
 
         # Extract YAML frontmatter between --- markers
@@ -273,9 +275,11 @@ def _parse_skill_hooks(skill_md: Path, skill_name: str) -> list[dict]:
             return []
 
         frontmatter = match.group(1)
+        data = yaml.safe_load(frontmatter)
+        if not isinstance(data, dict):
+            return []
 
-        # Parse YAML manually (avoiding external yaml dependency)
-        hooks_data = _parse_yaml_field(frontmatter, "hooks")
+        hooks_data = data.get("hooks")
         if not hooks_data:
             return []
 
@@ -325,117 +329,6 @@ def _parse_skill_hooks(skill_md: Path, skill_name: str) -> list[dict]:
 
     except Exception:
         return []
-
-
-def _parse_yaml_field(content: str, field: str) -> dict | None:
-    """
-    Parse a top-level YAML field from SKILL.md frontmatter.
-
-    Handles nested structures like:
-        hooks:
-          PostToolUse:
-            - matcher: "Skill"
-              hooks:
-                - type: command
-                  command: python -m rca.hook_launcher
-
-    Args:
-        content: YAML frontmatter content
-        field: Field name to extract
-
-    Returns:
-        Parsed dict or None if not found
-    """
-    # Find the field at the start of a line
-    pattern = re.compile(rf"^{re.escape(field)}:\s*\n((?:[ \t]+.+\n?)+)", re.MULTILINE)
-    match = pattern.search(content)
-    if not match:
-        return None
-
-    field_content = match.group(1)
-
-    # Parse nested YAML structure
-    result = {}
-    current_list = None
-    current_dict = None
-    current_indent = 0
-
-    for line in field_content.split("\n"):
-        if not line.strip():
-            continue
-
-        # Calculate indentation
-        indent = len(line) - len(line.lstrip())
-
-        # Check for list item
-        list_match = re.match(r"^-\s+(.+)$", line.strip())
-        dict_match = re.match(r"^(\w+):\s*(.*)$", line.strip())
-
-        if list_match and indent <= current_indent:
-            # Close previous dict and add to list
-            if current_dict is not None and current_list is not None:
-                current_list.append(current_dict)
-            # Start new list item
-            item_content = list_match.group(1)
-            current_list = []
-            current_dict = {"_list": current_list}
-
-            # Check if this line itself has key-value
-            kv_match = re.match(r"(\w+):\s*(.*)", item_content)
-            if kv_match:
-                key, val = kv_match.groups()
-                if val.strip():
-                    current_dict[kv_match.group(1)] = _unquote(val.strip())
-                else:
-                    # Key with no value = start of nested dict
-                    pass
-
-        elif dict_match and indent <= current_indent:
-            # Close previous dict and add to list
-            if current_dict is not None and current_list is not None:
-                if "_list" in current_dict:
-                    pass  # Already added
-                else:
-                    current_list.append(current_dict)
-            # New key-value
-            key, val = dict_match.groups()
-            if val.strip():
-                current_dict = {key: _unquote(val.strip())}
-            else:
-                current_dict = {key: None}
-            current_indent = indent
-
-        elif dict_match and current_dict is not None:
-            # Nested key-value
-            key, val = dict_match.groups()
-            if current_list is not None and "_list" in current_dict:
-                # We're in a list item context
-                if "_nested" not in current_dict:
-                    current_dict["_nested"] = {}
-                if val.strip():
-                    current_dict["_nested"][key] = _unquote(val.strip())
-
-    # Close final dict
-    if current_dict is not None and current_list is not None:
-        if "_nested" in current_dict:
-            # Merge nested back
-            for k, v in current_dict["_nested"].items():
-                current_dict[k] = v
-            del current_dict["_nested"]
-        current_list.append(current_dict)
-
-    # Convert to proper structure
-    if result.get("_current_list"):
-        return result.get("_current_list", [])
-
-    return result
-
-
-def _unquote(s: str) -> str:
-    """Strip quotes from YAML string values."""
-    if (s.startswith('"') and s.endswith('"')) or (s.startswith("'") and s.endswith("'")):
-        return s[1:-1]
-    return s
 
 
 def _detect_script_pattern(skill_name: str) -> str:
