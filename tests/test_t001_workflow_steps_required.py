@@ -43,16 +43,17 @@ class TestT001WorkflowStepsRequired:
             f"Currently has {len(steps)} steps: {steps}"
         )
 
-        # FAIL: All steps must be strings
-        assert all(isinstance(step, str) for step in steps), (
-            f"{skill_name} workflow_steps must all be strings. "
-            f"Found non-string items: {steps}"
+        # FAIL: All steps must be dicts with id field
+        assert all(isinstance(step, dict) and "id" in step for step in steps), (
+            f"{skill_name} workflow_steps must all be dicts with 'id' field. "
+            f"Found non-dict items: {steps}"
         )
 
         # FAIL: Workflow steps must follow naming convention (snake_case)
         for step in steps:
-            assert step.replace('_', '').isalnum(), (
-                f"{skill_name} workflow step '{step}' must use snake_case convention. "
+            step_id = step["id"]
+            assert step_id.replace('_', '').isalnum(), (
+                f"{skill_name} workflow step '{step_id}' must use snake_case convention. "
                 f"Only alphanumeric characters and underscores allowed."
             )
 
