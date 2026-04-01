@@ -519,3 +519,73 @@ def migrate_legacy_state() -> None:
 
     except (json.JSONDecodeError, OSError):
         pass
+
+
+def cleanup_stale_state_files(stale_timeout: int | None = None) -> int:
+    """Remove state directories for terminals that no longer exist.
+
+    Scans P:/.claude/state/skill_execution_* directories and removes
+    those belonging to terminals that are no longer active.
+
+    Args:
+        stale_timeout: Seconds after which a state directory is considered stale.
+            Defaults to DEFAULT_STALE_TIMEOUT (300 seconds).
+
+    Returns:
+        Number of directories removed.
+    """
+    if stale_timeout is None:
+        stale_timeout = DEFAULT_STALE_TIMEOUT
+
+    removed_count = 0
+    current_terminal_id = detect_terminal_id()
+
+    if not STATE_DIR.exists():
+        return 0
+
+    try:
+        # Get all skill_execution_* directories
+        for state_subdir in STATE_DIR.iterdir():
+            if not state_subdir.is_dir():
+                continue
+            if not state_subdir.name.startswith("skill_execution_"):
+                continue
+
+            # Extract terminal_id from directory name
+            dir_terminal_id = state_subdir.name.replace("skill_execution_", "")
+
+            # Don't remove current terminal's state
+            if dir_terminal_id == current_terminal_id:
+                continue
+
+            # Check if this terminal still exists (via ledger)
+            try:
+                ledger = _get_ledger_module()
+                is_active = ledger.is_terminal_active(dir_terminal_id)
+                if is_active:
+                    continue
+            except Exception:
+                # If we can't determine activity, check file age as fallback
+                pass
+
+            # Check directory age
+            try:
+                dir_mtime = state_subdir.stat().st_mtime
+                age_seconds = time.time() - dir_mtime
+                if age_seconds < stale_timeout:
+                    continue
+            except OSError:
+                pass
+
+            # Remove stale directory
+            try:
+                import shutil
+                shutil.rmtree(state_subdir)
+                removed_count += 1
+            except OSError:
+                pass
+
+    except OSError:
+        pass
+
+    return removed_count
