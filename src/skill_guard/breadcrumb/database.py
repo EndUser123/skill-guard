@@ -22,6 +22,7 @@ Example:
 
 from __future__ import annotations
 
+import os
 import sqlite3
 import threading
 from pathlib import Path
@@ -31,9 +32,11 @@ from typing import Final
 # CONFIGURATION
 # =============================================================================
 
-# Default database path (can be overridden)
+# Default database path (can be overridden via CLAUDE_STATE_DIR env var)
+# Uses CLAUDE_STATE_DIR environment variable if set, otherwise falls back to P:/
 # Points to the existing diagnostics.db used by Claude Code hooks
-DEFAULT_DB_PATH: Final = Path("P:/.claude/hooks/logs/diagnostics/diagnostics.db")
+_DEFAULT_DB_DIR = Path(os.environ.get("CLAUDE_STATE_DIR", "P:/"))
+DEFAULT_DB_PATH: Final = _DEFAULT_DB_DIR / ".claude/hooks/logs/diagnostics/diagnostics.db"
 
 # Connection pool settings
 _BUSY_TIMEOUT_MS: Final = 5000  # 5 seconds
