@@ -106,11 +106,24 @@ def detect_terminal_id() -> str:
 def _atomic_write_json(path: Path, data: dict) -> None:
     """Write JSON data atomically using write-to-temp-then-rename pattern.
 
-    This prevents corruption from concurrent writes or partial writes.
+    Uses gc.collect() + retry for Windows handle release, then rename.
+    Falls back to direct write on repeated failure to avoid blocking.
     """
+    import gc
+
     temp = path.with_suffix(path.suffix + ".tmp")
-    temp.write_text(json.dumps(data, indent=2))
-    os.replace(str(temp), str(path))
+    try:
+        temp.write_text(json.dumps(data, indent=2))
+        os.replace(str(temp), str(path))
+    except OSError:
+        # Windows: file handle still held. Retry after gc to release handles.
+        gc.collect()
+        try:
+            temp.write_text(json.dumps(data, indent=2))
+            os.replace(str(temp), str(path))
+        except OSError:
+            # Final fallback: direct write (not atomic, but won't orphan temp)
+            path.write_text(json.dumps(data, indent=2))
 
 
 def sanitize_terminal_id(terminal_id: str) -> str:
