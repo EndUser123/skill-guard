@@ -1,14 +1,14 @@
 {
   "resume_snapshot": {
     "schema_version": 2,
-    "snapshot_id": "520c83ec-33f0-43e2-af5b-4106f6ca34b4",
+    "snapshot_id": "d0d4ff99-ddda-4ebc-80bd-8351e431895f",
     "terminal_id": "console_8a6bbecb-1c2c-4472-8020-70d5cb748a30",
     "source_session_id": "0fa119bc-d807-4ad3-af7d-f4b49fa3fd7e",
-    "created_at": "2026-04-01T17:05:53.797878+00:00",
-    "expires_at": "2026-04-01T17:25:53.797878+00:00",
+    "created_at": "2026-04-01T17:17:43.034186+00:00",
+    "expires_at": "2026-04-01T17:37:43.034186+00:00",
     "status": "pending",
-    "goal": "after you are done, consider \"designed to return early if a trail already exists for the terminal.   This is NOT a bug in the production code\"\n\nare there cases where this would result in a negative outcome?",
-    "current_task": "after you are done, consider \"designed to return early if a trail already exists for the terminal. This is NOT a bug in the production code\" are there cases where this would result in a negative outcome?",
+    "goal": "the tests should be changed to match our optimal solution design.",
+    "current_task": "the tests should be changed to match our optimal solution design.",
     "progress_percent": 65,
     "progress_state": "in_progress",
     "blockers": [],
@@ -52,64 +52,78 @@
       }
     ],
     "next_step": "Resume skill on skill: rca.",
-    "decision_refs": [],
+    "decision_refs": [
+      "dec_a268e3fa1298416eaceb23d0b7c59b79"
+    ],
     "evidence_refs": [
-      "ev_34520d5f79474bd7b6bd224391260116",
-      "ev_feb58273f45d427cb7fbdd5dcc31e98b",
-      "ev_031b9f1476184e6095649b72defecd38",
-      "ev_d4f679902d81422c9e6bdfc1200d7ece",
-      "ev_f5c7700c3b6f46638bbc06332df9c49a",
-      "ev_52ed05df33a6469d92a083679913c9b7"
+      "ev_762fb9b089d544dd903fd423b0ea24b3",
+      "ev_f4c69412e71c4b14ada9eb32d6b6f546",
+      "ev_07d4264fba334010a8785b769e7e0b50",
+      "ev_8909525cd9e34014a8fa786516b4de6a",
+      "ev_13494b099d734e63a65d5383755b4c1f",
+      "ev_4c06f15b93094e81b18abd5e97542766"
     ],
     "transcript_path": "C:\\Users\\brsth\\.claude\\projects\\P--\\0fa119bc-d807-4ad3-af7d-f4b49fa3fd7e.jsonl",
-    "message_intent": "question",
-    "quality_score": 0.9,
+    "message_intent": "instruction",
+    "quality_score": 0.4,
     "tasks_snapshot": []
   },
-  "decision_register": [],
+  "decision_register": [
+    {
+      "id": "dec_a268e3fa1298416eaceb23d0b7c59b79",
+      "kind": "constraint",
+      "summary": "[ASUM] [ANCH] [INV] **Assumption Check:** - Scope: Fix `initialize_breadcrumb_trail()` with `force` parameter + update failing tests - Behavior: Currently returns early on same-terminal re-invoke - User intent: Optimal design with `force` parameter, tests updated to match **Outcome Anchor:** Tests pass with `force=True` producing fresh UUIDs. No regression in existing multi-terminal safety. **Inversion Risk:** Adding `force` parameter could break callers that don't expect it — need to check all call sites.",
+      "details": "[ASUM] [ANCH] [INV] **Assumption Check:** - Scope: Fix `initialize_breadcrumb_trail()` with `force` parameter + update failing tests - Behavior: Currently returns early on same-terminal re-invoke - User intent: Optimal design with `force` parameter, tests updated to match **Outcome Anchor:** Tests pass with `force=True` producing fresh UUIDs. No regression in existing multi-terminal safety. **Inversion Risk:** Adding `force` parameter could break callers that don't expect it — need to check all call sites.",
+      "priority": "high",
+      "applies_when": "Continue the current task after compact.",
+      "source_refs": [
+        "ev_762fb9b089d544dd903fd423b0ea24b3"
+      ]
+    }
+  ],
   "evidence_index": [
     {
-      "id": "ev_34520d5f79474bd7b6bd224391260116",
+      "id": "ev_762fb9b089d544dd903fd423b0ea24b3",
       "type": "transcript",
       "label": "Current compact transcript",
       "path": "C:\\Users\\brsth\\.claude\\projects\\P--\\0fa119bc-d807-4ad3-af7d-f4b49fa3fd7e.jsonl",
-      "content_hash": "sha256:323ad36d36f00a887448ff285530403223efeebff693bc54900157455d39538c"
+      "content_hash": "sha256:8429a375a97d6ccd2e5e59f520451a62bf45f7ccdf6fdab4c5e606de7d0a92f0"
     },
     {
-      "id": "ev_feb58273f45d427cb7fbdd5dcc31e98b",
+      "id": "ev_f4c69412e71c4b14ada9eb32d6b6f546",
       "type": "file",
       "label": "settings.json",
       "path": "P:\\.claude\\settings.json",
       "content_hash": "sha256:a37a7d27c3c6a2493f940942a39dcf2b812cb3d536ca98c132a10e8f4f150a21"
     },
     {
-      "id": "ev_031b9f1476184e6095649b72defecd38",
+      "id": "ev_07d4264fba334010a8785b769e7e0b50",
       "type": "file",
       "label": "__init__.py",
       "path": "P:\\packages\\skill-guard\\src\\skill_guard\\__init__.py",
       "content_hash": "sha256:fd5366133c6fc5c8ee8b0dae81d75781caf1e90634b336e3e8012fc2dc690a34"
     },
     {
-      "id": "ev_d4f679902d81422c9e6bdfc1200d7ece",
+      "id": "ev_8909525cd9e34014a8fa786516b4de6a",
       "type": "file",
       "label": "pyproject.toml",
       "path": "P:\\packages\\skill-guard\\pyproject.toml",
       "content_hash": "sha256:5ad547ea3250f2f1f3088f5ad8599624e309283e09148abadb123528473f4b8a"
     },
     {
-      "id": "ev_f5c7700c3b6f46638bbc06332df9c49a",
+      "id": "ev_13494b099d734e63a65d5383755b4c1f",
       "type": "file",
       "label": "StopHook_skill_execution_gate.py",
       "path": "P:\\.claude\\hooks\\StopHook_skill_execution_gate.py",
-      "content_hash": "sha256:7d7de4eb1864d7c8c7e7af86dd97623bd17cd81d56ff725433a3cfd79dc26ac4"
+      "content_hash": "sha256:556decd02e16caf73cf58b61303365edcf5f8439e50c87d2b96a32a33731f577"
     },
     {
-      "id": "ev_52ed05df33a6469d92a083679913c9b7",
+      "id": "ev_4c06f15b93094e81b18abd5e97542766",
       "type": "file",
       "label": "Stop_router.py",
       "path": "P:\\.claude\\hooks\\Stop_router.py",
       "content_hash": "sha256:7803bad6952792c16c725ff5d43cbc7489544a937e3df565e49097c2dc98d431"
     }
   ],
-  "checksum": "sha256:e01d96956dd2d57f67eb74008643429f2388de2364319bf1c73a3c4e1460320e"
+  "checksum": "sha256:2a3417ad65f87cda56b3655a173f9f1d65d30ce57ece261e330eff6edcd3a798"
 }
