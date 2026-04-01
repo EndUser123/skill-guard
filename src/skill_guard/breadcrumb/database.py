@@ -58,11 +58,25 @@ _connection_pool: dict[tuple[int, str], sqlite3.Connection] = {}
 _pool_lock = threading.Lock()
 
 
+def _is_connection_valid(conn: sqlite3.Connection) -> bool:
+    """Check if a connection is still valid.
+
+    Uses a simple SELECT query to verify the connection is usable.
+    Returns False if the connection is closed or the database is locked/invalid.
+    """
+    try:
+        conn.execute("SELECT 1").fetchone()
+        return True
+    except (sqlite3.Error, OSError):
+        return False
+
+
 def get_connection(db_path: Path | None = None) -> sqlite3.Connection | None:
     """Get a database connection from the pool.
 
     Creates a new connection if one doesn't exist for the current thread and database path.
     Enables WAL mode and sets busy_timeout for concurrent access.
+    Validates existing pool connections before returning them.
 
     Args:
         db_path: Path to database file. Defaults to DEFAULT_DB_PATH.
@@ -87,7 +101,16 @@ def get_connection(db_path: Path | None = None) -> sqlite3.Connection | None:
     # Check if connection already exists for this thread + database
     with _pool_lock:
         if pool_key in _connection_pool:
-            return _connection_pool[pool_key]
+            existing_conn = _connection_pool[pool_key]
+            # Validate before returning pooled connection
+            if _is_connection_valid(existing_conn):
+                return existing_conn
+            # Connection invalid - remove from pool and recreate
+            try:
+                existing_conn.close()
+            except sqlite3.Error:
+                pass
+            del _connection_pool[pool_key]
 
     # Create new connection
     try:
@@ -95,12 +118,12 @@ def get_connection(db_path: Path | None = None) -> sqlite3.Connection | None:
         db_path.parent.mkdir(parents=True, exist_ok=True)
 
         # Create connection
-        conn = sqlite3.connect(str(db_path))
+        conn = sqlite3.connect(str(db_path), timeout=30)
 
         # Enable WAL mode for concurrent access
         conn.execute(f"PRAGMA journal_mode={_JOURNAL_MODE}")
 
-        # Set busy timeout for write locking (5 seconds)
+        # Set busy timeout for write locking (configurable via CLAUDE_DB_BUSY_TIMEOUT_MS)
         conn.execute(f"PRAGMA busy_timeout={_BUSY_TIMEOUT_MS}")
 
         # Enable foreign keys
