@@ -39,9 +39,12 @@ _DEFAULT_DB_DIR = Path(os.environ.get("CLAUDE_STATE_DIR", "P:/"))
 DEFAULT_DB_PATH: Final = _DEFAULT_DB_DIR / ".claude/hooks/logs/diagnostics/diagnostics.db"
 
 # Connection pool settings
-_BUSY_TIMEOUT_MS: Final = 5000  # 5 seconds
+_BUSY_TIMEOUT_MS: Final = int(os.environ.get("CLAUDE_DB_BUSY_TIMEOUT_MS", "5000"))  # 5 seconds default
 # WAL mode settings
 _JOURNAL_MODE: Final = "wal"
+
+# Schema version for migrations
+_SCHEMA_VERSION: Final = 1
 
 # =============================================================================
 # CONNECTION POOLING
