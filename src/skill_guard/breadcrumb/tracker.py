@@ -200,7 +200,7 @@ def _load_workflow_steps(skill_name: str) -> list[dict]:
     return steps
 
 
-def initialize_breadcrumb_trail(skill_name: str) -> None:
+def initialize_breadcrumb_trail(skill_name: str, force: bool = False) -> None:
     """Initialize breadcrumb trail for a skill.
 
     Called when a skill is invoked. Loads workflow_steps from frontmatter
@@ -208,13 +208,15 @@ def initialize_breadcrumb_trail(skill_name: str) -> None:
 
     Args:
         skill_name: Name of the skill being invoked
+        force: If True, force fresh initialization even if trail exists for this terminal.
+               Used for testing or when explicit re-initialization is needed.
     """
     skill_lower = skill_name.lower()
 
     # HYBRID LOGGING: Check if breadcrumb file already exists
     # This prevents overwriting manually-created trails in tests
     breadcrumb_file = _get_breadcrumb_file(skill_lower)
-    if breadcrumb_file.exists():
+    if breadcrumb_file.exists() and not force:
         try:
             existing_trail = json.loads(breadcrumb_file.read_text(encoding="utf-8"))
             # Verify terminal_id matches (multi-terminal safety)
