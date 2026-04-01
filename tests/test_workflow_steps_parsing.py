@@ -185,7 +185,8 @@ class TestWorkflowStepsIntegration:
             # If code skill has workflow_steps, test initialization
             # This test will pass after T-001 is implemented
             assert len(steps) > 0
-            assert all(isinstance(step, str) for step in steps)
+            # Workflow steps should be dicts with id field
+            assert all(isinstance(step, dict) and "id" in step for step in steps)
 
     def test_critical_skills_have_workflow_steps(self):
         """Test that critical skills have workflow_steps defined."""
