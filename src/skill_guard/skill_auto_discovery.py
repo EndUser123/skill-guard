@@ -330,7 +330,8 @@ def _parse_skill_hooks(skill_md: Path, skill_name: str) -> list[dict]:
 
         return result
 
-    except Exception:
+    except Exception as e:
+        logger.warning(f"Failed to parse hooks from {skill_name} SKILL.md: {e}")
         return []
 
 
