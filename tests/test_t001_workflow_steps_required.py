@@ -64,6 +64,7 @@ class TestT001WorkflowStepsRequired:
         This test FAILS until workflow_steps are added with correct content.
         """
         steps = _load_workflow_steps("code")
+        step_ids = [step["id"] for step in steps]
 
         # Required /code workflow steps (based on 9-phase workflow)
         required_steps = [
@@ -80,9 +81,9 @@ class TestT001WorkflowStepsRequired:
 
         # FAIL: All required steps must be present
         for required_step in required_steps:
-            assert required_step in steps, (
+            assert required_step in step_ids, (
                 f"/code skill missing required workflow step: '{required_step}'. "
-                f"Current steps: {steps}"
+                f"Current step_ids: {step_ids}"
             )
 
     def test_trace_skill_workflow_steps_content(self):
