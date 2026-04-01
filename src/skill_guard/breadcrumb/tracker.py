@@ -171,6 +171,13 @@ def _load_workflow_steps(skill_name: str) -> list[dict]:
         return steps
 
     if yaml is None:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.warning(
+            "yaml is not installed - cannot load workflow_steps for skill %s. "
+            "Install pyyaml or declare workflow_steps inline.",
+            skill_name,
+        )
         return steps
 
     try:
