@@ -155,8 +155,9 @@ class TestT001WorkflowStepsRequired:
 
                 # Test that steps can be used for breadcrumb tracking
                 first_step = steps[0]
-                assert isinstance(first_step, str), "First step must be string"
-                assert len(first_step) > 0, "First step must not be empty"
+                assert isinstance(first_step, dict), "First step must be dict"
+                assert "id" in first_step, "First step must have id field"
+                assert len(first_step["id"]) > 0, "First step id must not be empty"
 
             except Exception as e:
                 pytest.fail(
