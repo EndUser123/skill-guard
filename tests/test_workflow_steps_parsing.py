@@ -50,9 +50,10 @@ class TestWorkflowStepsParsing:
         assert isinstance(steps, list)
 
         if steps:
-            assert all(isinstance(step, str) for step in steps)
-            # /trace workflow steps
-            expected_steps = [
+            # Validate dict format with id field
+            assert all(isinstance(step, dict) and "id" in step for step in steps)
+            # /trace workflow step IDs
+            expected_step_ids = [
                 "identify_trace_target",
                 "select_trace_template",
                 "load_trace_methodology",
@@ -60,7 +61,8 @@ class TestWorkflowStepsParsing:
                 "verify_findings",
                 "generate_trace_report"
             ]
-            assert steps == expected_steps
+            actual_ids = [step["id"] for step in steps]
+            assert actual_ids == expected_step_ids
 
     def test_load_workflow_steps_from_arch_skill(self):
         """Test loading workflow_steps from /arch skill SKILL.md."""
