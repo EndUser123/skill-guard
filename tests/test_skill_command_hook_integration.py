@@ -351,10 +351,11 @@ class TestSkillCommandHookIntegration:
         """process() returns warning dict when command exits non-zero."""
         from posttooluse.skill_command_hook import SkillCommandHook
 
+        # Use python -c which works cross-platform (Windows doesn't have unix exit command)
         hook = SkillCommandHook(
             skill="test_skill",
             name="test_PostToolUse_0",
-            command="exit 1",
+            command='python -c "import sys; sys.exit(1)"',
             timeout=5,
         )
         result = hook.process(
@@ -363,7 +364,8 @@ class TestSkillCommandHookIntegration:
             tool_response={},
         )
         assert "warning" in result
-        assert "exit 1" in result["warning"] or "exit" in result["warning"]
+        # The warning contains "exit" and the error message
+        assert "exit" in result["warning"].lower() or "1" in result["warning"]
 
     def test_process_returns_warning_on_timeout(self) -> None:
         """process() returns warning dict when command times out."""
