@@ -130,11 +130,12 @@ def sanitize_terminal_id(terminal_id: str) -> str:
     """Sanitize terminal ID for use in file paths.
 
     Removes characters that are unsafe for filesystem paths.
-    Only allows alphanumeric, underscore, colon, and hyphen.
+    Only allows alphanumeric, underscore, and hyphen. Colon is excluded
+    because it causes issues on Windows (drive letter separator).
     """
     import re
 
-    return re.sub(r"[^a-zA-Z0-9_:\-]", "_", terminal_id)
+    return re.sub(r"[^a-zA-Z0-9_\-]", "_", terminal_id)
 
 
 def _get_state_file() -> Path:
