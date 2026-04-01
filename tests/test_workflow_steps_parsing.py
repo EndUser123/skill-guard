@@ -25,8 +25,9 @@ class TestWorkflowStepsParsing:
         if steps:
             # If workflow_steps present, validate structure (dict format with id field)
             assert all(isinstance(step, dict) and "id" in step for step in steps)
-            # Check for expected /code workflow step IDs
+            # Check for expected /code workflow step IDs (must match actual code skill SKILL.md)
             expected_step_ids = [
+                "pre_execution_checklist",
                 "analyze_query_intent",
                 "select_execution_model",
                 "resolve_plan_state",
@@ -37,9 +38,10 @@ class TestWorkflowStepsParsing:
                 "design_solution",
                 "tdd_implementation",
                 "full_test_suite",
+                "tier0_checklist_verification",
                 "audit_quality_checks",
                 "trace_manual_verification",
-                "done_final_certification"
+                "done_final_certification",
             ]
             actual_ids = [step["id"] for step in steps]
             assert actual_ids == expected_step_ids
