@@ -143,11 +143,54 @@ def close_connection(db_path: Path | None = None) -> None:
 # =============================================================================
 
 
+def _get_schema_version(conn: sqlite3.Connection) -> int:
+    """Get the current schema version from the database.
+
+    Returns 0 if no schema_versions table exists.
+    """
+    try:
+        cursor = conn.execute("SELECT version FROM schema_versions ORDER BY version DESC LIMIT 1")
+        row = cursor.fetchone()
+        return row[0] if row else 0
+    except sqlite3.OperationalError:
+        return 0
+
+
+def _run_migrations(conn: sqlite3.Connection, from_version: int) -> None:
+    """Run schema migrations from from_version to current.
+
+    Args:
+        conn: SQLite connection
+        from_version: Current schema version in database
+    """
+    if from_version < 1:
+        # Migration v1: Create schema_versions table
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS schema_versions (
+                version INTEGER PRIMARY KEY,
+                applied_at REAL NOT NULL
+            )
+            """
+        )
+        conn.execute(
+            "INSERT INTO schema_versions (version, applied_at) VALUES (1, ?)",
+            (time.time(),),
+        )
+
+    # Add future migrations here:
+    # if from_version < 2:
+    #     ... migration logic ...
+    #     conn.execute("INSERT INTO schema_versions ...", (2, time.time()))
+
+
 def initialize_schema(conn: sqlite3.Connection) -> None:
     """Initialize database schema for breadcrumb trails.
 
     Creates breadcrumb_trails and breadcrumb_events tables if they don't exist.
     Also creates indexes for performance. Safe to call multiple times.
+
+    Runs schema migrations if database version is older than current.
 
     Args:
         conn: SQLite connection
@@ -156,6 +199,11 @@ def initialize_schema(conn: sqlite3.Connection) -> None:
         >>> conn = get_connection()
         >>> initialize_schema(conn)
     """
+    # Run migrations first
+    current_version = _get_schema_version(conn)
+    if current_version < _SCHEMA_VERSION:
+        _run_migrations(conn, current_version)
+
     # Create breadcrumb_trails table
     conn.execute(
         """
