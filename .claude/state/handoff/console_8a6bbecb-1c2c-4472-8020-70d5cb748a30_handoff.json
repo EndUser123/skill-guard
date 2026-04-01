@@ -1,14 +1,14 @@
 {
   "resume_snapshot": {
     "schema_version": 2,
-    "snapshot_id": "913bc9c6-20e1-4e4b-96db-1a827b776f4b",
+    "snapshot_id": "9b0c9bcf-bd25-439c-af1c-0781eaf59dd5",
     "terminal_id": "console_8a6bbecb-1c2c-4472-8020-70d5cb748a30",
     "source_session_id": "0fa119bc-d807-4ad3-af7d-f4b49fa3fd7e",
-    "created_at": "2026-04-01T18:05:09.221190+00:00",
-    "expires_at": "2026-04-01T18:25:09.221190+00:00",
+    "created_at": "2026-04-01T18:32:44.288215+00:00",
+    "expires_at": "2026-04-01T18:52:44.288215+00:00",
     "status": "pending",
-    "goal": "anything left to do?  and did we implement fragile default paths?",
-    "current_task": "anything left to do? and did we implement fragile default paths?",
+    "goal": "makes sense, apply the enhancements.",
+    "current_task": "makes sense, apply the enhancements.",
     "progress_percent": 65,
     "progress_state": "in_progress",
     "blockers": [],
@@ -54,62 +54,62 @@
     "next_step": "Resume skill on skill: rca.",
     "decision_refs": [],
     "evidence_refs": [
-      "ev_2a40d495da1b4dd5837bdf76592a6266",
-      "ev_fcf76dc812ed47e78845af4ba5510ff1",
-      "ev_73c70ee691eb4e7a8e9370665833124c",
-      "ev_9c80a95e044f4e98b9dff925a7f38024",
-      "ev_6e1c97cc6ffb413ba6ff855e725904d1",
-      "ev_3fcb734fee5c40cbb22c0c2d636a34ba"
+      "ev_aad72ee6cbcd4e9584f797bc10f71b6d",
+      "ev_1dd8742ecb6f4543b5aabc5b0ed49346",
+      "ev_97bfb1c8da794410955740e081abf683",
+      "ev_c11e3172d1ce4464a45d3f6ba4009ff2",
+      "ev_fc26c43d69bb421d974f82974506ea89",
+      "ev_e9e084c9a01a435a97b1d379eb4dc93f"
     ],
     "transcript_path": "C:\\Users\\brsth\\.claude\\projects\\P--\\0fa119bc-d807-4ad3-af7d-f4b49fa3fd7e.jsonl",
-    "message_intent": "question",
+    "message_intent": "instruction",
     "quality_score": 0.4,
     "tasks_snapshot": []
   },
   "decision_register": [],
   "evidence_index": [
     {
-      "id": "ev_2a40d495da1b4dd5837bdf76592a6266",
+      "id": "ev_aad72ee6cbcd4e9584f797bc10f71b6d",
       "type": "transcript",
       "label": "Current compact transcript",
       "path": "C:\\Users\\brsth\\.claude\\projects\\P--\\0fa119bc-d807-4ad3-af7d-f4b49fa3fd7e.jsonl",
-      "content_hash": "sha256:b289de89610694f01386ad6a672623ba1402acb985d0757a6b84d0337926c4e3"
+      "content_hash": "sha256:6d2044147708d738091eaec9a10935404c4d3f87cc09570413e3b8df0b3e7eb4"
     },
     {
-      "id": "ev_fcf76dc812ed47e78845af4ba5510ff1",
+      "id": "ev_1dd8742ecb6f4543b5aabc5b0ed49346",
       "type": "file",
       "label": "settings.json",
       "path": "P:\\.claude\\settings.json",
       "content_hash": "sha256:a37a7d27c3c6a2493f940942a39dcf2b812cb3d536ca98c132a10e8f4f150a21"
     },
     {
-      "id": "ev_73c70ee691eb4e7a8e9370665833124c",
+      "id": "ev_97bfb1c8da794410955740e081abf683",
       "type": "file",
       "label": "__init__.py",
       "path": "P:\\packages\\skill-guard\\src\\skill_guard\\__init__.py",
       "content_hash": "sha256:fd5366133c6fc5c8ee8b0dae81d75781caf1e90634b336e3e8012fc2dc690a34"
     },
     {
-      "id": "ev_9c80a95e044f4e98b9dff925a7f38024",
+      "id": "ev_c11e3172d1ce4464a45d3f6ba4009ff2",
       "type": "file",
       "label": "pyproject.toml",
       "path": "P:\\packages\\skill-guard\\pyproject.toml",
       "content_hash": "sha256:5ad547ea3250f2f1f3088f5ad8599624e309283e09148abadb123528473f4b8a"
     },
     {
-      "id": "ev_6e1c97cc6ffb413ba6ff855e725904d1",
+      "id": "ev_fc26c43d69bb421d974f82974506ea89",
       "type": "file",
       "label": "StopHook_skill_execution_gate.py",
       "path": "P:\\.claude\\hooks\\StopHook_skill_execution_gate.py",
       "content_hash": "sha256:556decd02e16caf73cf58b61303365edcf5f8439e50c87d2b96a32a33731f577"
     },
     {
-      "id": "ev_3fcb734fee5c40cbb22c0c2d636a34ba",
+      "id": "ev_e9e084c9a01a435a97b1d379eb4dc93f",
       "type": "file",
       "label": "Stop_router.py",
       "path": "P:\\.claude\\hooks\\Stop_router.py",
       "content_hash": "sha256:7803bad6952792c16c725ff5d43cbc7489544a937e3df565e49097c2dc98d431"
     }
   ],
-  "checksum": "sha256:e8334229c673fab30d790f517ad1269d48db49f67b4afa989ab8c75b7fef8038"
+  "checksum": "sha256:60b30f6fc1baf32383cedc750b238044138594e7a181c751160621187eb2f931"
 }
