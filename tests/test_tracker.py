@@ -1,12 +1,12 @@
 """Auto-scaffolded test for tracker."""
 
 import pytest
-from tracker import tracker
+from skill_guard.breadcrumb.tracker import initialize_breadcrumb_trail
 
 
 def test_tracker_exists():
     """Smoke test: tracker can be imported."""
-    assert tracker is not None
+    assert initialize_breadcrumb_trail is not None
 
 
 # TODO: Add more tests based on actual functionality
