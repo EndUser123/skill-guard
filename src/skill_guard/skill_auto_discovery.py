@@ -207,6 +207,237 @@ def get_skill_config(
     }
 
 
+def discover_hooks(
+    skills_dir: str | Path = "P:/.claude/skills",
+) -> list[dict]:
+    """
+    Auto-discover hook declarations from SKILL.md frontmatter.
+
+    Scans .claude/skills/*/SKILL.md files and extracts hooks: declarations.
+
+    Args:
+        skills_dir: Path to skills directory (default: P:/.claude/skills)
+
+    Returns:
+        List of hook configs:
+        [
+            {
+                "skill": "rca",
+                "event": "PostToolUse",
+                "name": "rca_posttooluse_init",
+                "matcher": "Skill",
+                "type": "command",
+                "command": "python -m rca.hook_launcher PostToolUse_rca_init.py",
+                "timeout": 10,
+            },
+            ...
+        ]
+    """
+    skills_path = Path(skills_dir)
+    if not skills_path.exists():
+        return []
+
+    discovered = []
+
+    for skill_dir in skills_path.iterdir():
+        if not skill_dir.is_dir():
+            continue
+
+        skill_md = skill_dir / "SKILL.md"
+        if not skill_md.exists():
+            continue
+
+        hooks = _parse_skill_hooks(skill_md, skill_dir.name)
+        discovered.extend(hooks)
+
+    return discovered
+
+
+def _parse_skill_hooks(skill_md: Path, skill_name: str) -> list[dict]:
+    """
+    Parse SKILL.md frontmatter to extract hook declarations.
+
+    Args:
+        skill_md: Path to SKILL.md file
+        skill_name: Name of the skill (from directory name)
+
+    Returns:
+        List of hook configs for this skill
+    """
+    try:
+        content = skill_md.read_text(encoding="utf-8")
+
+        # Extract YAML frontmatter between --- markers
+        match = re.match(r"^---\n(.*?)\n---", content, re.DOTALL)
+        if not match:
+            return []
+
+        frontmatter = match.group(1)
+
+        # Parse YAML manually (avoiding external yaml dependency)
+        hooks_data = _parse_yaml_field(frontmatter, "hooks")
+        if not hooks_data:
+            return []
+
+        result = []
+
+        # hooks_data is a dict like {"PostToolUse": [...], "SessionEnd": [...]}
+        for event, hook_list in hooks_data.items():
+            if not isinstance(hook_list, list):
+                continue
+
+            for hook_entry in hook_list:
+                if not isinstance(hook_entry, dict):
+                    continue
+
+                # Each entry has "matcher" and "hooks"
+                matcher = hook_entry.get("matcher", ".*")
+                hook_items = hook_entry.get("hooks", [])
+                if not isinstance(hook_items, list):
+                    hook_items = [hook_items]
+
+                for hook_item in hook_items:
+                    if not isinstance(hook_item, dict):
+                        continue
+
+                    hook_type = hook_item.get("type", "command")
+                    command = hook_item.get("command", "")
+                    timeout = hook_item.get("timeout", 10)
+
+                    if not command:
+                        continue
+
+                    # Generate unique name: {skill}_{event}_{index}
+                    idx = len([h for h in result if h["event"] == event])
+                    name = f"{skill_name}_{event}_{idx}"
+
+                    result.append({
+                        "skill": skill_name,
+                        "event": event,
+                        "name": name,
+                        "matcher": matcher,
+                        "type": hook_type,
+                        "command": command,
+                        "timeout": timeout,
+                    })
+
+        return result
+
+    except Exception:
+        return []
+
+
+def _parse_yaml_field(content: str, field: str) -> dict | None:
+    """
+    Parse a top-level YAML field from SKILL.md frontmatter.
+
+    Handles nested structures like:
+        hooks:
+          PostToolUse:
+            - matcher: "Skill"
+              hooks:
+                - type: command
+                  command: python -m rca.hook_launcher
+
+    Args:
+        content: YAML frontmatter content
+        field: Field name to extract
+
+    Returns:
+        Parsed dict or None if not found
+    """
+    # Find the field at the start of a line
+    pattern = re.compile(rf"^{re.escape(field)}:\s*\n((?:[ \t]+.+\n?)+)", re.MULTILINE)
+    match = pattern.search(content)
+    if not match:
+        return None
+
+    field_content = match.group(1)
+
+    # Parse nested YAML structure
+    result = {}
+    current_list = None
+    current_dict = None
+    current_indent = 0
+
+    for line in field_content.split("\n"):
+        if not line.strip():
+            continue
+
+        # Calculate indentation
+        indent = len(line) - len(line.lstrip())
+
+        # Check for list item
+        list_match = re.match(r"^-\s+(.+)$", line.strip())
+        dict_match = re.match(r"^(\w+):\s*(.*)$", line.strip())
+
+        if list_match and indent <= current_indent:
+            # Close previous dict and add to list
+            if current_dict is not None and current_list is not None:
+                current_list.append(current_dict)
+            # Start new list item
+            item_content = list_match.group(1)
+            current_list = []
+            current_dict = {"_list": current_list}
+
+            # Check if this line itself has key-value
+            kv_match = re.match(r"(\w+):\s*(.*)", item_content)
+            if kv_match:
+                key, val = kv_match.groups()
+                if val.strip():
+                    current_dict[kv_match.group(1)] = _unquote(val.strip())
+                else:
+                    # Key with no value = start of nested dict
+                    pass
+
+        elif dict_match and indent <= current_indent:
+            # Close previous dict and add to list
+            if current_dict is not None and current_list is not None:
+                if "_list" in current_dict:
+                    pass  # Already added
+                else:
+                    current_list.append(current_dict)
+            # New key-value
+            key, val = dict_match.groups()
+            if val.strip():
+                current_dict = {key: _unquote(val.strip())}
+            else:
+                current_dict = {key: None}
+            current_indent = indent
+
+        elif dict_match and current_dict is not None:
+            # Nested key-value
+            key, val = dict_match.groups()
+            if current_list is not None and "_list" in current_dict:
+                # We're in a list item context
+                if "_nested" not in current_dict:
+                    current_dict["_nested"] = {}
+                if val.strip():
+                    current_dict["_nested"][key] = _unquote(val.strip())
+
+    # Close final dict
+    if current_dict is not None and current_list is not None:
+        if "_nested" in current_dict:
+            # Merge nested back
+            for k, v in current_dict["_nested"].items():
+                current_dict[k] = v
+            del current_dict["_nested"]
+        current_list.append(current_dict)
+
+    # Convert to proper structure
+    if result.get("_current_list"):
+        return result.get("_current_list", [])
+
+    return result
+
+
+def _unquote(s: str) -> str:
+    """Strip quotes from YAML string values."""
+    if (s.startswith('"') and s.endswith('"')) or (s.startswith("'") and s.endswith("'")):
+        return s[1:-1]
+    return s
+
+
 def _detect_script_pattern(skill_name: str) -> str:
     """
     Detect if skill has a run_heavy.py script for pattern matching.
