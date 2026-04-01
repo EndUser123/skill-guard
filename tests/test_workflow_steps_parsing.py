@@ -70,9 +70,10 @@ class TestWorkflowStepsParsing:
         assert isinstance(steps, list)
 
         if steps:
-            assert all(isinstance(step, str) for step in steps)
-            # /arch workflow steps
-            expected_steps = [
+            # Validate dict format with id field
+            assert all(isinstance(step, dict) and "id" in step for step in steps)
+            # /arch workflow step IDs
+            expected_step_ids = [
                 "preflight_checks",
                 "classify_intent",
                 "select_template",
@@ -80,7 +81,8 @@ class TestWorkflowStepsParsing:
                 "execute_template_analysis",
                 "generate_architecture_review"
             ]
-            assert steps == expected_steps
+            actual_ids = [step["id"] for step in steps]
+            assert actual_ids == expected_step_ids
 
     def test_load_workflow_steps_from_nonexistent_skill(self):
         """Test loading workflow_steps from skill that doesn't exist."""
