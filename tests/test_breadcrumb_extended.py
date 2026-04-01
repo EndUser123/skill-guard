@@ -471,11 +471,11 @@ class TestInitializeBreadcrumbRunId:
         )
         assert uuid_pattern.match(run_id_1), f"run_id should match UUID format, got: {run_id_1}"
 
-        # Second invocation (should generate different run_id)
+        # Second invocation (should generate different run_id with force=True)
         with patch("skill_guard.breadcrumb.tracker.Path", side_effect=mock_path):
             with patch("skill_guard.breadcrumb.tracker._get_breadcrumb_dir", side_effect=mock_get_breadcrumb_dir):
                 with patch("skill_guard.breadcrumb.tracker.detect_terminal_id", side_effect=mock_terminal_id):
-                    initialize_breadcrumb_trail("test_skill")
+                    initialize_breadcrumb_trail("test_skill", force=True)
 
         # Read second breadcrumb file
         trail2 = json.loads(breadcrumb_file.read_text())
