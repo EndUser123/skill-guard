@@ -149,8 +149,8 @@ class TestWorkflowStepsParsing:
 
         steps = _load_workflow_steps("test_skill_invalid")
         assert isinstance(steps, list)
-        # All items should be converted to strings
-        assert all(isinstance(step, str) for step in steps)
+        # All items should be dicts with id field (implementation normalizes to dict format)
+        assert all(isinstance(step, dict) and "id" in step for step in steps)
 
 
 class TestWorkflowStepsIntegration:
