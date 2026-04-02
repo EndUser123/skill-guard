@@ -238,7 +238,7 @@ def _validate_skill_frontmatter(skill_name: str) -> list[str]:
         Empty list if skill doesn't exist or has no issues.
     """
     warnings: list[str] = []
-    skill_dir = Path("P:/.claude/skills") / skill_name
+    skill_dir = STATE_DIR / "skills" / skill_name
     skill_file = skill_dir / "SKILL.md"
 
     # Return empty list for nonexistent skills (not an error condition)
