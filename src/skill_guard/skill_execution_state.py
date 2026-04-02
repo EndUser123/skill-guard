@@ -325,6 +325,9 @@ def set_skill_loaded(
     frontmatter = _load_skill_frontmatter(skill_lower)
     allowed_first_tools = frontmatter.get("allowed_first_tools", [])
 
+    # Validate frontmatter for required fields and enforcement tier
+    frontmatter_warnings = _validate_skill_frontmatter(skill_lower)
+
     # Load registry if config not provided
     if required_tools is None or pattern is None:
         # Try to load from PreToolUse_skill_pattern_gate if available
