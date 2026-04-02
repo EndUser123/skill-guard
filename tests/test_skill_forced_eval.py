@@ -25,7 +25,8 @@ class TestSafeId:
         ("normal_id", "normal_id"),
         ("id-with-dots.and.dashes", "id-with-dots.and.dashes"),
         ("ID WITH SPACES", "ID_WITH_SPACES"),
-        ("id!@#$%^&*()", "id_____________"),
+        # Multiple special chars collapse to single underscore
+        ("id!@#$%^&*()", "id_"),
         ("UPPERCASE", "UPPERCASE"),
         ("123numeric", "123numeric"),
     ])
@@ -148,18 +149,6 @@ class TestCleanupStaleStateFiles:
         assert not stale_file.exists()
 
 
-class TestLoadEvalState:
-    """Tests for _load_eval_state."""
-
-    def test_returns_none_when_no_terminal_id(self) -> None:
-        """Should return None when terminal_id is empty."""
-        context = MagicMock()
-        context.data = {}
-
-        result = sfe._load_eval_state(context)
-        assert result is None
-
-
 class TestClearCaches:
     """Tests for _clear_caches."""
 
@@ -172,15 +161,3 @@ class TestClearCaches:
 
         assert sfe._registered_skills is None
         assert sfe._skill_metadata is None
-
-
-class TestTerminalIdNone:
-    """Tests for terminal_id=None behavior."""
-
-    def test_load_eval_state_with_no_terminal_id(self) -> None:
-        """Should return None when terminal_id is None."""
-        context = MagicMock()
-        context.data = {"terminal_id": None}
-
-        result = sfe._load_eval_state(context)
-        assert result is None

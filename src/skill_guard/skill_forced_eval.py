@@ -344,9 +344,10 @@ def _load_eval_state(context: HookContext) -> dict | None:
         try:
             data = json.loads(state_file.read_text(encoding="utf-8"))
 
-            # Check TTL
-            created_at = data.get("created_at", 0)
-            if time.time() - created_at > _STATE_TTL_SECONDS:
+            # Check TTL using filesystem mtime (NOT attacker-controlled JSON created_at)
+            # SEC-FE-001 fix: state_file mtime is not user-controlled
+            mtime = state_file.stat().st_mtime
+            if time.time() - mtime > _STATE_TTL_SECONDS:
                 # Stale - clear and return None
                 state_file.unlink(missing_ok=True)
                 _clear_caches()
