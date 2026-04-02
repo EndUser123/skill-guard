@@ -350,11 +350,19 @@ def set_skill_loaded(
             )
             sys.stderr.write(warning_msg + "\n")
 
-    # Only write state if skill has execution requirements or first-tool coherence
-    # or has frontmatter warnings (which should always be tracked).
-    # This makes the system multi-terminal safe and immune to stale data
-    if not required_tools and not allowed_first_tools and not frontmatter_warnings:
-        return  # Pure knowledge skill with clean frontmatter - no state needed
+    # Only write state if skill has execution requirements, first-tool coherence,
+    # or meaningful frontmatter (which distinguishes from accidental knowledge skills).
+    # This makes the system multi-terminal safe and immune to stale data.
+    # Knowledge skills with missing frontmatter: no tracking needed.
+    # Knowledge skills with complete frontmatter: track anyway (complete metadata).
+    if not required_tools and not allowed_first_tools:
+        # Check if skill has at least some frontmatter fields (name, description, etc.)
+        # If frontmatter_warnings is non-empty, skill has issues to track
+        # If frontmatter was at least loaded (skill exists), track it
+        skill_dir = STATE_DIR / "skills" / skill_lower
+        skill_file = skill_dir / "SKILL.md"
+        if not frontmatter_warnings and not skill_file.exists():
+            return  # Truly a knowledge skill with no metadata - no state needed
 
     # Create state payload
     state = {
