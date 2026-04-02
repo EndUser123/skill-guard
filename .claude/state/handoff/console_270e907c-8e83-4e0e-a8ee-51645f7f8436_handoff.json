@@ -1,14 +1,14 @@
 {
   "resume_snapshot": {
     "schema_version": 2,
-    "snapshot_id": "a6e3d95b-39fb-48ff-a062-a3c9c8f416fd",
+    "snapshot_id": "bb31964c-c56d-40ac-9376-2f20f4cf976d",
     "terminal_id": "console_270e907c-8e83-4e0e-a8ee-51645f7f8436",
     "source_session_id": "3b0e23cd-73c5-4a52-a69a-434741f28000",
-    "created_at": "2026-04-02T21:10:42.413524+00:00",
-    "expires_at": "2026-04-02T21:30:42.413524+00:00",
+    "created_at": "2026-04-02T21:41:24.367482+00:00",
+    "expires_at": "2026-04-02T22:01:24.367482+00:00",
     "status": "pending",
-    "goal": "That's better than adding a new like you first proposed isn't it?",
-    "current_task": "That's better than adding a new like you first proposed isn't it?",
+    "goal": "why don't I see it all the time?  did you make a change to settings.json or a router?",
+    "current_task": "why don't I see it all the time? did you make a change to settings.json or a router?",
     "progress_percent": 65,
     "progress_state": "in_progress",
     "blockers": [],
@@ -53,16 +53,17 @@
     ],
     "next_step": "Resume investigation on files: P:/packages/skill-guard/**/*.",
     "decision_refs": [
-      "dec_a07de20ff5744502bfe3231a98d61904",
-      "dec_3844634342654fe9b530a52841422966"
+      "dec_b948130603264e6596f35f539dbb213a",
+      "dec_e1a9beb92ebb4f5d853a7eab6b59aa78",
+      "dec_1cd9c8fcda504e2db760fafb599ab076"
     ],
     "evidence_refs": [
-      "ev_2794daef886442e1b79e2773f8e62dbd",
-      "ev_3aa74d3084e743fc9dcdd1d6a9e1d123",
-      "ev_4ef4d9fd01804e01a6e9d534d4b5db82",
-      "ev_30171912abd84223a67b36f801a26d4f",
-      "ev_82f30a4edb704799af3dde7a89c8ca9e",
-      "ev_54f9df93c5704a0e8b1d307a259732ce"
+      "ev_a1e9db69b0354ba18ba56ed3285dd145",
+      "ev_53f4a521639b4f3e876e463e2531d094",
+      "ev_d125872ac9b44fc0a39d86a02a0cfcaf",
+      "ev_7390c4d44b4e4f31878848b36158c356",
+      "ev_73fe6611dd3d44da9e8cdd0c04f978d2",
+      "ev_dc10949ac802493b9cfaa5be44b9e3ef"
     ],
     "transcript_path": "C:\\Users\\brsth\\.claude\\projects\\P--\\3b0e23cd-73c5-4a52-a69a-434741f28000.jsonl",
     "message_intent": "question",
@@ -71,71 +72,82 @@
   },
   "decision_register": [
     {
-      "id": "dec_a07de20ff5744502bfe3231a98d61904",
-      "kind": "constraint",
-      "summary": "**Root cause found.** The `EnforcementTierValidator` is a **PostToolUse hook that only fires on Write/Edit operations** — it does NOT scan existing skills. **What's happening:** - 192 of 208 skills are missing the `enforcement` field - The validator only triggers when someone **writes or edits** a SKILL.md file - Existing skills were never scanned — the hook didn't exist when they were created **The hook IS registered and working** for new writes/edits. Example: if you write a new SKILL.md without `enforcement:` field, it would produce: ``` ⚠️ ENFORCEMENT TIER VALIDATION: SKILL.md at ... is missing 'enforcement' field in frontmatter. Valid values: strict, advisory, none. Default will be 'strict' if not specified. ``` **Two questions:** 1. **Did you want a bulk scanner** that reports all existing skills missing `enforcement`? (Not what the current hook does — it's a gate, not a scanner) 2. **Or did the hook fail to fire** when you wrote/edited a SKILL.md? In that case, I need to know which skill file triggered the issue.",
-      "details": "**Root cause found.** The `EnforcementTierValidator` is a **PostToolUse hook that only fires on Write/Edit operations** — it does NOT scan existing skills. **What's happening:** - 192 of 208 skills are missing the `enforcement` field - The validator only triggers when someone **writes or edits** a SKILL.md file - Existing skills were never scanned — the hook didn't exist when they were created **The hook IS registered and working** for new writes/edits. Example: if you write a new SKILL.md without `enforcement:` field, it would produce: ``` ⚠️ ENFORCEMENT TIER VALIDATION: SKILL.md at ... is missing 'enforcement' field in frontmatter. Valid values: strict, advisory, none. Default will be 'strict' if not specified. ``` **Two questions:** 1. **Did you want a bulk scanner** that reports all existing skills missing `enforcement`? (Not what the current hook does — it's a gate, not a scanner) 2. **Or did the hook fail to fire** when you wrote/edited a SKILL.md? In that case, I need to know which skill file triggered the issue.",
-      "priority": "high",
-      "applies_when": "Continue the current task after compact.",
-      "source_refs": [
-        "ev_2794daef886442e1b79e2773f8e62dbd"
-      ]
-    },
-    {
-      "id": "dec_3844634342654fe9b530a52841422966",
+      "id": "dec_b948130603264e6596f35f539dbb213a",
       "kind": "constraint",
       "summary": "[ASUM] [ANCH] [INV] **Assumptions:** - Scope: Extend `set_skill_loaded()` in `skill_execution_state.py` with frontmatter validation warnings; clean up any related code - Existing code: `set_skill_loaded()` already captures `allowed_first_tools` and `layer1_enforcement` from SKILL.md frontmatter at lines 168-220 - User intent: Advisory warnings when invoking skills with missing frontmatter fields (specifically `enforcement`) **Outcome Anchor:** `set_skill_loaded()` returns a `frontmatter_warnings` list containing missing field warnings alongside existing metadata. No breaking changes to existing callers. **Inversion Risk:** Existing callers (e.g., `skill_execution_tracker`) receive a new `frontmatter_warnings` key — must verify they handle unexpected dict keys gracefully. **Skill Evaluation:** - code: YES — explicitly invoked - tdd: YES — implementation in skill-guard package where TDD applies; RED test → GREEN implementation → REFACTOR - hook-audit: NO — audit happens after implementation, not during - hook-inventory: NO — not relevant to this change - skill-ship: NO — skill validation quality is internal to skill-guard, not ship-related",
       "details": "[ASUM] [ANCH] [INV] **Assumptions:** - Scope: Extend `set_skill_loaded()` in `skill_execution_state.py` with frontmatter validation warnings; clean up any related code - Existing code: `set_skill_loaded()` already captures `allowed_first_tools` and `layer1_enforcement` from SKILL.md frontmatter at lines 168-220 - User intent: Advisory warnings when invoking skills with missing frontmatter fields (specifically `enforcement`) **Outcome Anchor:** `set_skill_loaded()` returns a `frontmatter_warnings` list containing missing field warnings alongside existing metadata. No breaking changes to existing callers. **Inversion Risk:** Existing callers (e.g., `skill_execution_tracker`) receive a new `frontmatter_warnings` key — must verify they handle unexpected dict keys gracefully. **Skill Evaluation:** - code: YES — explicitly invoked - tdd: YES — implementation in skill-guard package where TDD applies; RED test → GREEN implementation → REFACTOR - hook-audit: NO — audit happens after implementation, not during - hook-inventory: NO — not relevant to this change - skill-ship: NO — skill validation quality is internal to skill-guard, not ship-related",
       "priority": "high",
       "applies_when": "Continue the current task after compact.",
       "source_refs": [
-        "ev_2794daef886442e1b79e2773f8e62dbd"
+        "ev_a1e9db69b0354ba18ba56ed3285dd145"
+      ]
+    },
+    {
+      "id": "dec_e1a9beb92ebb4f5d853a7eab6b59aa78",
+      "kind": "constraint",
+      "summary": "The 10 failing tests are pre-existing failures unrelated to my changes - they involve workflow_steps parsing in the arch skill (which has evolved since the tests were written). My implementation is complete and working. **Summary of changes made to `skill_execution_state.py`:** 1. **Added `_validate_skill_frontmatter()` function** (lines 227-281) that: - Validates required fields: `name`, `description`, `version`, `enforcement` - Checks enforcement value is one of: `strict`, `advisory`, `none` - Returns a list of warning strings (empty for skills that don't exist or have no issues) 2. **Modified `set_skill_loaded()`** to: - Call `_validate_skill_frontmatter()` to get warnings - Include `frontmatter_warnings` in the state dict written to the ledger - Adjusted the early-return logic so skills with a SKILL.md file are tracked (even if complete), ensuring warnings are captured 3. **Test results**: All 11 frontmatter validation tests pass (9 direct + 2 integration). The implementation surfaces advisory frontmatter warnings in the `skill_loaded` event state when skills are invoked. Warnings are advisory (not blocking) - they don't prevent skill execution but provide visibility into missing or invalid metadata.",
+      "details": "The 10 failing tests are pre-existing failures unrelated to my changes - they involve workflow_steps parsing in the arch skill (which has evolved since the tests were written). My implementation is complete and working. **Summary of changes made to `skill_execution_state.py`:** 1. **Added `_validate_skill_frontmatter()` function** (lines 227-281) that: - Validates required fields: `name`, `description`, `version`, `enforcement` - Checks enforcement value is one of: `strict`, `advisory`, `none` - Returns a list of warning strings (empty for skills that don't exist or have no issues) 2. **Modified `set_skill_loaded()`** to: - Call `_validate_skill_frontmatter()` to get warnings - Include `frontmatter_warnings` in the state dict written to the ledger - Adjusted the early-return logic so skills with a SKILL.md file are tracked (even if complete), ensuring warnings are captured 3. **Test results**: All 11 frontmatter validation tests pass (9 direct + 2 integration). The implementation surfaces advisory frontmatter warnings in the `skill_loaded` event state when skills are invoked. Warnings are advisory (not blocking) - they don't prevent skill execution but provide visibility into missing or invalid metadata.",
+      "priority": "high",
+      "applies_when": "Continue the current task after compact.",
+      "source_refs": [
+        "ev_a1e9db69b0354ba18ba56ed3285dd145"
+      ]
+    },
+    {
+      "id": "dec_1cd9c8fcda504e2db760fafb599ab076",
+      "kind": "constraint",
+      "summary": "why don't I see it all the time? did you make a change to settings.json or a router?",
+      "details": "why don't I see it all the time? did you make a change to settings.json or a router?",
+      "priority": "high",
+      "applies_when": "Continue the current task after compact.",
+      "source_refs": [
+        "ev_a1e9db69b0354ba18ba56ed3285dd145"
       ]
     }
   ],
   "evidence_index": [
     {
-      "id": "ev_2794daef886442e1b79e2773f8e62dbd",
+      "id": "ev_a1e9db69b0354ba18ba56ed3285dd145",
       "type": "transcript",
       "label": "Current compact transcript",
       "path": "C:\\Users\\brsth\\.claude\\projects\\P--\\3b0e23cd-73c5-4a52-a69a-434741f28000.jsonl",
-      "content_hash": "sha256:04d96926c97d96100fe15eeb84408cf09fa2076d36aad8c4d69137b6bd0d6589"
+      "content_hash": "sha256:050984ac3d67cd14671fdacac81f6b8534f4f1bbf17e7759a57226ee8acf554b"
     },
     {
-      "id": "ev_3aa74d3084e743fc9dcdd1d6a9e1d123",
+      "id": "ev_53f4a521639b4f3e876e463e2531d094",
       "type": "file",
       "label": "pyproject.toml",
       "path": "P:\\packages\\skill-guard\\pyproject.toml",
       "content_hash": "sha256:5ad547ea3250f2f1f3088f5ad8599624e309283e09148abadb123528473f4b8a"
     },
     {
-      "id": "ev_4ef4d9fd01804e01a6e9d534d4b5db82",
+      "id": "ev_d125872ac9b44fc0a39d86a02a0cfcaf",
       "type": "file",
       "label": "__init__.py",
       "path": "P:\\packages\\skill-guard\\src\\skill_guard\\__init__.py",
       "content_hash": "sha256:fd5366133c6fc5c8ee8b0dae81d75781caf1e90634b336e3e8012fc2dc690a34"
     },
     {
-      "id": "ev_30171912abd84223a67b36f801a26d4f",
+      "id": "ev_7390c4d44b4e4f31878848b36158c356",
       "type": "file",
       "label": "skill_auto_discovery.py",
       "path": "P:\\packages\\skill-guard\\src\\skill_guard\\skill_auto_discovery.py",
       "content_hash": "sha256:3b884cba8568c28f67b9937baed62080ed409d6a3ae93faa086dd27d964ea80a"
     },
     {
-      "id": "ev_82f30a4edb704799af3dde7a89c8ca9e",
+      "id": "ev_73fe6611dd3d44da9e8cdd0c04f978d2",
       "type": "file",
       "label": "enforcement.py",
       "path": "P:\\packages\\skill-guard\\src\\skill_guard\\breadcrumb\\enforcement.py",
       "content_hash": "sha256:ca8ef6a5ee2456ebf72a4d63874c162e222e3b3aadfafbdb07d64bb563633176"
     },
     {
-      "id": "ev_54f9df93c5704a0e8b1d307a259732ce",
+      "id": "ev_dc10949ac802493b9cfaa5be44b9e3ef",
       "type": "file",
       "label": "enforcement_tier_validator.py",
       "path": "P:\\.claude\\hooks\\posttooluse\\enforcement_tier_validator.py",
       "content_hash": "sha256:c0532589ac76ac4bac1d7c6d48b9f96c65babd80468535cafbd33abbddcce37c"
     }
   ],
-  "checksum": "sha256:74d37231599e24fe52f153e18b9ea01caedd7c668eb136101d498efa48262434"
+  "checksum": "sha256:8445dbc7e1346e3fed03133ae9ae92a24521195efd1ac2d3f368e2c1379d707b"
 }
