@@ -392,21 +392,13 @@ def _cleanup_stale_state_files() -> int:
 
         for state_file in state_dir.glob("eval_state_*.json"):
             try:
-                data = json.loads(state_file.read_text(encoding="utf-8"))
-                created_at = data.get("created_at", 0)
-                if now - created_at > _STATE_TTL_SECONDS:
+                # Use filesystem mtime for TTL check (not JSON created_at - SEC-FE-001 fix)
+                mtime = state_file.stat().st_mtime
+                if now - mtime > _STATE_TTL_SECONDS:
                     state_file.unlink(missing_ok=True)
                     removed += 1
             except Exception:
-                # If can't read, remove stale-looking files
-                try:
-                    # Check if file is old by modification time
-                    mtime = state_file.stat().st_mtime
-                    if now - mtime > _STATE_TTL_SECONDS:
-                        state_file.unlink(missing_ok=True)
-                        removed += 1
-                except Exception:
-                    continue
+                continue
 
     if removed > 0:
         _clear_caches()
