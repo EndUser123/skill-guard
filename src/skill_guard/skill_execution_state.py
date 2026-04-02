@@ -351,10 +351,10 @@ def set_skill_loaded(
             sys.stderr.write(warning_msg + "\n")
 
     # Only write state if skill has execution requirements or first-tool coherence
-    # Knowledge skills (required_tools=[] and no allowed_first_tools) don't need state tracking
+    # or has frontmatter warnings (which should always be tracked).
     # This makes the system multi-terminal safe and immune to stale data
-    if not required_tools and not allowed_first_tools:
-        return  # Pure knowledge skill - no state needed
+    if not required_tools and not allowed_first_tools and not frontmatter_warnings:
+        return  # Pure knowledge skill with clean frontmatter - no state needed
 
     # Create state payload
     state = {
