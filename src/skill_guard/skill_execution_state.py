@@ -356,12 +356,12 @@ def set_skill_loaded(
     # Knowledge skills with missing frontmatter: no tracking needed.
     # Knowledge skills with complete frontmatter: track anyway (complete metadata).
     if not required_tools and not allowed_first_tools:
-        # Check if skill has at least some frontmatter fields (name, description, etc.)
-        # If frontmatter_warnings is non-empty, skill has issues to track
-        # If frontmatter was at least loaded (skill exists), track it
-        skill_dir = STATE_DIR / "skills" / skill_lower
-        skill_file = skill_dir / "SKILL.md"
-        if not frontmatter_warnings and not skill_file.exists():
+        # No execution requirements and no first-tool coherence.
+        # Skip tracking for pure knowledge skills (no metadata at all).
+        # We use frontmatter as the signal: if _load_skill_frontmatter returned
+        # an empty dict (no file exists at P:/.claude/skills/), skip state.
+        # This avoids redundant file I/O — we already loaded frontmatter above.
+        if not frontmatter_warnings and not frontmatter:
             return  # Truly a knowledge skill with no metadata - no state needed
 
     # Create state payload
