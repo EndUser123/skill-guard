@@ -220,6 +220,63 @@ def _load_skill_frontmatter(skill_name: str) -> dict[str, Any]:
     return result
 
 
+# Valid enforcement tier values
+_VALID_ENFORCEMENT_VALUES = {"strict", "advisory", "none"}
+
+
+def _validate_skill_frontmatter(skill_name: str) -> list[str]:
+    """Validate skill SKILL.md frontmatter for required fields.
+
+    Checks that required fields are present and that enforcement value
+    is one of the valid tiers (strict, advisory, none).
+
+    Args:
+        skill_name: Name of the skill to validate.
+
+    Returns:
+        List of warning strings for missing or invalid fields.
+        Empty list if skill doesn't exist or has no issues.
+    """
+    warnings: list[str] = []
+    skill_dir = Path("P:/.claude/skills") / skill_name
+    skill_file = skill_dir / "SKILL.md"
+
+    # Return empty list for nonexistent skills (not an error condition)
+    if not skill_file.exists():
+        return warnings
+
+    if yaml is None:
+        return warnings
+
+    try:
+        content = skill_file.read_text(encoding="utf-8", errors="replace")
+        parts = content.split("---")
+        if len(parts) < 3:
+            return warnings
+        fm_data = yaml.safe_load(parts[1])
+        if not isinstance(fm_data, dict):
+            return warnings
+
+        # Check required fields
+        required_fields = ["name", "description", "version", "enforcement"]
+        for field in required_fields:
+            if field not in fm_data or not str(fm_data.get(field) or "").strip():
+                warnings.append(f"Missing required frontmatter field: {field}")
+
+        # Validate enforcement value
+        enforcement = fm_data.get("enforcement", "")
+        if enforcement and enforcement not in _VALID_ENFORCEMENT_VALUES:
+            warnings.append(
+                f"Invalid enforcement value '{enforcement}'; "
+                f"must be one of: {', '.join(sorted(_VALID_ENFORCEMENT_VALUES))}"
+            )
+
+    except Exception:
+        pass
+
+    return warnings
+
+
 def _get_ledger_module():
     """Import hook_ledger from the hooks library."""
     if HOOKS_LIB_DIR.exists() and str(HOOKS_LIB_DIR) not in sys.path:
