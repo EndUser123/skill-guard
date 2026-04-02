@@ -375,6 +375,8 @@ def set_skill_loaded(
         # v3.5: first-tool coherence tracking
         "allowed_first_tools": allowed_first_tools,
         "first_tool_validated": False,
+        # Frontmatter validation warnings
+        "frontmatter_warnings": frontmatter_warnings,
     }
 
     terminal_id, turn_id = _get_active_turn_scope()
