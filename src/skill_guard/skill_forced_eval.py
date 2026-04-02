@@ -387,8 +387,15 @@ def _clear_eval_state(context: HookContext) -> None:
 
 def _cleanup_stale_state_files() -> int:
     """Remove stale state files older than TTL. Returns count of removed files."""
+    global _last_cleanup_time
     removed = 0
     now = time.time()
+
+    # Throttle: only cleanup once per throttle interval
+    if now - _last_cleanup_time < _CLEANUP_THROTTLE_SECONDS:
+        return 0
+
+    _last_cleanup_time = now
 
     for state_dir in (_STATE_DIR, _FALLBACK_STATE_DIR):
         if not state_dir.exists():
