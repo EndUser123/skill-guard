@@ -47,6 +47,10 @@ _FALLBACK_STATE_DIR = Path.home() / ".claude" / "hooks" / "state" / "skill_force
 # TTL for state files (5 minutes - matches skill pattern gate TTL)
 _STATE_TTL_SECONDS = 300
 
+# Cleanup throttle - don't run cleanup more than once per minute
+_CLEANUP_THROTTLE_SECONDS = 60
+_last_cleanup_time: float = 0.0
+
 
 def _get_state_dir() -> Path:
     """Get state directory, creating it if needed."""
