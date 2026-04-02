@@ -26,6 +26,7 @@ from skill_guard import discover_all_skills, get_skill_config
 - Uses breadcrumb system to track skill execution steps
 - Verifies skills follow their documented workflows
 - Provides self-verification capabilities for skills
+- **skill_forced_eval hook**: Enumerates all skills with YES/NO when slash command detected
 
 **What it does NOT do:**
 - ❌ You cannot invoke `/skill-guard` as a command

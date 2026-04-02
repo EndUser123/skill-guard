@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **skill_forced_eval Hook**: Skill forced-evaluation hook migrated from `UserPromptSubmit_modules/` to package
+  - Enumerates all skills with YES/NO when slash command detected
+  - Multi-terminal isolation via terminal-scoped state files
+  - TTL-based stale data cleanup (300 seconds)
+  - Tool conflict detection (Bash vs read-only skills)
+  - Canonical location: `src/skill_guard/skill_forced_eval.py`
+  - Symlink: `P:/.claude/hooks/UserPromptSubmit_modules/skill_forced_eval.py`
+
 ## [2.0.0] - 2026-03-14
 
 ### Added
