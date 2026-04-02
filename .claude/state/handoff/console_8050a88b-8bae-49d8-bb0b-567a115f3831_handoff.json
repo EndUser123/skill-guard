@@ -1,0 +1,115 @@
+{
+  "resume_snapshot": {
+    "schema_version": 2,
+    "snapshot_id": "46a1fc03-df84-432e-b555-ce42db76368d",
+    "terminal_id": "console_8050a88b-8bae-49d8-bb0b-567a115f3831",
+    "source_session_id": "a2263d70-69f5-4208-8a19-4e1f169c167d",
+    "created_at": "2026-04-02T14:47:32.911463+00:00",
+    "expires_at": "2026-04-02T15:07:32.911463+00:00",
+    "status": "pending",
+    "goal": "The hook should be in P:/packages/skill-guard, with a symlink to P:/.claude/hooks",
+    "current_task": "The hook should be in P:/packages/skill-guard, with a symlink to P:/.claude/hooks",
+    "progress_percent": 65,
+    "progress_state": "in_progress",
+    "blockers": [],
+    "active_files": [
+      "C:\\Users\\brsth\\Downloads\\We are having ongoing problems with claude code no.md",
+      "P:\\.claude\\hooks\\UserPromptSubmit.py",
+      "P:\\.claude\\hooks\\UserPromptSubmit_modules\\skill_enforcer.py",
+      "P:\\.claude\\hooks\\UserPromptSubmit_modules\\registry.py",
+      "P:\\.claude\\hooks\\UserPromptSubmit_modules\\skill_forced_eval.py",
+      "P:\\.claude\\hooks\\PreCompact.py",
+      "P:\\.claude\\hooks\\PreCompact_commitment_tracker.py",
+      "P:\\.claude\\hooks\\UserPromptSubmit_modules\\handoff_context_injector.py",
+      "P:/packages/skill-guard/pyproject.toml",
+      "P:/packages/skill-guard/src/skill_guard/__init__.py"
+    ],
+    "pending_operations": [
+      {
+        "type": "read",
+        "target": "C:\\Users\\brsth\\Downloads\\We are having ongoing problems with claude code no.md",
+        "state": "in_progress"
+      },
+      {
+        "type": "read",
+        "target": "C:\\Users\\brsth\\Downloads\\We are having ongoing problems with claude code no.md",
+        "state": "in_progress"
+      },
+      {
+        "type": "read",
+        "target": "C:\\Users\\brsth\\Downloads\\We are having ongoing problems with claude code no.md",
+        "state": "in_progress"
+      },
+      {
+        "type": "read",
+        "target": "C:\\Users\\brsth\\Downloads\\We are having ongoing problems with claude code no.md",
+        "state": "in_progress"
+      },
+      {
+        "type": "investigation",
+        "target": "files: .claude/hooks/**/*.py",
+        "state": "in_progress"
+      }
+    ],
+    "next_step": "Resume read on C:\\Users\\brsth\\Downloads\\We are having ongoing problems with claude code no.md.",
+    "decision_refs": [],
+    "evidence_refs": [
+      "ev_8bdb4d3b112f413a9f8ba366f26e83ed",
+      "ev_b977e323c7764874b290816ee5bc5030",
+      "ev_1ef2282e6ddf4bed9d275fd5eff44a8b",
+      "ev_b44bc2541dc5478284f87a4777041c78",
+      "ev_c0b6d773d07c4cca8d4c3cc0d4c0289e",
+      "ev_b92fead5e676493ea2cb96d52b439a47"
+    ],
+    "transcript_path": "C:\\Users\\brsth\\.claude\\projects\\P--\\a2263d70-69f5-4208-8a19-4e1f169c167d.jsonl",
+    "message_intent": "instruction",
+    "quality_score": 0.4,
+    "tasks_snapshot": []
+  },
+  "decision_register": [],
+  "evidence_index": [
+    {
+      "id": "ev_8bdb4d3b112f413a9f8ba366f26e83ed",
+      "type": "transcript",
+      "label": "Current compact transcript",
+      "path": "C:\\Users\\brsth\\.claude\\projects\\P--\\a2263d70-69f5-4208-8a19-4e1f169c167d.jsonl",
+      "content_hash": "sha256:cbec57328adc54ce17b717ba2609712a18d98eb12a27812bae43ea94d1a961c6"
+    },
+    {
+      "id": "ev_b977e323c7764874b290816ee5bc5030",
+      "type": "file",
+      "label": "We are having ongoing problems with claude code no.md",
+      "path": "C:\\Users\\brsth\\Downloads\\We are having ongoing problems with claude code no.md",
+      "content_hash": "sha256:771c51d85c7b9734aae9e37333653fc624087ed0d27be0538ffe1634e55226ba"
+    },
+    {
+      "id": "ev_1ef2282e6ddf4bed9d275fd5eff44a8b",
+      "type": "file",
+      "label": "UserPromptSubmit.py",
+      "path": "P:\\.claude\\hooks\\UserPromptSubmit.py",
+      "content_hash": "sha256:c15374d4a2e92acb3f81a8eae0db687ff4ef460760c6a5b76b4d192f5b919adb"
+    },
+    {
+      "id": "ev_b44bc2541dc5478284f87a4777041c78",
+      "type": "file",
+      "label": "skill_enforcer.py",
+      "path": "P:\\.claude\\hooks\\UserPromptSubmit_modules\\skill_enforcer.py",
+      "content_hash": "sha256:6ddbec124ff59348b6b542fa36ae67adc45def2ffb81b19560406ce4984bd665"
+    },
+    {
+      "id": "ev_c0b6d773d07c4cca8d4c3cc0d4c0289e",
+      "type": "file",
+      "label": "registry.py",
+      "path": "P:\\.claude\\hooks\\UserPromptSubmit_modules\\registry.py",
+      "content_hash": "sha256:d5e6c319106110103fc6d3efdce4ab50b7a8bd532146ebbfb1e71ba8452eb86d"
+    },
+    {
+      "id": "ev_b92fead5e676493ea2cb96d52b439a47",
+      "type": "file",
+      "label": "skill_forced_eval.py",
+      "path": "P:\\packages\\skill-guard\\src\\skill_guard\\skill_forced_eval.py",
+      "content_hash": "sha256:e9de0faead2a19a3220b94407558641b57ea879175d24813cf652bf866d07ac5"
+    }
+  ],
+  "checksum": "sha256:6d129a8e190053bb6a0cdc40bb7fda2e7aae829f0b841c942c14a5cdc05b5a64"
+}

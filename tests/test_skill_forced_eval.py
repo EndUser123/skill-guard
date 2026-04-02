@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import time
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -131,7 +132,10 @@ class TestCleanupStaleStateFiles:
     """Tests for _cleanup_stale_state_files."""
 
     def test_cleanup_removes_stale_files(self, tmp_path: Path) -> None:
-        """Should remove state files older than TTL."""
+        """Should remove state files older than TTL (via filesystem mtime)."""
+        # Reset throttle to allow cleanup
+        sfe._last_cleanup_time = 0.0
+        
         state_dir = tmp_path / "state"
         state_dir.mkdir()
 
@@ -141,12 +145,62 @@ class TestCleanupStaleStateFiles:
             "invoked_skills": ["gto"]
         }))
 
+        # Backdate filesystem mtime to 10 minutes ago (TTL = 5 min)
+        old_mtime = time.time() - 600
+        os.utime(stale_file, (old_mtime, old_mtime))
+
         with patch.object(sfe, "_STATE_DIR", state_dir):
             with patch.object(sfe, "_FALLBACK_STATE_DIR", tmp_path / "nonexistent"):
                 removed = sfe._cleanup_stale_state_files()
 
         assert removed >= 1
         assert not stale_file.exists()
+
+    def test_cleanup_preserves_fresh_files(self, tmp_path: Path) -> None:
+        """Should NOT remove files within TTL."""
+        sfe._last_cleanup_time = 0.0
+        
+        state_dir = tmp_path / "state"
+        state_dir.mkdir()
+
+        fresh_file = state_dir / "eval_state_test.json"
+        fresh_file.write_text(json.dumps({
+            "created_at": time.time(),
+            "invoked_skills": ["gto"]
+        }))
+
+        with patch.object(sfe, "_STATE_DIR", state_dir):
+            with patch.object(sfe, "_FALLBACK_STATE_DIR", tmp_path / "nonexistent"):
+                removed = sfe._cleanup_stale_state_files()
+
+        assert removed == 0
+        assert fresh_file.exists()
+
+    def test_cleanup_throttle(self, tmp_path: Path) -> None:
+        """Should not cleanup if within throttle window."""
+        state_dir = tmp_path / "state"
+        state_dir.mkdir()
+
+        stale_file = state_dir / "eval_state_test.json"
+        stale_file.write_text(json.dumps({
+            "created_at": time.time() - 600,
+            "invoked_skills": ["gto"]
+        }))
+        # Backdate filesystem mtime
+        old_mtime = time.time() - 600
+        os.utime(stale_file, (old_mtime, old_mtime))
+
+        # Set _last_cleanup_time to now (within throttle window)
+        sfe._last_cleanup_time = time.time()
+
+        with patch.object(sfe, "_STATE_DIR", state_dir):
+            with patch.object(sfe, "_FALLBACK_STATE_DIR", tmp_path / "nonexistent"):
+                removed = sfe._cleanup_stale_state_files()
+
+        # Should return 0 because within throttle
+        assert removed == 0
+        # File should still exist
+        assert stale_file.exists()
 
 
 class TestClearCaches:
