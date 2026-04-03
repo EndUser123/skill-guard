@@ -884,6 +884,42 @@ def run(input_data: dict) -> dict | None:
         or bool(input_data.get("turn_id"))
     )
 
+    # R1 Consumer: Surface frontmatter_warnings from skill_loaded event.
+    # This reads the warning written by set_skill_loaded() in skill_execution_state.
+    # Advisory-only: warnings are displayed but do not block execution.
+    if LEDGER_AVAILABLE and terminal_id and active_turn_id:
+        try:
+            from __lib.hook_ledger import _load_db_skill_events
+
+            _skill_events = _load_db_skill_events(str(terminal_id))
+            # Find the skill_loaded event for the current turn
+            for _event in reversed(_skill_events):  # Most recent first
+                _payload = _event.get("payload", {})
+                if (
+                    _payload.get("turn_id") == str(active_turn_id)
+                    and _event.get("event_type") == "skill_loaded"
+                ):
+                    _warnings = _payload.get("frontmatter_warnings", [])
+                    if _warnings:
+                        _skill_name = _payload.get("skill", "unknown")
+                        _warn_lines = "\n  ".join(f"* {w}" for w in _warnings)
+                        log(
+                            f"FRONTMATTER WARNINGS for /{_skill_name}: "
+                            f"{_warnings} (advisory, non-blocking)"
+                        )
+                        return {
+                            "block": False,
+                            "reason": (
+                                f"\n⚠️ SKILL FRONTMATTER ADVISORY: /{_skill_name}\n"
+                                f"  {_warn_lines}\n"
+                                f"Fix: Add missing fields to "
+                                f"P:/.claude/skills/{_skill_name}/SKILL.md\n"
+                            ),
+                        }
+                    break  # Found the event for this turn, no need to check older events
+        except Exception:
+            pass  # Ledger read failure — fail open, don't block
+
     # Stateless per-turn check: If slash command was used, verify Skill tool was called
     # AND that the model actually executed something afterwards.
     #
