@@ -146,19 +146,23 @@ class TestValidateSkillFrontmatter:
 class TestSkillLoadedIncludesFrontmatterWarnings:
     """Tests that set_skill_loaded includes frontmatter_warnings in state."""
 
-    def _make_skill_md(self, tmp_path: Path, skill_name: str, frontmatter: str) -> None:
-        """Create a skill directory with SKILL.md."""
-        skill_dir = tmp_path / "skills" / skill_name
-        skill_dir.mkdir(parents=True)
+    def _make_skill_md(self, skill_name: str, frontmatter: str) -> None:
+        """Create a skill directory with SKILL.md at the real path."""
+        skill_dir = _REAL_SKILLS_DIR / skill_name
+        skill_dir.mkdir(parents=True, exist_ok=True)
         skill_file = skill_dir / "SKILL.md"
         skill_file.write_text(f"---\n{frontmatter}\n---\n# Test Skill\n", encoding="utf-8")
+
+    def _cleanup(self, skill_name: str) -> None:
+        """Remove test skill file."""
+        p = _REAL_SKILLS_DIR / skill_name / "SKILL.md"
+        p.unlink(missing_ok=True)
 
     def test_set_skill_loaded_includes_frontmatter_warnings(
         self, tmp_path: Path, monkeypatch: pytest
     ) -> None:
         """set_skill_loaded adds frontmatter_warnings to state when fields are missing."""
         self._make_skill_md(
-            tmp_path,
             "test-frontmatter-warnings",
             "name: test-frontmatter-warnings\ndescription: Test skill",
             # Missing version and enforcement
@@ -172,23 +176,24 @@ class TestSkillLoadedIncludesFrontmatterWarnings:
 
         monkeypatch.setattr(skill_execution_state, "_get_active_turn_scope", lambda: ("test-terminal", "test-turn"))
         monkeypatch.setattr(skill_execution_state, "_get_ledger_module", lambda: type("MockLedger", (), {"append_event": mock_append_event}))
-        monkeypatch.setattr(skill_execution_state, "STATE_DIR", tmp_path)
 
-        skill_execution_state.set_skill_loaded("test-frontmatter-warnings")
+        try:
+            skill_execution_state.set_skill_loaded("test-frontmatter-warnings")
 
-        assert len(captured_states) == 1, f"Expected 1 state, got {len(captured_states)}"
-        state = captured_states[0]
-        assert "frontmatter_warnings" in state, f"frontmatter_warnings not in state: {state.keys()}"
-        assert len(state["frontmatter_warnings"]) >= 2, (
-            f"Expected >=2 warnings (version, enforcement), got: {state['frontmatter_warnings']}"
-        )
+            assert len(captured_states) == 1, f"Expected 1 state, got {len(captured_states)}"
+            state = captured_states[0]
+            assert "frontmatter_warnings" in state, f"frontmatter_warnings not in state: {state.keys()}"
+            assert len(state["frontmatter_warnings"]) >= 2, (
+                f"Expected >=2 warnings (version, enforcement), got: {state['frontmatter_warnings']}"
+            )
+        finally:
+            self._cleanup("test-frontmatter-warnings")
 
     def test_set_skill_loaded_no_warnings_for_complete_frontmatter(
         self, tmp_path: Path, monkeypatch: pytest
     ) -> None:
         """set_skill_loaded has empty frontmatter_warnings when all fields present."""
         self._make_skill_md(
-            tmp_path,
             "test-complete-skill",
             "name: test-complete-skill\ndescription: Complete\nversion: '1.0.0'\nenforcement: strict\ncategory: dev",
         )
@@ -201,10 +206,12 @@ class TestSkillLoadedIncludesFrontmatterWarnings:
 
         monkeypatch.setattr(skill_execution_state, "_get_active_turn_scope", lambda: ("test-terminal", "test-turn"))
         monkeypatch.setattr(skill_execution_state, "_get_ledger_module", lambda: type("MockLedger", (), {"append_event": mock_append_event}))
-        monkeypatch.setattr(skill_execution_state, "STATE_DIR", tmp_path)
 
-        skill_execution_state.set_skill_loaded("test-complete-skill")
+        try:
+            skill_execution_state.set_skill_loaded("test-complete-skill")
 
-        assert len(captured_states) == 1
-        state = captured_states[0]
-        assert state.get("frontmatter_warnings") == [], f"Expected no warnings, got: {state.get('frontmatter_warnings')}"
+            assert len(captured_states) == 1
+            state = captured_states[0]
+            assert state.get("frontmatter_warnings") == [], f"Expected no warnings, got: {state.get('frontmatter_warnings')}"
+        finally:
+            self._cleanup("test-complete-skill")
