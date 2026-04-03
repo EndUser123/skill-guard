@@ -1,0 +1,27 @@
+{
+  "findings": [
+    {
+      "id": "TEST-COVERAGE-01",
+      "severity": "HIGH",
+      "title": "Path mismatch causes test/implementation divergence",
+      "description": "_load_skill_frontmatter reads P:/.claude/skills/{skill}/SKILL.md while _validate_skill_frontmatter reads STATE_DIR/skills/{skill}/SKILL.md. Tests patch STATE_DIR but not hardcoded P:/.claude/skills.",
+      "evidence": {
+        "code_excerpt": "skill_dir = Path(P:/.claude/skills) vs skill_dir = STATE_DIR / skills",
+        "file_path": "P:/packages/skill-guard/src/skill_guard/skill_execution_state.py",
+        "line_number": "186, 241",
+        "function_name": "_load_skill_frontmatter / _validate_skill_frontmatter",
+        "proof": "Tests only test _validate_skill_frontmatter in isolation. Never test full set_skill_loaded() flow."
+      },
+      "impact": {
+        "business_consequence": "Validation uses wrong path at runtime, bypassing checks",
+        "customer_visible": false
+      },
+      "recommendation": {
+        "action": "Add integration test patching both STATE_DIR and P:/.claude/skills paths",
+        "code_fix": "Test set_skill_loaded() with both paths mocked"
+      },
+      "confidence": "high"
+    }
+  ],
+  "status": "SUCCESS"
+}
