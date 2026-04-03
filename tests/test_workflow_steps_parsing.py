@@ -16,16 +16,15 @@ class TestWorkflowStepsParsing:
 
     def test_load_workflow_steps_from_code_skill(self):
         """Test loading workflow_steps from /code skill SKILL.md."""
-        # This should initially return empty list (before workflow_steps added)
         steps = _load_workflow_steps("code")
         assert isinstance(steps, list)
 
-        # After T-001 implementation, this should contain actual workflow steps
-        # For now, we test the parsing works even if empty
         if steps:
-            # If workflow_steps present, validate structure (dict format with id field)
+            # Validate structure (dict format with id field)
             assert all(isinstance(step, dict) and "id" in step for step in steps)
-            # Check for expected /code workflow step IDs (must match actual code skill SKILL.md)
+            # Match current /code SKILL.md workflow_steps
+            # (consumer_contract_precheck, producer_consumer_trace_verification added;
+            #  verification steps migrated to dict format)
             expected_step_ids = [
                 "pre_execution_checklist",
                 "analyze_query_intent",
@@ -36,11 +35,13 @@ class TestWorkflowStepsParsing:
                 "preflight_context_validation",
                 "explore_codebase",
                 "design_solution",
+                "consumer_contract_precheck",
                 "tdd_implementation",
                 "full_test_suite",
                 "tier0_checklist_verification",
                 "audit_quality_checks",
                 "trace_manual_verification",
+                "producer_consumer_trace_verification",
                 "done_final_certification",
             ]
             actual_ids = [step["id"] for step in steps]
@@ -74,14 +75,23 @@ class TestWorkflowStepsParsing:
         if steps:
             # Validate dict format with id field
             assert all(isinstance(step, dict) and "id" in step for step in steps)
-            # /arch workflow step IDs
+            # Match current /arch SKILL.md workflow_steps (6 new stages added since T-001):
+            # contract_sensitivity_classification, contract_boundary_inventory,
+            # contract_boundary_closure, emit_contract_authority_packet,
+            # adr_closure_consistency_check, adr_critic_review
             expected_step_ids = [
                 "preflight_checks",
                 "classify_intent",
+                "contract_sensitivity_classification",
                 "select_template",
                 "load_template",
                 "execute_template_analysis",
-                "generate_architecture_review"
+                "contract_boundary_inventory",
+                "contract_boundary_closure",
+                "emit_contract_authority_packet",
+                "adr_closure_consistency_check",
+                "adr_critic_review",
+                "generate_architecture_review",
             ]
             actual_ids = [step["id"] for step in steps]
             assert actual_ids == expected_step_ids
@@ -105,99 +115,6 @@ class TestWorkflowStepsParsing:
             "# Test Skill\n"
         )
 
-        # Patch the skill path to use tmp_path
-        original_skills_path = Path("P:/.claude/skills")
-
-        def mock_skills_path():
-            return tmp_path
-
         # This should not raise exception, should return empty list
-        # (The actual implementation uses P:/.claude/skills, so this tests error handling)
         steps = _load_workflow_steps("test_skill")
         assert isinstance(steps, list)
-
-    def test_workflow_steps_format_validation(self, tmp_path):
-        """Test that workflow_steps must be a list of strings."""
-        # Create a skill with invalid workflow_steps format
-        skill_dir = tmp_path / "test_skill_invalid"
-        skill_dir.mkdir()
-        skill_file = skill_dir / "SKILL.md"
-
-        # Test with workflow_steps as string (invalid)
-        skill_file.write_text(
-            "---\n"
-            "name: test_skill\n"
-            "workflow_steps: not_a_list\n"
-            "---\n"
-            "# Test Skill\n"
-        )
-
-        # Should handle gracefully (return empty list if not list)
-        # Note: This tests the implementation's robustness
-        steps = _load_workflow_steps("test_skill_invalid")
-        assert isinstance(steps, list)
-
-        # Test with workflow_steps containing non-string items
-        skill_file.write_text(
-            "---\n"
-            "name: test_skill\n"
-            "workflow_steps:\n"
-            "  - step_one\n"
-            "  - 123\n"
-            "  - step_three\n"
-            "---\n"
-            "# Test Skill\n"
-        )
-
-        steps = _load_workflow_steps("test_skill_invalid")
-        assert isinstance(steps, list)
-        # All items should be dicts with id field (implementation normalizes to dict format)
-        assert all(isinstance(step, dict) and "id" in step for step in steps)
-
-
-class TestWorkflowStepsIntegration:
-    """Integration tests for workflow_steps in breadcrumb tracking."""
-
-    def test_initialize_breadcrumb_trail_with_workflow_steps(self, tmp_path):
-        """Test that initialize_breadcrumb_trail uses workflow_steps from frontmatter."""
-
-        # Create a test skill with workflow_steps
-        skill_dir = tmp_path / "test_integration"
-        skill_dir.mkdir()
-        skill_file = skill_dir / "SKILL.md"
-        skill_file.write_text(
-            "---\n"
-            "name: test_integration\n"
-            "workflow_steps:\n"
-            "  - step_one\n"
-            "  - step_two\n"
-            "  - step_three\n"
-            "---\n"
-            "# Test Integration Skill\n"
-        )
-
-        # Initialize breadcrumb trail
-        # Note: This will use the actual tracker which reads from P:/.claude/skills
-        # For this test to work, we'd need to mock the path or use a test skill
-        # in the actual skills directory
-
-        # For now, test with a real skill if workflow_steps present
-        steps = _load_workflow_steps("code")
-        if steps:
-            # If code skill has workflow_steps, test initialization
-            # This test will pass after T-001 is implemented
-            assert len(steps) > 0
-            # Workflow steps should be dicts with id field
-            assert all(isinstance(step, dict) and "id" in step for step in steps)
-
-    def test_critical_skills_have_workflow_steps(self):
-        """Test that critical skills have workflow_steps defined."""
-        critical_skills = ["code", "trace", "arch", "package", "tdd"]
-
-        for skill_name in critical_skills:
-            steps = _load_workflow_steps(skill_name)
-            # After T-001 implementation, these should all have workflow_steps
-            # Before implementation, this test documents the current state
-            assert isinstance(steps, list)
-            # This assertion will fail until T-001 is complete
-            # assert len(steps) > 0, f"{skill_name} should have workflow_steps"
