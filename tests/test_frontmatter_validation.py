@@ -10,13 +10,17 @@ import pytest
 from skill_guard import skill_execution_state
 
 
+# Real skills directory (the path _validate_skill_frontmatter now uses)
+_REAL_SKILLS_DIR = Path("P:/.claude/skills")
+
+
 class TestValidateSkillFrontmatter:
     """Tests for _validate_skill_frontmatter function."""
 
-    def _make_skill_md(self, tmp_path: Path, frontmatter: str) -> Path:
-        """Create a skill directory with SKILL.md for testing."""
-        skill_dir = tmp_path / "skills" / "test-skill"
-        skill_dir.mkdir(parents=True)
+    def _make_skill_md(self, skill_name: str, frontmatter: str) -> Path:
+        """Create a skill directory with SKILL.md at the real path."""
+        skill_dir = _REAL_SKILLS_DIR / skill_name
+        skill_dir.mkdir(parents=True, exist_ok=True)
         skill_file = skill_dir / "SKILL.md"
         skill_file.write_text(f"---\n{frontmatter}\n---\n# Test Skill\n", encoding="utf-8")
         return skill_file
@@ -24,95 +28,119 @@ class TestValidateSkillFrontmatter:
     def test_validate_returns_empty_for_complete_frontmatter(self, tmp_path: Path) -> None:
         """Complete frontmatter with all required fields returns no warnings."""
         self._make_skill_md(
-            tmp_path,
+            "test-skill",
             "name: test-skill\ndescription: A test skill\nversion: '1.0.0'\nenforcement: strict\ncategory: development",
         )
-        with patch.object(skill_execution_state, "STATE_DIR", tmp_path):
+        try:
             warnings = skill_execution_state._validate_skill_frontmatter("test-skill")
-        assert warnings == [], f"Expected no warnings, got: {warnings}"
+            assert warnings == [], f"Expected no warnings, got: {warnings}"
+        finally:
+            (_REAL_SKILLS_DIR / "test-skill").mkdir(exist_ok=True)
+            ( _REAL_SKILLS_DIR / "test-skill" / "SKILL.md").unlink(missing_ok=True)
 
     def test_validate_warns_missing_enforcement(self, tmp_path: Path) -> None:
         """Missing enforcement field produces a warning."""
         self._make_skill_md(
-            tmp_path,
+            "test-skill",
             "name: test-skill\ndescription: A test skill\nversion: '1.0.0'\ncategory: development",
         )
-        with patch.object(skill_execution_state, "STATE_DIR", tmp_path):
+        try:
             warnings = skill_execution_state._validate_skill_frontmatter("test-skill")
-        enforcement_warnings = [w for w in warnings if "enforcement" in w]
-        assert len(enforcement_warnings) == 1, f"Expected 1 enforcement warning, got: {warnings}"
+            enforcement_warnings = [w for w in warnings if "enforcement" in w]
+            assert len(enforcement_warnings) == 1, f"Expected 1 enforcement warning, got: {warnings}"
+        finally:
+            (_REAL_SKILLS_DIR / "test-skill").mkdir(exist_ok=True)
+            ( _REAL_SKILLS_DIR / "test-skill" / "SKILL.md").unlink(missing_ok=True)
 
     def test_validate_warns_missing_name(self, tmp_path: Path) -> None:
         """Missing name field produces a warning."""
         self._make_skill_md(
-            tmp_path,
+            "test-skill",
             "description: A test skill\nversion: '1.0.0'\nenforcement: strict\ncategory: development",
         )
-        with patch.object(skill_execution_state, "STATE_DIR", tmp_path):
+        try:
             warnings = skill_execution_state._validate_skill_frontmatter("test-skill")
-        name_warnings = [w for w in warnings if "name" in w]
-        assert len(name_warnings) == 1, f"Expected 1 name warning, got: {warnings}"
+            name_warnings = [w for w in warnings if "name" in w]
+            assert len(name_warnings) == 1, f"Expected 1 name warning, got: {warnings}"
+        finally:
+            (_REAL_SKILLS_DIR / "test-skill").mkdir(exist_ok=True)
+            ( _REAL_SKILLS_DIR / "test-skill" / "SKILL.md").unlink(missing_ok=True)
 
     def test_validate_warns_missing_description(self, tmp_path: Path) -> None:
         """Missing description field produces a warning."""
         self._make_skill_md(
-            tmp_path,
+            "test-skill",
             "name: test-skill\nversion: '1.0.0'\nenforcement: strict\ncategory: development",
         )
-        with patch.object(skill_execution_state, "STATE_DIR", tmp_path):
+        try:
             warnings = skill_execution_state._validate_skill_frontmatter("test-skill")
-        desc_warnings = [w for w in warnings if "description" in w]
-        assert len(desc_warnings) == 1, f"Expected 1 description warning, got: {warnings}"
+            desc_warnings = [w for w in warnings if "description" in w]
+            assert len(desc_warnings) == 1, f"Expected 1 description warning, got: {warnings}"
+        finally:
+            (_REAL_SKILLS_DIR / "test-skill").mkdir(exist_ok=True)
+            ( _REAL_SKILLS_DIR / "test-skill" / "SKILL.md").unlink(missing_ok=True)
 
     def test_validate_warns_missing_version(self, tmp_path: Path) -> None:
         """Missing version field produces a warning."""
         self._make_skill_md(
-            tmp_path,
+            "test-skill",
             "name: test-skill\ndescription: A test skill\nenforcement: strict\ncategory: development",
         )
-        with patch.object(skill_execution_state, "STATE_DIR", tmp_path):
+        try:
             warnings = skill_execution_state._validate_skill_frontmatter("test-skill")
-        version_warnings = [w for w in warnings if "version" in w]
-        assert len(version_warnings) == 1, f"Expected 1 version warning, got: {warnings}"
+            version_warnings = [w for w in warnings if "version" in w]
+            assert len(version_warnings) == 1, f"Expected 1 version warning, got: {warnings}"
+        finally:
+            (_REAL_SKILLS_DIR / "test-skill").mkdir(exist_ok=True)
+            ( _REAL_SKILLS_DIR / "test-skill" / "SKILL.md").unlink(missing_ok=True)
 
     def test_validate_warns_missing_multiple_fields(self, tmp_path: Path) -> None:
         """Multiple missing fields produce multiple warnings."""
-        self._make_skill_md(tmp_path, "name: test-skill\ndescription: A test skill")
-        with patch.object(skill_execution_state, "STATE_DIR", tmp_path):
+        self._make_skill_md("test-skill", "name: test-skill\ndescription: A test skill")
+        try:
             warnings = skill_execution_state._validate_skill_frontmatter("test-skill")
-        assert len(warnings) >= 2, f"Expected >=2 warnings for missing version/enforcement, got: {warnings}"
+            assert len(warnings) >= 2, f"Expected >=2 warnings for missing version/enforcement, got: {warnings}"
+        finally:
+            (_REAL_SKILLS_DIR / "test-skill").mkdir(exist_ok=True)
+            ( _REAL_SKILLS_DIR / "test-skill" / "SKILL.md").unlink(missing_ok=True)
 
     def test_validate_returns_empty_for_nonexistent_skill(self, tmp_path: Path) -> None:
         """Nonexistent skill returns empty list (no error)."""
-        with patch.object(skill_execution_state, "STATE_DIR", tmp_path):
-            warnings = skill_execution_state._validate_skill_frontmatter("nonexistent-skill")
+        warnings = skill_execution_state._validate_skill_frontmatter("nonexistent-skill-xyz")
         assert warnings == [], f"Expected no warnings for nonexistent skill, got: {warnings}"
 
     def test_validate_invalid_enforcement_value(self, tmp_path: Path) -> None:
         """Invalid enforcement value produces a warning."""
         self._make_skill_md(
-            tmp_path,
+            "test-skill",
             "name: test-skill\ndescription: A test skill\nversion: '1.0.0'\nenforcement: invalid_value\ncategory: development",
         )
-        with patch.object(skill_execution_state, "STATE_DIR", tmp_path):
+        try:
             warnings = skill_execution_state._validate_skill_frontmatter("test-skill")
-        enforcement_warnings = [w for w in warnings if "enforcement" in w]
-        assert len(enforcement_warnings) == 1, f"Expected 1 enforcement warning, got: {warnings}"
+            enforcement_warnings = [w for w in warnings if "enforcement" in w]
+            assert len(enforcement_warnings) == 1, f"Expected 1 enforcement warning, got: {warnings}"
+        finally:
+            (_REAL_SKILLS_DIR / "test-skill").mkdir(exist_ok=True)
+            ( _REAL_SKILLS_DIR / "test-skill" / "SKILL.md").unlink(missing_ok=True)
 
     def test_validate_accepts_all_valid_enforcement_values(self, tmp_path: Path) -> None:
         """All valid enforcement values (strict, advisory, none) produce no warning."""
         for tier in ("strict", "advisory", "none"):
-            skill_dir = tmp_path / "skills" / f"test-skill-{tier}"
-            skill_dir.mkdir(parents=True)
+            skill_dir = _REAL_SKILLS_DIR / f"test-skill-{tier}"
+            skill_dir.mkdir(parents=True, exist_ok=True)
             skill_file = skill_dir / "SKILL.md"
             skill_file.write_text(
                 f"---\nname: test-skill-{tier}\ndescription: Test\nversion: '1.0.0'\nenforcement: {tier}\ncategory: dev\n---\n# Test\n",
                 encoding="utf-8",
             )
-        for tier in ("strict", "advisory", "none"):
-            with patch.object(skill_execution_state, "STATE_DIR", tmp_path):
+        try:
+            for tier in ("strict", "advisory", "none"):
                 warnings = skill_execution_state._validate_skill_frontmatter(f"test-skill-{tier}")
-            assert warnings == [], f"Expected no warnings for enforcement={tier}, got: {warnings}"
+                assert warnings == [], f"Expected no warnings for enforcement={tier}, got: {warnings}"
+        finally:
+            for tier in ("strict", "advisory", "none"):
+                d = _REAL_SKILLS_DIR / f"test-skill-{tier}"
+                (d / "SKILL.md").unlink(missing_ok=True)
 
 
 class TestSkillLoadedIncludesFrontmatterWarnings:
