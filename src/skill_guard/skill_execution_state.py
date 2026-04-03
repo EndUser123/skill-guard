@@ -355,12 +355,15 @@ def set_skill_loaded(
     # This makes the system multi-terminal safe and immune to stale data.
     # Knowledge skills with missing frontmatter: no tracking needed.
     # Knowledge skills with complete frontmatter: track anyway (complete metadata).
+    # R3 FIX: When frontmatter_warnings is non-empty, always write state so the
+    # consumer can display the warnings — even for pure knowledge skills.
     if not required_tools and not allowed_first_tools:
         # No execution requirements and no first-tool coherence.
         # Skip tracking for pure knowledge skills (no metadata at all).
         # We use frontmatter as the signal: if _load_skill_frontmatter returned
         # an empty dict (no file exists at P:/.claude/skills/), skip state.
         # This avoids redundant file I/O — we already loaded frontmatter above.
+        # R3: frontmatter_warnings non-empty always wins — warnings must be recorded.
         if not frontmatter_warnings and not frontmatter:
             return  # Truly a knowledge skill with no metadata - no state needed
 
