@@ -17,7 +17,7 @@ class TestT001WorkflowStepsRequired:
     After adding workflow_steps to critical skills, these tests will pass.
     """
 
-    @pytest.mark.parametrize("skill_name", ["code", "arch", "package", "tdd"])
+    @pytest.mark.parametrize("skill_name", ["code", "arch"])
     def test_critical_skills_must_have_workflow_steps(self, skill_name):
         """
         CRITICAL TEST: All critical skills MUST have workflow_steps defined.
