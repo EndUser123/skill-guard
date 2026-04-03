@@ -1,0 +1,115 @@
+{
+  "resume_snapshot": {
+    "schema_version": 2,
+    "snapshot_id": "17b32511-1103-43f7-af97-9bae01bcf1f4",
+    "terminal_id": "console_270e907c-8e83-4e0e-a8ee-51645f7f8436",
+    "source_session_id": "3b0e23cd-73c5-4a52-a69a-434741f28000",
+    "created_at": "2026-04-03T21:09:26.325925+00:00",
+    "expires_at": "2026-04-03T21:29:26.325925+00:00",
+    "status": "pending",
+    "goal": "hopefully you still know what the RNS shoudl look like.",
+    "current_task": "hopefully you still know what the RNS shoudl look like.",
+    "progress_percent": 65,
+    "progress_state": "in_progress",
+    "blockers": [],
+    "active_files": [
+      "P:/packages/skill-guard/pyproject.toml",
+      "P:/packages/skill-guard/src/skill_guard/__init__.py",
+      "P:/packages/skill-guard/src/skill_guard/skill_auto_discovery.py",
+      "P:/packages/skill-guard/src/skill_guard/breadcrumb/enforcement.py",
+      "P:/.claude/hooks/posttooluse/enforcement_tier_validator.py",
+      "P:/.claude/hooks/posttooluse/agent_contract_validator.py",
+      "P:/.claude/hooks/posttooluse/__init__.py",
+      "P:/packages/skill-guard/src/skill_guard/skill_execution_state.py",
+      "P:/.claude/skills/critique/SKILL.md",
+      "P:/packages/skill-guard/tests/test_skill_execution_state.py"
+    ],
+    "pending_operations": [
+      {
+        "type": "investigation",
+        "target": "files: P:/packages/skill-guard/**/*",
+        "state": "in_progress"
+      },
+      {
+        "type": "investigation",
+        "target": "files: P:/packages/skill-guard/src/**/*.py",
+        "state": "in_progress"
+      },
+      {
+        "type": "read",
+        "target": "P:/packages/skill-guard/pyproject.toml",
+        "state": "in_progress"
+      },
+      {
+        "type": "read",
+        "target": "P:/packages/skill-guard/src/skill_guard/__init__.py",
+        "state": "in_progress"
+      },
+      {
+        "type": "investigation",
+        "target": "files: P:/packages/skill-guard/src/skill_guard/**/skill*f",
+        "state": "in_progress"
+      }
+    ],
+    "next_step": "Resume investigation on files: P:/packages/skill-guard/**/*.",
+    "decision_refs": [],
+    "evidence_refs": [
+      "ev_98eca0c4e38d4b5f9cd2fe45cf4a63fb",
+      "ev_b586d4ad5c954060924b978bfbcf17ef",
+      "ev_cd52ddbbb003483f86e40e98233bf4d1",
+      "ev_0365614b41384d93b8fea9096998e73f",
+      "ev_5081b5090842435cacbf2545f33ad70a",
+      "ev_9a6ef93433384ace8cbfae5bc8338344"
+    ],
+    "transcript_path": "C:\\Users\\brsth\\.claude\\projects\\P--\\3b0e23cd-73c5-4a52-a69a-434741f28000.jsonl",
+    "message_intent": "instruction",
+    "quality_score": 0.4,
+    "tasks_snapshot": []
+  },
+  "decision_register": [],
+  "evidence_index": [
+    {
+      "id": "ev_98eca0c4e38d4b5f9cd2fe45cf4a63fb",
+      "type": "transcript",
+      "label": "Current compact transcript",
+      "path": "C:\\Users\\brsth\\.claude\\projects\\P--\\3b0e23cd-73c5-4a52-a69a-434741f28000.jsonl",
+      "content_hash": "sha256:9ff8bfd492f46733f1dfb5ca577c6cd08e30af7d778188c42fad0b415a707d08"
+    },
+    {
+      "id": "ev_b586d4ad5c954060924b978bfbcf17ef",
+      "type": "file",
+      "label": "pyproject.toml",
+      "path": "P:\\packages\\skill-guard\\pyproject.toml",
+      "content_hash": "sha256:5ad547ea3250f2f1f3088f5ad8599624e309283e09148abadb123528473f4b8a"
+    },
+    {
+      "id": "ev_cd52ddbbb003483f86e40e98233bf4d1",
+      "type": "file",
+      "label": "__init__.py",
+      "path": "P:\\packages\\skill-guard\\src\\skill_guard\\__init__.py",
+      "content_hash": "sha256:fd5366133c6fc5c8ee8b0dae81d75781caf1e90634b336e3e8012fc2dc690a34"
+    },
+    {
+      "id": "ev_0365614b41384d93b8fea9096998e73f",
+      "type": "file",
+      "label": "skill_auto_discovery.py",
+      "path": "P:\\packages\\skill-guard\\src\\skill_guard\\skill_auto_discovery.py",
+      "content_hash": "sha256:3b884cba8568c28f67b9937baed62080ed409d6a3ae93faa086dd27d964ea80a"
+    },
+    {
+      "id": "ev_5081b5090842435cacbf2545f33ad70a",
+      "type": "file",
+      "label": "enforcement.py",
+      "path": "P:\\packages\\skill-guard\\src\\skill_guard\\breadcrumb\\enforcement.py",
+      "content_hash": "sha256:ca8ef6a5ee2456ebf72a4d63874c162e222e3b3aadfafbdb07d64bb563633176"
+    },
+    {
+      "id": "ev_9a6ef93433384ace8cbfae5bc8338344",
+      "type": "file",
+      "label": "enforcement_tier_validator.py",
+      "path": "P:\\.claude\\hooks\\posttooluse\\enforcement_tier_validator.py",
+      "content_hash": "sha256:c0532589ac76ac4bac1d7c6d48b9f96c65babd80468535cafbd33abbddcce37c"
+    }
+  ],
+  "checksum": "sha256:3258d8301a89dbfa74ab462030bfceab24da20dd8546f4fd629b6c48a9d64d74"
+}
