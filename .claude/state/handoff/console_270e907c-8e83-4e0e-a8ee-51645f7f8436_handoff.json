@@ -1,14 +1,14 @@
 {
   "resume_snapshot": {
     "schema_version": 2,
-    "snapshot_id": "41d31395-8e46-4a25-8879-415a40d6e7e9",
+    "snapshot_id": "411adc33-9185-40b3-82b1-2ea13fee2e75",
     "terminal_id": "console_270e907c-8e83-4e0e-a8ee-51645f7f8436",
     "source_session_id": "3b0e23cd-73c5-4a52-a69a-434741f28000",
-    "created_at": "2026-04-03T23:27:33.138464+00:00",
-    "expires_at": "2026-04-03T23:47:33.138464+00:00",
+    "created_at": "2026-04-04T04:40:41.170987+00:00",
+    "expires_at": "2026-04-04T05:00:41.170987+00:00",
     "status": "pending",
-    "goal": "recommendation?",
-    "current_task": "recommendation?",
+    "goal": "you choose",
+    "current_task": "you choose",
     "progress_percent": 65,
     "progress_state": "in_progress",
     "blockers": [],
@@ -52,90 +52,64 @@
       }
     ],
     "next_step": "Resume investigation on files: P:/packages/skill-guard/**/*.",
-    "decision_refs": [
-      "dec_bb30d9e66e61494bb67d59da3e43eaf0",
-      "dec_271b4e51b6b14eecb4e411715f92b5e3"
-    ],
+    "decision_refs": [],
     "evidence_refs": [
-      "ev_8812a8646f7f43e39f6f045f9e69933e",
-      "ev_dace51fe25034d05af8e1f2e900e3d5e",
-      "ev_a826780e19cc4c2c80f27fdaea1804f5",
-      "ev_b3e5dd21648e451d92705a1b6a21c676",
-      "ev_4b10140019c74db1bbd503431097f96b",
-      "ev_fe550ed968f24f3d986bf8d9888ff75c"
+      "ev_e0febce7ac2b4ad984a87c949c3cede8",
+      "ev_c05bd06d6dd74a3b94672452c5e66ef1",
+      "ev_bdbf8d28d5234b1ca511970560399696",
+      "ev_4a4e4ecc6cac4f9b9e5f1db5aa274d89",
+      "ev_325fc375de444be7a81ec8d21d629711",
+      "ev_8b62bbed54e44ae0b5d6e2f43b3b5e69"
     ],
     "transcript_path": "C:\\Users\\brsth\\.claude\\projects\\P--\\3b0e23cd-73c5-4a52-a69a-434741f28000.jsonl",
-    "message_intent": "question",
+    "message_intent": "instruction",
     "quality_score": 0.4,
     "tasks_snapshot": []
   },
-  "decision_register": [
-    {
-      "id": "dec_bb30d9e66e61494bb67d59da3e43eaf0",
-      "kind": "constraint",
-      "summary": "[SEQ] [ASUM] [ANCH] [INV] **Assumption Check:** P1 for skill-guard = only P1-1 (arch-test drift). P1-2 (sessions.json TOCTOU) and P1-3 (terminal_id divergence) are critique/gto problems, not skill-guard. **Outcome Anchor:** Update `test_workflow_steps_parsing.py` and `test_arch_skill.py` assertions to match current `/arch` SKILL.md stage list. **Inversion Risk:** Adding stages to tests that don't exist in SKILL.md = false pass. Need to read actual SKILL.md first.",
-      "details": "[SEQ] [ASUM] [ANCH] [INV] **Assumption Check:** P1 for skill-guard = only P1-1 (arch-test drift). P1-2 (sessions.json TOCTOU) and P1-3 (terminal_id divergence) are critique/gto problems, not skill-guard. **Outcome Anchor:** Update `test_workflow_steps_parsing.py` and `test_arch_skill.py` assertions to match current `/arch` SKILL.md stage list. **Inversion Risk:** Adding stages to tests that don't exist in SKILL.md = false pass. Need to read actual SKILL.md first.",
-      "priority": "high",
-      "applies_when": "Continue the current task after compact.",
-      "source_refs": [
-        "ev_8812a8646f7f43e39f6f045f9e69933e"
-      ]
-    },
-    {
-      "id": "dec_271b4e51b6b14eecb4e411715f92b5e3",
-      "kind": "constraint",
-      "summary": "`package` and `tdd` don't have workflow_steps. Narrow the parametrize to skills that actually have them:",
-      "details": "`package` and `tdd` don't have workflow_steps. Narrow the parametrize to skills that actually have them:",
-      "priority": "high",
-      "applies_when": "Continue the current task after compact.",
-      "source_refs": [
-        "ev_8812a8646f7f43e39f6f045f9e69933e"
-      ]
-    }
-  ],
+  "decision_register": [],
   "evidence_index": [
     {
-      "id": "ev_8812a8646f7f43e39f6f045f9e69933e",
+      "id": "ev_e0febce7ac2b4ad984a87c949c3cede8",
       "type": "transcript",
       "label": "Current compact transcript",
       "path": "C:\\Users\\brsth\\.claude\\projects\\P--\\3b0e23cd-73c5-4a52-a69a-434741f28000.jsonl",
-      "content_hash": "sha256:3e758feace3e0df2fe2082f5368a44d3eac794fad3d9c275e43cfc6c19df9d11"
+      "content_hash": "sha256:e351511357765f81e5db316cd0d447257ca7a3181ab3298d65dde11fd12a6be3"
     },
     {
-      "id": "ev_dace51fe25034d05af8e1f2e900e3d5e",
+      "id": "ev_c05bd06d6dd74a3b94672452c5e66ef1",
       "type": "file",
       "label": "pyproject.toml",
       "path": "P:\\packages\\skill-guard\\pyproject.toml",
       "content_hash": "sha256:5ad547ea3250f2f1f3088f5ad8599624e309283e09148abadb123528473f4b8a"
     },
     {
-      "id": "ev_a826780e19cc4c2c80f27fdaea1804f5",
+      "id": "ev_bdbf8d28d5234b1ca511970560399696",
       "type": "file",
       "label": "__init__.py",
       "path": "P:\\packages\\skill-guard\\src\\skill_guard\\__init__.py",
       "content_hash": "sha256:fd5366133c6fc5c8ee8b0dae81d75781caf1e90634b336e3e8012fc2dc690a34"
     },
     {
-      "id": "ev_b3e5dd21648e451d92705a1b6a21c676",
+      "id": "ev_4a4e4ecc6cac4f9b9e5f1db5aa274d89",
       "type": "file",
       "label": "skill_auto_discovery.py",
       "path": "P:\\packages\\skill-guard\\src\\skill_guard\\skill_auto_discovery.py",
       "content_hash": "sha256:3b884cba8568c28f67b9937baed62080ed409d6a3ae93faa086dd27d964ea80a"
     },
     {
-      "id": "ev_4b10140019c74db1bbd503431097f96b",
+      "id": "ev_325fc375de444be7a81ec8d21d629711",
       "type": "file",
       "label": "enforcement.py",
       "path": "P:\\packages\\skill-guard\\src\\skill_guard\\breadcrumb\\enforcement.py",
       "content_hash": "sha256:ca8ef6a5ee2456ebf72a4d63874c162e222e3b3aadfafbdb07d64bb563633176"
     },
     {
-      "id": "ev_fe550ed968f24f3d986bf8d9888ff75c",
+      "id": "ev_8b62bbed54e44ae0b5d6e2f43b3b5e69",
       "type": "file",
       "label": "enforcement_tier_validator.py",
       "path": "P:\\.claude\\hooks\\posttooluse\\enforcement_tier_validator.py",
       "content_hash": "sha256:c0532589ac76ac4bac1d7c6d48b9f96c65babd80468535cafbd33abbddcce37c"
     }
   ],
-  "checksum": "sha256:e9622de810a9d23fda1454641412cf11691efae98a52c43291ca378f47902004"
+  "checksum": "sha256:89b6e7cd1a572c43925d7dfeed088d412c9626a6c49afb206c89aa5cd4f9a6f4"
 }
