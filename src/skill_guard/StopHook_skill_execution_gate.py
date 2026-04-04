@@ -1203,8 +1203,10 @@ def run(input_data: dict) -> dict | None:
     if gov_result and not gov_result.get("allow", True):
         return {"block": True, "reason": gov_result["reason"]}
 
-    # Mid-sentence slash: if prompt doesn't start with /, don't block. The LLM's
-    # semantic judgment determines if it's an invocation or mention. Trust the LLM.
+    # Mid-sentence slash: if prompt doesn't start with /, don't block. Let the LLM
+    # use semantic judgment to determine if it's an invocation or mention.
+    if user_prompt and not user_prompt.strip().startswith("/"):
+        return None
 
     state = input_data.get("skill_state") or _read_state()
     if not isinstance(state, dict):
