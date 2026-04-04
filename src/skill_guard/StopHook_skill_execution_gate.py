@@ -1205,12 +1205,9 @@ def run(input_data: dict) -> dict | None:
 
     # Mid-sentence slash discussion: if prompt doesn't start with /, the user is
     # discussing or asking about a skill, not invoking it. Clear stale state to avoid
-    # false enforcement.
+    # false enforcement. Rely on LLM semantic judgment for disambiguation.
     if user_prompt and not user_prompt.strip().startswith("/"):
-        # Check if slash appears mid-prompt (e.g. "does /rca automatically look for logs")
-        # If so, user is talking about the skill, not invoking it.
-        if "/" in user_prompt:
-            _clear_state()
+        _clear_state()
         return None
 
     state = input_data.get("skill_state") or _read_state()
