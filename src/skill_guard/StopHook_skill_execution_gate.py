@@ -944,6 +944,16 @@ def run(input_data: dict) -> dict | None:
     }
     _HELP_FLAGS = frozenset({"--list", "--help", "-h", "--flags", "--usage"})
 
+    def _workflow_block(reason: str) -> dict:
+        return {
+            "block": True,
+            "reason": (
+                "[WORKFLOW_BLOCK_NOT_HOOK_CRASH]\n"
+                "This is an intentional slash-command workflow block, not a broken hook.\n\n"
+                f"{reason}"
+            ),
+        }
+
     def _is_help_only_request(prompt: str) -> bool:
         """True when the user's args are exclusively help flags — prose is the correct response."""
         import re as _re
@@ -1064,26 +1074,25 @@ def run(input_data: dict) -> dict | None:
                 pass  # Ledger fallback — fail open
 
         # Slash command invoked but Skill tool never called.
-        # Advisory-only: warn but allow the response through to avoid dead-end blocks.
-        log(f"SLASH COMMAND ADVISORY: /{slash_cmd} - tools used: {tools_used_this_turn}")
+        # Block unless the hook system itself prevented all tool attempts.
+        log(f"SLASH COMMAND BLOCK: /{slash_cmd} - tools used without Skill: {tools_used_this_turn}")
         log_event(
             "slash_command_ignored",
             {
                 "skill": slash_cmd,
                 "user_prompt": (user_prompt or "")[:200],
                 "tools_used": tools_used_this_turn,
-                "enforcement": "advisory",
+                "enforcement": "block",
             },
         )
         if not router_snapshot_active:
             _clear_governance_state()
-        return {
-            "block": False,
-            "reason": (
-                f"\n⚠️ SLASH COMMAND REMINDER: /{slash_cmd} was not executed via Skill tool.\n"
-                f'Next time, call Skill("{slash_cmd}") as your first action.\n'
-            ),
-        }
+        return _workflow_block(
+            f'SLASH COMMAND NOT EXECUTED: /{slash_cmd}\n\n'
+            f'You used tools ({", ".join(tools_used_this_turn) if tools_used_this_turn else "none"}) '
+            f'without first calling Skill("{slash_cmd}").\n\n'
+            f'Your first action must be Skill("{slash_cmd}"), then follow the skill workflow.'
+        )
 
     # Continue with remaining checks (non-slash-command path)
 
@@ -1133,14 +1142,11 @@ def run(input_data: dict) -> dict | None:
             )
             if not router_snapshot_active:
                 _clear_governance_state()
-            return {
-                "block": False,
-                "reason": (
-                    f"\n⚠️ SLASH COMMAND REMINDER: /{slash_cmd} was not executed.\n"
-                    f"You responded with prose without using any tools.\n"
-                    f'Next time, call Skill("{slash_cmd}") first, then follow its workflow.\n'
-                ),
-            }
+            return _workflow_block(
+                f'SLASH COMMAND NOT EXECUTED: /{slash_cmd}\n\n'
+                f"You responded with prose without using any tools.\n"
+                f'Call Skill("{slash_cmd}") first, then execute the workflow instead of replying inline.'
+            )
 
         if not router_snapshot_active:
             _clear_governance_state()
@@ -1185,14 +1191,11 @@ def run(input_data: dict) -> dict | None:
                 )
                 if not router_snapshot_active:
                     _clear_governance_state()
-                return {
-                    "block": False,
-                    "reason": (
-                        f"\n⚠️ SLASH COMMAND REMINDER: /{slash_cmd} was not executed via Skill tool.\n"
-                        f"Tools used ({', '.join(tools_used_this_turn)}) did not include Skill.\n"
-                        f"Next time, call Skill(\"{slash_cmd}\") first, then follow its workflow.\n"
-                    ),
-                }
+                return _workflow_block(
+                    f'SLASH COMMAND NOT EXECUTED: /{slash_cmd}\n\n'
+                    f"Tools used ({', '.join(tools_used_this_turn)}) did not include Skill.\n"
+                    f'Call Skill("{slash_cmd}") first, then follow its workflow.'
+                )
 
         if not router_snapshot_active:
             _clear_governance_state()
