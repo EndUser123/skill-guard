@@ -1,0 +1,17 @@
+{
+  "name": "skill-guard",
+  "version": "1.0.0",
+  "description": "Universal skill auto-discovery and enforcement for Claude Code",
+  "author": "CSF NIP",
+  "license": "MIT",
+  "entry_point": "src/skill_guard",
+  "hooks": [
+    {
+      "name": "StopHook_skill_execution_gate",
+      "path": "src/skill_guard/StopHook_skill_execution_gate.py",
+      "phase": "StopToolUse"
+    }
+  ],
+  "capabilities": ["skill_auto_discovery", "enforcement_tier", "first_tool_validation"],
+  "dependencies": []
+}
