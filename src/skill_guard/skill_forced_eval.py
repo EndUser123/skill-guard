@@ -16,9 +16,16 @@ from __future__ import annotations
 
 import json
 import re
+import sys
 import time
 from datetime import datetime
 from pathlib import Path
+
+# Add hooks directory to path for imports from UserPromptSubmit_modules
+# This module lives in packages/skill-guard but needs to import from .claude/hooks
+_hooks_dir = Path("P:/.claude/hooks")
+if str(_hooks_dir) not in sys.path:
+    sys.path.insert(0, str(_hooks_dir))
 
 try:
     import yaml
