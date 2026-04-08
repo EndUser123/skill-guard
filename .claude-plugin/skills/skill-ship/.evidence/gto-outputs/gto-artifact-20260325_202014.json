@@ -1,0 +1,228 @@
+{
+  "gaps": [
+    {
+      "id": "GAP-0000-TEST",
+      "type": "missing_test",
+      "severity": "high",
+      "message": "Missing test coverage",
+      "file_path": null,
+      "line_number": null,
+      "source": "TestPresenceChecker",
+      "timestamp": "2026-03-25T20:20:13.150550",
+      "metadata": {},
+      "confidence": 0.8,
+      "effort_estimate_minutes": 22,
+      "theme": "testing",
+      "recurrence_count": 1
+    },
+    {
+      "id": "GAP-621ec8cd",
+      "type": "missing_test",
+      "severity": "high",
+      "message": "No test file found for formatter.py",
+      "file_path": "lib\\formatter.py",
+      "line_number": 1,
+      "source": "GapFinderSubagent",
+      "timestamp": "2026-03-25T20:20:13.150650",
+      "metadata": {},
+      "confidence": 0.8,
+      "effort_estimate_minutes": 5,
+      "theme": null,
+      "recurrence_count": 1
+    },
+    {
+      "id": "GAP-a6149663",
+      "type": "missing_test",
+      "severity": "high",
+      "message": "No test file found for certification_gate.py",
+      "file_path": "validators\\certification_gate.py",
+      "line_number": 1,
+      "source": "GapFinderSubagent",
+      "timestamp": "2026-03-25T20:20:13.150654",
+      "metadata": {},
+      "confidence": 0.8,
+      "effort_estimate_minutes": 5,
+      "theme": null,
+      "recurrence_count": 1
+    },
+    {
+      "id": "GAP-20fe7ab9",
+      "type": "missing_test",
+      "severity": "high",
+      "message": "No test file found for context_size.py",
+      "file_path": "validators\\context_size.py",
+      "line_number": 1,
+      "source": "GapFinderSubagent",
+      "timestamp": "2026-03-25T20:20:13.150656",
+      "metadata": {},
+      "confidence": 0.8,
+      "effort_estimate_minutes": 5,
+      "theme": null,
+      "recurrence_count": 1
+    }
+  ],
+  "total_gap_count": 4,
+  "critical_count": 0,
+  "high_count": 4,
+  "medium_count": 0,
+  "low_count": 0,
+  "timestamp": "2026-03-25T20:20:14.057637",
+  "metadata": {
+    "timestamp": "2026-03-25T20:20:12.804330",
+    "project_root": "P:\\.claude\\skills\\skill-ship",
+    "terminal_id": "87191d8fa6c5",
+    "viability_check": {
+      "is_viable": true,
+      "failure_reason": null
+    },
+    "git_context": {
+      "branch": "main",
+      "branch_display": "main",
+      "is_detached": false,
+      "is_worktree": false,
+      "worktree_count": 1,
+      "error": null
+    },
+    "subagent_results": {
+      "gap_finder": [
+        {
+          "id": "GAP-621ec8cd",
+          "type": "missing_test",
+          "message": "No test file found for formatter.py",
+          "file_path": "lib\\formatter.py",
+          "line_number": 1,
+          "severity": "high",
+          "metadata": {}
+        },
+        {
+          "id": "GAP-a6149663",
+          "type": "missing_test",
+          "message": "No test file found for certification_gate.py",
+          "file_path": "validators\\certification_gate.py",
+          "line_number": 1,
+          "severity": "high",
+          "metadata": {}
+        },
+        {
+          "id": "GAP-20fe7ab9",
+          "type": "missing_test",
+          "message": "No test file found for context_size.py",
+          "file_path": "validators\\context_size.py",
+          "line_number": 1,
+          "severity": "high",
+          "metadata": {}
+        }
+      ]
+    },
+    "health_report": {
+      "overall_score": 0.9,
+      "status": "healthy",
+      "metrics": [
+        {
+          "name": "test_coverage",
+          "score": 1.0,
+          "weight": 0.3,
+          "description": "Test coverage ratio",
+          "details": {
+            "source_files": 3,
+            "test_files": 14,
+            "ratio": 4.67
+          }
+        },
+        {
+          "name": "documentation",
+          "score": 1.0,
+          "weight": 0.2,
+          "description": "Documentation coverage",
+          "details": {
+            "source_files": 3,
+            "documented": 3,
+            "ratio": 1.0
+          }
+        },
+        {
+          "name": "dependencies",
+          "score": 0.5,
+          "weight": 0.2,
+          "description": "Dependency management health",
+          "details": {
+            "has_requirements": false,
+            "declared_packages": 0,
+            "installed_packages": 606
+          }
+        },
+        {
+          "name": "code_quality",
+          "score": 1.0,
+          "weight": 0.3,
+          "description": "Code quality (fewer TODO/HACK markers)",
+          "details": {
+            "files_scanned": 11,
+            "todo_count": 0,
+            "hack_count": 0,
+            "fixme_count": 0,
+            "xxx_count": 0,
+            "type_ignore_count": 0,
+            "total_markers": 0
+          }
+        }
+      ],
+      "timestamp": "2026-03-25T20:20:13.998952"
+    }
+  },
+  "health_report": {
+    "overall_score": 0.9,
+    "status": "healthy",
+    "metrics": [
+      {
+        "name": "test_coverage",
+        "score": 1.0,
+        "weight": 0.3,
+        "description": "Test coverage ratio",
+        "details": {
+          "source_files": 3,
+          "test_files": 14,
+          "ratio": 4.67
+        }
+      },
+      {
+        "name": "documentation",
+        "score": 1.0,
+        "weight": 0.2,
+        "description": "Documentation coverage",
+        "details": {
+          "source_files": 3,
+          "documented": 3,
+          "ratio": 1.0
+        }
+      },
+      {
+        "name": "dependencies",
+        "score": 0.5,
+        "weight": 0.2,
+        "description": "Dependency management health",
+        "details": {
+          "has_requirements": false,
+          "declared_packages": 0,
+          "installed_packages": 606
+        }
+      },
+      {
+        "name": "code_quality",
+        "score": 1.0,
+        "weight": 0.3,
+        "description": "Code quality (fewer TODO/HACK markers)",
+        "details": {
+          "files_scanned": 11,
+          "todo_count": 0,
+          "hack_count": 0,
+          "fixme_count": 0,
+          "xxx_count": 0,
+          "type_ignore_count": 0,
+          "total_markers": 0
+        }
+      }
+    ],
+    "timestamp": "2026-03-25T20:20:13.998952"
+  }
+}

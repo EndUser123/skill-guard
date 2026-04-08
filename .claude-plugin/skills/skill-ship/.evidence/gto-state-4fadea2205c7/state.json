@@ -1,0 +1,248 @@
+{
+  "version": "3.0.0",
+  "terminal_id": "4fadea2205c7",
+  "timestamp": "2026-03-26T17:12:22.541124",
+  "session_id": "2026-03-26T17:09:48.634544",
+  "gaps": [
+    {
+      "id": "CORR-QUALITY-001",
+      "type": "correctness_gap",
+      "severity": "low",
+      "message": "Duplicate code pattern in transformation loops: Both `format_rsn_from_certification` and `format_rsn_from_steps` contain nearly identical list-building loops that transform their input into rsn_findings dicts, and both call the same four-line fo...",
+      "file_path": "formatter.py",
+      "line_number": 163,
+      "source": "adversarial-quality",
+      "timestamp": "2026-03-26T17:11:21.006293",
+      "metadata": {},
+      "confidence": 0.85,
+      "effort_estimate_minutes": 30,
+      "theme": "correctness",
+      "recurrence_count": 1
+    },
+    {
+      "id": "CORR-QUALITY-002",
+      "type": "correctness_gap",
+      "severity": "low",
+      "message": "Documented unused parameters in public function signature: `checks_passed` and `verified_checks` are accepted by `_certification_result_to_findings` and `format_rsn_from_certification` but are never used in the function body. This creates confusion about t...",
+      "file_path": "formatter.py",
+      "line_number": 70,
+      "source": "adversarial-quality",
+      "timestamp": "2026-03-26T17:11:21.006310",
+      "metadata": {},
+      "confidence": 0.85,
+      "effort_estimate_minutes": 30,
+      "theme": "correctness",
+      "recurrence_count": 1
+    },
+    {
+      "id": "CORR-QUALITY-003",
+      "type": "correctness_gap",
+      "severity": "low",
+      "message": "Magic string slice with no justification: The truncation `[:8]` on `check_name.upper()` is an arbitrary constant with no documented rationale. If truncation is needed to keep IDs short, extract a named constant (e.g., MAX_ID_PREFIX_LENGTH ...",
+      "file_path": "formatter.py",
+      "line_number": 167,
+      "source": "adversarial-quality",
+      "timestamp": "2026-03-26T17:11:21.006316",
+      "metadata": {},
+      "confidence": 0.85,
+      "effort_estimate_minutes": 30,
+      "theme": "correctness",
+      "recurrence_count": 1
+    },
+    {
+      "id": "CORR-QUALITY-004",
+      "type": "correctness_gap",
+      "severity": "low",
+      "message": "Untyped dict in list parameter: `list[dict]` for the `steps` parameter is too generic. Steps are expected to have specific keys (id, description, severity, domain, action_type, effort_minutes, file_ref). Define a `ShipStep` datac...",
+      "file_path": "formatter.py",
+      "line_number": 185,
+      "source": "adversarial-quality",
+      "timestamp": "2026-03-26T17:11:21.006320",
+      "metadata": {},
+      "confidence": 0.85,
+      "effort_estimate_minutes": 30,
+      "theme": "correctness",
+      "recurrence_count": 1
+    },
+    {
+      "id": "CORR-QUALITY-005",
+      "type": "correctness_gap",
+      "severity": "low",
+      "message": "Magic number with no justification: `effort_minutes: int = 5` in `ShipFinding` is an arbitrary default. If 5 minutes is a meaningful convention it should be a module-level named constant (e.g., DEFAULT_EFFORT_MINUTES = 5).",
+      "file_path": "formatter.py",
+      "line_number": 57,
+      "source": "adversarial-quality",
+      "timestamp": "2026-03-26T17:11:21.006323",
+      "metadata": {},
+      "confidence": 0.85,
+      "effort_estimate_minutes": 30,
+      "theme": "correctness",
+      "recurrence_count": 1
+    },
+    {
+      "id": "CORR-QUALITY-006",
+      "type": "correctness_gap",
+      "severity": "low",
+      "message": "Keyword-in-substring domain routing is brittle: _check_to_domain uses substring matching (e.g., 'eval' in check_lower, 'optim' in check_lower) which can produce false positives. For example, a check named 'DevalTest' would incorrectly route to '...",
+      "file_path": "formatter.py",
+      "line_number": 105,
+      "source": "adversarial-quality",
+      "timestamp": "2026-03-26T17:11:21.006326",
+      "metadata": {},
+      "confidence": 0.85,
+      "effort_estimate_minutes": 30,
+      "theme": "correctness",
+      "recurrence_count": 1
+    },
+    {
+      "id": "CORR-CODE-CRITIC-001",
+      "type": "correctness_gap",
+      "severity": "high",
+      "message": "ID collision from check name truncation: The finding ID is derived from `SHIP-{check_name.upper()[:8]}`. If two distinct check names share the same first 8 characters (e.g., 'SPEC_COMP' vs 'SPEC_COMPLETE'), they produce identical IDs. In ...",
+      "file_path": "formatter.py",
+      "line_number": 167,
+      "source": "adversarial-code-critic",
+      "timestamp": "2026-03-26T17:12:21.126131",
+      "metadata": {},
+      "confidence": 0.85,
+      "effort_estimate_minutes": 30,
+      "theme": "correctness",
+      "recurrence_count": 1
+    },
+    {
+      "id": "CORR-CODE-CRITIC-002",
+      "type": "correctness_gap",
+      "severity": "medium",
+      "message": "Discarded reasoning inputs \u2014 checks_passed and verified_checks used nowhere: _certification_result_to_findings accepts checks_passed and verified_checks as parameters but never references them. Docstring explicitly marks them as 'unused, for future expansion'. In a root-cau...",
+      "file_path": "formatter.py",
+      "line_number": 61,
+      "source": "adversarial-code-critic",
+      "timestamp": "2026-03-26T17:12:21.126161",
+      "metadata": {},
+      "confidence": 0.85,
+      "effort_estimate_minutes": 30,
+      "theme": "correctness",
+      "recurrence_count": 1
+    },
+    {
+      "id": "CORR-CODE-CRITIC-003",
+      "type": "correctness_gap",
+      "severity": "medium",
+      "message": "Multi-step domain routing logic has ordering dependency causing misclassification: _check_to_domain uses sequential substring matching without considering specificity. The condition for 'quality' (line 120) is checked before 'integration' (line 122). A check named 'integration_qu...",
+      "file_path": "formatter.py",
+      "line_number": 105,
+      "source": "adversarial-code-critic",
+      "timestamp": "2026-03-26T17:12:21.126177",
+      "metadata": {},
+      "confidence": 0.85,
+      "effort_estimate_minutes": 30,
+      "theme": "correctness",
+      "recurrence_count": 1
+    },
+    {
+      "id": "CORR-CODE-CRITIC-004",
+      "type": "correctness_gap",
+      "severity": "medium",
+      "message": "Exception swallowing in import bridge hides cascading ImportError: The try/except around the RSNFormatter import catches any ImportError and attempts a fallback path using sys.path manipulation. If the fallback import also raises ImportError (e.g., because rsn_for...",
+      "file_path": "formatter.py",
+      "line_number": 21,
+      "source": "adversarial-code-critic",
+      "timestamp": "2026-03-26T17:12:21.126194",
+      "metadata": {},
+      "confidence": 0.85,
+      "effort_estimate_minutes": 30,
+      "theme": "correctness",
+      "recurrence_count": 1
+    },
+    {
+      "id": "CORR-CODE-CRITIC-005",
+      "type": "correctness_gap",
+      "severity": "low",
+      "message": "Blocked items always use hardcoded domain 'integration', bypassing causal routing: Every blocked item is assigned domain='integration' unconditionally (line 98). If a blocked item's root cause is actually a spec compliance failure (e.g., missing required fields) or a code quality...",
+      "file_path": "formatter.py",
+      "line_number": 92,
+      "source": "adversarial-code-critic",
+      "timestamp": "2026-03-26T17:12:21.126202",
+      "metadata": {},
+      "confidence": 0.85,
+      "effort_estimate_minutes": 30,
+      "theme": "correctness",
+      "recurrence_count": 1
+    }
+  ],
+  "metadata": {
+    "timestamp": "2026-03-26T17:09:48.634544",
+    "project_root": "P:\\.claude\\skills\\skill-ship",
+    "terminal_id": "4fadea2205c7",
+    "viability_check": {
+      "is_viable": true,
+      "failure_reason": null
+    },
+    "git_context": {
+      "branch": "main",
+      "branch_display": "main",
+      "is_detached": false,
+      "is_worktree": false,
+      "worktree_count": 1,
+      "error": null
+    },
+    "subagent_results": {
+      "gap_finder": []
+    },
+    "health_report": {
+      "overall_score": 0.9,
+      "status": "healthy",
+      "metrics": [
+        {
+          "name": "test_coverage",
+          "score": 1.0,
+          "weight": 0.3,
+          "description": "Test coverage ratio",
+          "details": {
+            "source_files": 3,
+            "test_files": 14,
+            "ratio": 4.67
+          }
+        },
+        {
+          "name": "documentation",
+          "score": 1.0,
+          "weight": 0.2,
+          "description": "Documentation coverage",
+          "details": {
+            "source_files": 3,
+            "documented": 3,
+            "ratio": 1.0
+          }
+        },
+        {
+          "name": "dependencies",
+          "score": 0.5,
+          "weight": 0.2,
+          "description": "Dependency management health",
+          "details": {
+            "has_requirements": false,
+            "declared_packages": 0,
+            "installed_packages": 606
+          }
+        },
+        {
+          "name": "code_quality",
+          "score": 1.0,
+          "weight": 0.3,
+          "description": "Code quality (fewer TODO/HACK markers)",
+          "details": {
+            "files_scanned": 11,
+            "todo_count": 0,
+            "hack_count": 0,
+            "fixme_count": 0,
+            "xxx_count": 0,
+            "type_ignore_count": 0,
+            "total_markers": 0
+          }
+        }
+      ],
+      "timestamp": "2026-03-26T17:12:22.540890"
+    }
+  }
+}

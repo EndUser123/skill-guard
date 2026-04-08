@@ -1,0 +1,10 @@
+{
+  "eval_id": 1,
+  "eval_name": "create-new-skill",
+  "prompt": "create a skill for automating my code review workflow",
+  "assertions": [
+    {"text": "Skill activates with /skill-ship or skill-ship workflow"},
+    {"text": "Phase 1 discovery begins with intent extraction"},
+    {"text": "Similarity check is offered or performed"}
+  ]
+}

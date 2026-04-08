@@ -231,6 +231,49 @@ def _clear_caches() -> None:
     _skill_metadata = None
 
 
+def _is_question_context(prompt: str) -> bool:
+    """Return True if prompt appears to be a question about skills, not an invocation.
+
+    Questions contain slash commands as subjects of discussion, not as actions.
+    Detects: question word BEFORE slash command in same clause, or slash in quotes.
+    """
+    question_markers = ("what", "does", "how", "why", "is ", "can ", "should ", "?")
+    prompt_lower = prompt.lower().strip()
+
+    # Check if slash command appears in quotes (discussing a skill, not invoking)
+    # e.g., 'why is skill-guard showing me this? "❯ does /sqa..."'
+    in_quotes = False
+    for i, ch in enumerate(prompt_lower):
+        if ch == '"' and not in_quotes:
+            in_quotes = True
+        elif ch == '"':
+            in_quotes = False
+        if ch == ">" and in_quotes:
+            # Block prefix found inside quotes — definitely a discussion
+            return True
+
+    # Split into sentences/clauses
+    clauses = prompt_lower.replace("?", " ").split(".")
+
+    for clause in clauses:
+        if "/" not in clause:
+            continue
+
+        slash_pos = clause.find("/")
+
+        # Check if any question marker appears BEFORE the slash command
+        for marker in question_markers:
+            marker_pos = clause.find(marker)
+            if marker_pos != -1 and marker_pos < slash_pos:
+                return True
+
+        # Also check if clause starts with a question marker (len > 2)
+        if any(clause.startswith(q) for q in question_markers if len(q) > 2):
+            return True
+
+    return False
+
+
 def _extract_slash_commands(prompt: str) -> list[str]:
     """Extract all slash commands from prompt."""
     matches = _SLASH_COMMAND_RE.findall(prompt)
@@ -445,6 +488,10 @@ def skill_forced_eval_hook(context: HookContext) -> HookResult:
         _clear_eval_state(context)
         return HookResult.empty()
 
+    # Skip if prompt is a question about skills (not an invocation)
+    if _is_question_context(prompt):
+        return HookResult.empty()
+
     # Get all registered skills and metadata
     all_skills = _get_registered_skills()
     if not all_skills:
@@ -558,4 +605,5 @@ Do NOT use Bash, Read, Glob, or any other tool before completing skill evaluatio
     # Estimate tokens (~4 chars per token)
     token_count = len(instruction) // 4
 
-    return HookResult(context=instruction, tokens=token_count, priority=0.5)
+    # Use additionalContext key so router can extract the string properly
+    return HookResult(context={"additionalContext": instruction}, tokens=token_count, priority=0.5)

@@ -1,0 +1,115 @@
+{
+  "resume_snapshot": {
+    "schema_version": 2,
+    "snapshot_id": "df04e3ae-68b4-481b-83c4-678c58e3775f",
+    "terminal_id": "console_7028c26c-2717-4cff-a668-711ede8bdcf1",
+    "source_session_id": "3f92037d-082e-4a41-9062-700811513972",
+    "created_at": "2026-04-07T04:06:10.763269+00:00",
+    "expires_at": "2026-04-07T04:26:10.763269+00:00",
+    "status": "pending",
+    "goal": "Continue current task (meta-discussion filtered)",
+    "current_task": "Continue current task (meta-discussion filtered)",
+    "progress_percent": 65,
+    "progress_state": "in_progress",
+    "blockers": [],
+    "active_files": [
+      "C:\\Users\\brsth\\.claude\\plans\\foamy-imagining-bubble.md",
+      "C:\\Users\\brsth\\.claude\\projects\\P--\\3f92037d-082e-4a41-9062-700811513972\\tool-results\\b6mdsrrq8.txt",
+      "C:\\Users\\brsth\\.claude\\projects\\P--\\3f92037d-082e-4a41-9062-700811513972\\tool-results\\bjqx6c2pn.txt",
+      "P:/.claude/skills/skill-audit/SKILL.md",
+      "P:/.claude/skills/skill-audit/audit.py",
+      "P:/.claude/skills/skill-audit/validate.py",
+      "P:/.claude/skills/skill-audit/references/lenses.md",
+      "P:/.claude/skills/skill-audit/references/learning-loop.md",
+      "P:/.claude/skills/skill-audit/references/examples.md",
+      "P:/.claude/skills/skill-audit/tests/test_audit.py"
+    ],
+    "pending_operations": [
+      {
+        "type": "command",
+        "target": "nlm notebook list --json",
+        "state": "in_progress"
+      },
+      {
+        "type": "command",
+        "target": "nlm batch query \"Search for ideas about creating an /ai-gemini slash command ski",
+        "state": "in_progress"
+      },
+      {
+        "type": "command",
+        "target": "nlm batch query \"Search for ideas, patterns, or reference material about creatin",
+        "state": "in_progress"
+      },
+      {
+        "type": "command",
+        "target": "nlm batch query \"Search for any existing approaches, ideas, or reference materia",
+        "state": "in_progress"
+      },
+      {
+        "type": "command",
+        "target": "nlm notebook query f7806918-c135-4931-944d-09d94ccc458d \"Search for ideas about ",
+        "state": "in_progress"
+      }
+    ],
+    "next_step": "Resume command on nlm notebook list --json.",
+    "decision_refs": [],
+    "evidence_refs": [
+      "ev_34ea65b70d3141b5b42da6bdeee6079e",
+      "ev_b70b1f17ffd643879cb5d8af9d97b3a8",
+      "ev_7a610f27261b442dba7548e8abbfef24",
+      "ev_23ad6d8a02b74e48aea6895335d9f9d0",
+      "ev_7718c2542a8548d58e912951dd08aa3a",
+      "ev_eef4d219231c4107bd836254b4c836ca"
+    ],
+    "transcript_path": "C:\\Users\\brsth\\.claude\\projects\\P--\\3f92037d-082e-4a41-9062-700811513972.jsonl",
+    "message_intent": "instruction",
+    "quality_score": 0.4,
+    "tasks_snapshot": []
+  },
+  "decision_register": [],
+  "evidence_index": [
+    {
+      "id": "ev_34ea65b70d3141b5b42da6bdeee6079e",
+      "type": "transcript",
+      "label": "Current compact transcript",
+      "path": "C:\\Users\\brsth\\.claude\\projects\\P--\\3f92037d-082e-4a41-9062-700811513972.jsonl",
+      "content_hash": "sha256:daa135a6c987e5a8107f5c099462d396d47609d938605c016c33994e8143e749"
+    },
+    {
+      "id": "ev_b70b1f17ffd643879cb5d8af9d97b3a8",
+      "type": "file",
+      "label": "foamy-imagining-bubble.md",
+      "path": "C:\\Users\\brsth\\.claude\\plans\\foamy-imagining-bubble.md",
+      "content_hash": "sha256:c1000373493ecf8344dd652667f1d1a6916a09247d99894c28ea82f63770f444"
+    },
+    {
+      "id": "ev_7a610f27261b442dba7548e8abbfef24",
+      "type": "file",
+      "label": "b6mdsrrq8.txt",
+      "path": "C:\\Users\\brsth\\.claude\\projects\\P--\\3f92037d-082e-4a41-9062-700811513972\\tool-results\\b6mdsrrq8.txt",
+      "content_hash": "sha256:17befa519147f74b45ee5ba97135cf6fad855a021a104e7ddbfdeec49b908aae"
+    },
+    {
+      "id": "ev_23ad6d8a02b74e48aea6895335d9f9d0",
+      "type": "file",
+      "label": "bjqx6c2pn.txt",
+      "path": "C:\\Users\\brsth\\.claude\\projects\\P--\\3f92037d-082e-4a41-9062-700811513972\\tool-results\\bjqx6c2pn.txt",
+      "content_hash": "sha256:00d3400209450a06f4d2196a3b38fbb9c68dd598a2818171815ff01ee684a5fb"
+    },
+    {
+      "id": "ev_7718c2542a8548d58e912951dd08aa3a",
+      "type": "file",
+      "label": "SKILL.md",
+      "path": "P:\\.claude\\skills\\skill-audit\\SKILL.md",
+      "content_hash": "sha256:58bd637cf03eb7fd4cdaf8be215f4a5cfacaf711eab261748eda46fe1c0cff34"
+    },
+    {
+      "id": "ev_eef4d219231c4107bd836254b4c836ca",
+      "type": "file",
+      "label": "audit.py",
+      "path": "P:\\.claude\\skills\\skill-audit\\audit.py",
+      "content_hash": "sha256:d9b1b63aa44c97db4ed38f5aca7e2355de744afe19539a1cc1aaa9c1bda944b2"
+    }
+  ],
+  "checksum": "sha256:5a5d9c848a6665a22977033cb0a1fd438eeeddd56ca54f1d16d034f526feb5b9"
+}

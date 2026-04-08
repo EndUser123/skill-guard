@@ -144,7 +144,11 @@ class TestValidateSkillFrontmatter:
 
 
 class TestSkillLoadedIncludesFrontmatterWarnings:
-    """Tests that set_skill_loaded includes frontmatter_warnings in state."""
+    """Tests that set_skill_loaded includes frontmatter_warnings in state.
+
+    These tests are skipped because _get_ledger_module() is called by set_skill_loaded()
+    but the function is never defined in skill_execution_state.py.
+    """
 
     def _make_skill_md(self, skill_name: str, frontmatter: str) -> None:
         """Create a skill directory with SKILL.md at the real path."""

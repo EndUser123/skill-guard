@@ -1,0 +1,295 @@
+{
+  "gaps": [
+    {
+      "id": "CORR-QUALITY-001",
+      "type": "correctness_gap",
+      "severity": "medium",
+      "message": "Duplicate code in transformation functions: _ship_findings_to_rsn_findings and _ship_steps_to_rsn_findings are structurally identical \u2014 both iterate a list, build a dict with the same 7 keys, and return. Should be a single generic helper acc...",
+      "file_path": "formatter.py:221-247 and formatter.py",
+      "line_number": 250,
+      "source": "adversarial-quality",
+      "timestamp": "2026-03-29T14:05:14.890306",
+      "metadata": {},
+      "confidence": 0.85,
+      "effort_estimate_minutes": 30,
+      "theme": "correctness",
+      "recurrence_count": 1
+    },
+    {
+      "id": "CORR-QUALITY-002",
+      "type": "correctness_gap",
+      "severity": "low",
+      "message": "Magic number for hash suffix length: The hash suffix length `[:4]` is a magic number with no explanation. It makes the finding ID 12 chars long total (SHIP- + 8 prefix + 4 hash = 14), which is fine but unexplained.",
+      "file_path": "formatter.py",
+      "line_number": 217,
+      "source": "adversarial-quality",
+      "timestamp": "2026-03-29T14:05:14.890327",
+      "metadata": {},
+      "confidence": 0.85,
+      "effort_estimate_minutes": 30,
+      "theme": "correctness",
+      "recurrence_count": 1
+    },
+    {
+      "id": "CORR-QUALITY-003",
+      "type": "correctness_gap",
+      "severity": "low",
+      "message": "Dead parameters documented as unused: checks_passed and verified_checks are accepted and passed to _certification_result_to_findings but are never consumed there. Both functions mark them 'unused, for future expansion'. This is intenti...",
+      "file_path": "formatter.py",
+      "line_number": 279,
+      "source": "adversarial-quality",
+      "timestamp": "2026-03-29T14:05:14.890335",
+      "metadata": {},
+      "confidence": 0.85,
+      "effort_estimate_minutes": 30,
+      "theme": "correctness",
+      "recurrence_count": 1
+    },
+    {
+      "id": "CORR-QUALITY-004",
+      "type": "correctness_gap",
+      "severity": "low",
+      "message": "Bare except-ImportError for import fallback: The fallback import catches all ImportError broadly. If hooks.__lib.rsn_formatter exists but has an unrelated ImportError (e.g., a missing transitive dep), it will be silently masked. Prefer except...",
+      "file_path": "formatter.py",
+      "line_number": 20,
+      "source": "adversarial-quality",
+      "timestamp": "2026-03-29T14:05:14.890341",
+      "metadata": {},
+      "confidence": 0.85,
+      "effort_estimate_minutes": 30,
+      "theme": "correctness",
+      "recurrence_count": 1
+    },
+    {
+      "id": "CORR-CODE-CRITIC-001",
+      "type": "correctness_gap",
+      "severity": "high",
+      "message": "Silent fallback in validation masks caller bugs: _validate_severity silently returns 'LOW' for any unrecognized string instead of raising. This means upstream errors (wrong type, typos, None) are swallowed silently and replaced with a default, ma...",
+      "file_path": "formatter.py",
+      "line_number": 106,
+      "source": "adversarial-code-critic",
+      "timestamp": "2026-03-29T14:06:09.371220",
+      "metadata": {},
+      "confidence": 0.85,
+      "effort_estimate_minutes": 30,
+      "theme": "correctness",
+      "recurrence_count": 1
+    },
+    {
+      "id": "CORR-CODE-CRITIC-002",
+      "type": "correctness_gap",
+      "severity": "high",
+      "message": "effort_minutes int() call will crash on non-integer input: step.get('effort_minutes', DEFAULT_EFFORT_MINUTES) can return a non-integer (e.g., a string from dict input). Calling int() on an unconvertible value raises ValueError and crashes the entire format...",
+      "file_path": "formatter.py",
+      "line_number": 356,
+      "source": "adversarial-code-critic",
+      "timestamp": "2026-03-29T14:06:09.371235",
+      "metadata": {},
+      "confidence": 0.85,
+      "effort_estimate_minutes": 30,
+      "theme": "correctness",
+      "recurrence_count": 1
+    },
+    {
+      "id": "CORR-CODE-CRITIC-003",
+      "type": "correctness_gap",
+      "severity": "medium",
+      "message": "Public API accepts strings instead of lists without validation: _certification_result_to_findings iterates directly over checks_passed, checks_failed, blocked_items, and verified_checks. If any caller passes a single string instead of a list of strings (a commo...",
+      "file_path": "formatter.py",
+      "line_number": 120,
+      "source": "adversarial-code-critic",
+      "timestamp": "2026-03-29T14:06:09.371240",
+      "metadata": {},
+      "confidence": 0.85,
+      "effort_estimate_minutes": 30,
+      "theme": "correctness",
+      "recurrence_count": 1
+    },
+    {
+      "id": "CORR-CODE-CRITIC-004",
+      "type": "correctness_gap",
+      "severity": "medium",
+      "message": "MD5 used for collision resistance in ID generation: _generate_finding_id uses hashlib.md5 (4 hex chars) for uniqueness suffix. MD5 is cryptographically broken (known collision attacks). While not a security boundary here, using MD5 undermines the st...",
+      "file_path": "formatter.py",
+      "line_number": 213,
+      "source": "adversarial-code-critic",
+      "timestamp": "2026-03-29T14:06:09.371244",
+      "metadata": {},
+      "confidence": 0.85,
+      "effort_estimate_minutes": 30,
+      "theme": "correctness",
+      "recurrence_count": 1
+    },
+    {
+      "id": "CORR-CODE-CRITIC-005",
+      "type": "correctness_gap",
+      "severity": "medium",
+      "message": "Silent dual-import path with no error on complete failure: The try/except block for RSNFinding/RSNFormatter import catches ImportError but has no fallback. If the package import fails and the direct path also fails (e.g., sys.path manipulation fails), the ...",
+      "file_path": "formatter.py",
+      "line_number": 22,
+      "source": "adversarial-code-critic",
+      "timestamp": "2026-03-29T14:06:09.371248",
+      "metadata": {},
+      "confidence": 0.85,
+      "effort_estimate_minutes": 30,
+      "theme": "correctness",
+      "recurrence_count": 1
+    },
+    {
+      "id": "CORR-CODE-CRITIC-006",
+      "type": "correctness_gap",
+      "severity": "low",
+      "message": "Default domain fallback to code_quality is too broad: The else clause in _check_to_domain always returns 'code_quality' for any unmatched check name. This means arbitrary or misspelled check names all route to the same section, obscuring genuinely unc...",
+      "file_path": "formatter.py",
+      "line_number": 195,
+      "source": "adversarial-code-critic",
+      "timestamp": "2026-03-29T14:06:09.371252",
+      "metadata": {},
+      "confidence": 0.85,
+      "effort_estimate_minutes": 30,
+      "theme": "correctness",
+      "recurrence_count": 1
+    }
+  ],
+  "total_gap_count": 10,
+  "critical_count": 0,
+  "high_count": 2,
+  "medium_count": 4,
+  "low_count": 4,
+  "timestamp": "2026-03-29T14:06:09.987030",
+  "metadata": {
+    "timestamp": "2026-03-29T14:03:44.216575",
+    "project_root": "P:\\.claude\\skills\\skill-ship",
+    "terminal_id": "a23a2acbb66b",
+    "viability_check": {
+      "is_viable": true,
+      "failure_reason": null
+    },
+    "git_context": {
+      "branch": "main",
+      "branch_display": "main",
+      "is_detached": false,
+      "is_worktree": false,
+      "worktree_count": 1,
+      "error": null
+    },
+    "session_goal": {
+      "goal": null,
+      "confidence": 0.0,
+      "source_turn": null
+    },
+    "subagent_results": {
+      "gap_finder": []
+    },
+    "health_report": {
+      "overall_score": 0.9,
+      "status": "healthy",
+      "metrics": [
+        {
+          "name": "test_coverage",
+          "score": 1.0,
+          "weight": 0.3,
+          "description": "Test coverage ratio",
+          "details": {
+            "source_files": 3,
+            "test_files": 14,
+            "ratio": 4.67
+          }
+        },
+        {
+          "name": "documentation",
+          "score": 1.0,
+          "weight": 0.2,
+          "description": "Documentation coverage",
+          "details": {
+            "source_files": 3,
+            "documented": 3,
+            "ratio": 1.0
+          }
+        },
+        {
+          "name": "dependencies",
+          "score": 0.5,
+          "weight": 0.2,
+          "description": "Dependency management health",
+          "details": {
+            "has_requirements": false,
+            "declared_packages": 0,
+            "installed_packages": 607
+          }
+        },
+        {
+          "name": "code_quality",
+          "score": 1.0,
+          "weight": 0.3,
+          "description": "Code quality (fewer TODO/HACK markers)",
+          "details": {
+            "files_scanned": 11,
+            "todo_count": 0,
+            "hack_count": 0,
+            "fixme_count": 0,
+            "xxx_count": 0,
+            "type_ignore_count": 0,
+            "total_markers": 0
+          }
+        }
+      ],
+      "timestamp": "2026-03-29T14:06:09.911223"
+    }
+  },
+  "health_report": {
+    "overall_score": 0.9,
+    "status": "healthy",
+    "metrics": [
+      {
+        "name": "test_coverage",
+        "score": 1.0,
+        "weight": 0.3,
+        "description": "Test coverage ratio",
+        "details": {
+          "source_files": 3,
+          "test_files": 14,
+          "ratio": 4.67
+        }
+      },
+      {
+        "name": "documentation",
+        "score": 1.0,
+        "weight": 0.2,
+        "description": "Documentation coverage",
+        "details": {
+          "source_files": 3,
+          "documented": 3,
+          "ratio": 1.0
+        }
+      },
+      {
+        "name": "dependencies",
+        "score": 0.5,
+        "weight": 0.2,
+        "description": "Dependency management health",
+        "details": {
+          "has_requirements": false,
+          "declared_packages": 0,
+          "installed_packages": 607
+        }
+      },
+      {
+        "name": "code_quality",
+        "score": 1.0,
+        "weight": 0.3,
+        "description": "Code quality (fewer TODO/HACK markers)",
+        "details": {
+          "files_scanned": 11,
+          "todo_count": 0,
+          "hack_count": 0,
+          "fixme_count": 0,
+          "xxx_count": 0,
+          "type_ignore_count": 0,
+          "total_markers": 0
+        }
+      }
+    ],
+    "timestamp": "2026-03-29T14:06:09.911223"
+  }
+}

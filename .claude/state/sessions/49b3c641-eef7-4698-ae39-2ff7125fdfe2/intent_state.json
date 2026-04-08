@@ -1,0 +1,10 @@
+{
+  "current_intent": {
+    "work_type": "unknown",
+    "target": "have",
+    "problem": "We have hooks that are supposed to notify us when skills are missing the proper front matter. I have not seen any notifications from them. Please look to see if they're working properly.",
+    "user_prompt": "We have hooks that are supposed to notify us when skills are missing the proper front matter. I have not seen any notifications from them. Please look to see if they're working properly.",
+    "timestamp": "2026-04-07T20:52:23.622003+00:00"
+  },
+  "last_updated": "2026-04-07T20:52:23.622334+00:00"
+}

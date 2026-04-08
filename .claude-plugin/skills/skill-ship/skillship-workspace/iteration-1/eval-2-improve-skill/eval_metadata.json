@@ -1,0 +1,10 @@
+{
+  "eval_id": 2,
+  "eval_name": "improve-existing-skill",
+  "prompt": "optimize my existing debugging skill",
+  "assertions": [
+    {"text": "Recognizes this as improvement vs creation"},
+    {"text": "Offers knowledge retrieval phase"},
+    {"text": "Does NOT offer full creation workflow"}
+  ]
+}

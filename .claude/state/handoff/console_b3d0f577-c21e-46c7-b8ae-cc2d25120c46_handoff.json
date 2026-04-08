@@ -1,0 +1,129 @@
+{
+  "resume_snapshot": {
+    "schema_version": 2,
+    "snapshot_id": "d55fd728-5aac-4b48-aa84-8ed8bc8bc2dc",
+    "terminal_id": "console_b3d0f577-c21e-46c7-b8ae-cc2d25120c46",
+    "source_session_id": "941162b2-f867-4772-bafc-42d6376a14c6",
+    "created_at": "2026-04-08T18:07:54.755530+00:00",
+    "expires_at": "2026-04-08T18:27:54.755530+00:00",
+    "status": "pending",
+    "goal": "please fix the tests.  please make sure we have a test config file so that we don't hang on tests.",
+    "current_task": "please fix the tests. please make sure we have a test config file so that we don't hang on tests.",
+    "progress_percent": 65,
+    "progress_state": "in_progress",
+    "blockers": [],
+    "active_files": [
+      "P:\\.claude\\skills\\skill-ship\\references\\eval-guide.md",
+      "P:\\packages\\skill-guard\\src\\skill_guard\\skill_forced_eval.py",
+      "P:\\.claude\\skills\\sqa\\SKILL.md",
+      "P:\\.claude\\skills\\p\\SKILL.md",
+      "P:\\packages\\skill-guard\\tests\\test_frontmatter_validation.py",
+      "P:\\packages\\skill-guard\\src\\skill_guard\\skill_execution_state.py",
+      "P:\\.claude\\skills\\skill-audit\\SKILL.md",
+      "P:\\.claude\\skills\\skill-audit\\validate.py",
+      "P:\\packages\\skill-guard\\src\\skill_guard\\StopHook_skill_execution_gate.py",
+      "P:\\.claude\\skills\\skill-audit\\audit.py"
+    ],
+    "pending_operations": [
+      {
+        "type": "skill",
+        "target": "skill: superpowers:systematic-debugging",
+        "state": "in_progress"
+      },
+      {
+        "type": "investigation",
+        "target": "files: **/*skill*guard*",
+        "state": "in_progress"
+      },
+      {
+        "type": "investigation",
+        "target": "files: **/.claude/hooks/**/*guard*",
+        "state": "in_progress"
+      },
+      {
+        "type": "investigation",
+        "target": "search: Skill Evaluation",
+        "state": "in_progress"
+      },
+      {
+        "type": "investigation",
+        "target": "files: packages/skill-guard/**/*.py",
+        "state": "in_progress"
+      }
+    ],
+    "next_step": "Resume skill on skill: superpowers:systematic-debugging.",
+    "decision_refs": [
+      "dec_47b2c48cb80f4d218c6d542737608dcf"
+    ],
+    "evidence_refs": [
+      "ev_3ee75589379e406e9510d1583ae433f1",
+      "ev_05e3728b58f940e29e6660376c21c03a",
+      "ev_b25794d8d2ad460f829464165e1f4133",
+      "ev_bf19fd1b504f460aaa043866dcfce105",
+      "ev_4a52b45856e44117b77d9cc26745d466",
+      "ev_3e23868f95b8417e896cbdcb6db49bb0"
+    ],
+    "transcript_path": "C:\\Users\\brsth\\.claude\\projects\\P--\\941162b2-f867-4772-bafc-42d6376a14c6.jsonl",
+    "message_intent": "directive",
+    "quality_score": 0.9,
+    "tasks_snapshot": []
+  },
+  "decision_register": [
+    {
+      "id": "dec_47b2c48cb80f4d218c6d542737608dcf",
+      "kind": "constraint",
+      "summary": "please fix the tests. please make sure we have a test config file so that we don't hang on tests.",
+      "details": "please fix the tests. please make sure we have a test config file so that we don't hang on tests.",
+      "priority": "high",
+      "applies_when": "Continue the current task after compact.",
+      "source_refs": [
+        "ev_3ee75589379e406e9510d1583ae433f1"
+      ]
+    }
+  ],
+  "evidence_index": [
+    {
+      "id": "ev_3ee75589379e406e9510d1583ae433f1",
+      "type": "transcript",
+      "label": "Current compact transcript",
+      "path": "C:\\Users\\brsth\\.claude\\projects\\P--\\941162b2-f867-4772-bafc-42d6376a14c6.jsonl",
+      "content_hash": "sha256:23ed8cd644504476398403a4acbd7754223b498492218a223b349ad9aa831e50"
+    },
+    {
+      "id": "ev_05e3728b58f940e29e6660376c21c03a",
+      "type": "file",
+      "label": "eval-guide.md",
+      "path": "P:\\.claude\\skills\\skill-ship\\references\\eval-guide.md",
+      "content_hash": "sha256:405035a202740cdee1d0394ac3a1aaeee9271479ea056a9eef8d1d94758387d4"
+    },
+    {
+      "id": "ev_b25794d8d2ad460f829464165e1f4133",
+      "type": "file",
+      "label": "skill_forced_eval.py",
+      "path": "P:\\packages\\skill-guard\\src\\skill_guard\\skill_forced_eval.py",
+      "content_hash": "sha256:54bf31fe77f958ae1bf18ec4e60a454f697f64846a89784866bffa8809eabaa4"
+    },
+    {
+      "id": "ev_bf19fd1b504f460aaa043866dcfce105",
+      "type": "file",
+      "label": "SKILL.md",
+      "path": "P:\\.claude\\skills\\sqa\\SKILL.md",
+      "content_hash": "sha256:9891468ad06fdfb5313bced064982a4bd5c72d8ae95379a7b6d69781bbe93bab"
+    },
+    {
+      "id": "ev_4a52b45856e44117b77d9cc26745d466",
+      "type": "file",
+      "label": "SKILL.md",
+      "path": "P:\\.claude\\skills\\p\\SKILL.md",
+      "content_hash": "sha256:c9341f991425d35f3018aa0cee3fe51d7ada045139799f420dfbbd52273e162b"
+    },
+    {
+      "id": "ev_3e23868f95b8417e896cbdcb6db49bb0",
+      "type": "file",
+      "label": "test_frontmatter_validation.py",
+      "path": "P:\\packages\\skill-guard\\tests\\test_frontmatter_validation.py",
+      "content_hash": "sha256:785c3c258605ddfb18c8c580302b325e40379f3da11da345b9bbb4283d1b5183"
+    }
+  ],
+  "checksum": "sha256:02041655b17957e3a3adcc94ff5994fc8470292defcf3615bfe3d9fea02e80d7"
+}

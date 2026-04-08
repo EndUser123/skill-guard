@@ -1,0 +1,9 @@
+{
+  "eval_id": 5,
+  "eval_name": "repair-intent-detection",
+  "prompt": "my skill isn't working right, can you help?",
+  "assertions": [
+    {"text": "Recognizes repair intent"},
+    {"text": "Does NOT assume new skill creation"}
+  ]
+}

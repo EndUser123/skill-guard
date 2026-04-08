@@ -1,10 +1,20 @@
 {
   "name": "skill-guard",
-  "version": "1.0.0",
-  "description": "Universal skill auto-discovery and enforcement for Claude Code",
+  "version": "1.1.0",
+  "description": "Universal skill auto-discovery and enforcement for Claude Code, plus skill-audit and skill-ship utilities",
   "author": "CSF NIP",
   "license": "MIT",
   "entry_point": "src/skill_guard",
+  "skills": [
+    {
+      "name": "skill-audit",
+      "path": ".claude-plugin/skills/skill-audit/SKILL.md"
+    },
+    {
+      "name": "skill-ship",
+      "path": ".claude-plugin/skills/skill-ship/SKILL.md"
+    }
+  ],
   "hooks": [
     {
       "name": "StopHook_skill_execution_gate",
@@ -12,6 +22,6 @@
       "phase": "StopToolUse"
     }
   ],
-  "capabilities": ["skill_auto_discovery", "enforcement_tier", "first_tool_validation"],
+  "capabilities": ["skill_auto_discovery", "enforcement_tier", "first_tool_validation", "skill_audit", "skill_ship"],
   "dependencies": []
 }

@@ -1,0 +1,10 @@
+{
+  "eval_id": 3,
+  "eval_name": "validate-skill-quality",
+  "prompt": "validate this skill: P:/.claude/skills/code-review",
+  "assertions": [
+    {"text": "Phase 3 quality validation executes"},
+    {"text": "YAML frontmatter is checked"},
+    {"text": "Context bloat check is performed"}
+  ]
+}

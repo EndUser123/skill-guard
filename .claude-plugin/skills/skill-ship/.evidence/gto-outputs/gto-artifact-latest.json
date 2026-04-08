@@ -1,0 +1,99 @@
+{
+  "metadata": {
+    "timestamp": "2026-03-25T08:54:59.945807",
+    "project_root": "P:\\.claude\\skills\\skill-ship",
+    "gto_version": "3.1.0",
+    "analysis_type": "monorepo_subdirectory"
+  },
+  "health": {
+    "overall_score": 0.9,
+    "status": "healthy",
+    "metrics": [
+      {
+        "name": "test_coverage",
+        "score": 1.0,
+        "weight": 0.3,
+        "description": "Test coverage ratio",
+        "details": {
+          "source_files": 3,
+          "test_files": 14,
+          "ratio": 4.67
+        }
+      },
+      {
+        "name": "documentation",
+        "score": 1.0,
+        "weight": 0.2,
+        "description": "Documentation coverage",
+        "details": {
+          "source_files": 3,
+          "documented": 3,
+          "ratio": 1.0
+        }
+      },
+      {
+        "name": "dependencies",
+        "score": 0.5,
+        "weight": 0.2,
+        "description": "Dependency management health",
+        "details": {
+          "has_requirements": false,
+          "declared_packages": 0,
+          "installed_packages": 606
+        }
+      },
+      {
+        "name": "code_quality",
+        "score": 1.0,
+        "weight": 0.3,
+        "description": "Code quality (fewer TODO/HACK markers)",
+        "details": {
+          "files_scanned": 11,
+          "todo_count": 0,
+          "hack_count": 0,
+          "fixme_count": 0,
+          "xxx_count": 0,
+          "type_ignore_count": 0,
+          "total_markers": 0
+        }
+      }
+    ],
+    "timestamp": "2026-03-25T08:54:59.944959"
+  },
+  "summary": {
+    "total_gaps": 1,
+    "critical_count": 0,
+    "high_count": 1,
+    "medium_count": 0,
+    "low_count": 0,
+    "by_category": {
+      "missing_test": 1
+    }
+  },
+  "gaps": [
+    {
+      "id": "GAP-0000-TEST",
+      "type": "missing_test",
+      "severity": "high",
+      "message": "Missing test coverage",
+      "file_path": null,
+      "line_number": null,
+      "source": "TestPresenceChecker",
+      "timestamp": "2026-03-25T08:54:54.525594",
+      "metadata": {},
+      "confidence": 0.8,
+      "effort_estimate_minutes": 22,
+      "theme": "testing",
+      "recurrence_count": 1
+    }
+  ],
+  "recommended_next_steps": "\n### Tests\n\n1. 1.1 [GAP-0000-TEST] [~22min] Missing test coverage\n\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n\n0 - Do ALL Recommended Next Actions (1 items)\n    Total estimated effort: 22 minutes",
+  "next_steps_summary": {
+    "total_count": 1,
+    "critical_count": 0,
+    "high_count": 1,
+    "medium_count": 0,
+    "low_count": 0,
+    "total_effort_minutes": 22
+  }
+}

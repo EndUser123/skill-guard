@@ -1,0 +1,32 @@
+{
+  "artifact_types": {
+    "prompt_skill": {
+      "phases": ["3a", "3b"],
+      "risk_level": "low",
+      "bypass_3e_3f": true,
+      "bypass_reason": "Low-risk artifact — only trigger/format tweaks, no new logic"
+    },
+    "new_skill": {
+      "phases": ["3a", "3b", "3c", "3e", "3f"],
+      "risk_level": "medium"
+    },
+    "orchestrator": {
+      "phases": ["3a", "3b", "3c", "3d", "3e", "3f"],
+      "risk_level": "high"
+    },
+    "contract_change": {
+      "phases": ["3a", "3b", "3c", "3d", "3e", "3f"],
+      "risk_level": "high"
+    },
+    "distribution_update": {
+      "phases": ["3a", "3b", "3c"],
+      "risk_level": "medium",
+      "bypass_3e_3f": true,
+      "bypass_reason": "Low-risk — only metadata/docs changes, no behavioral changes"
+    }
+  },
+  "default": {
+    "phases": ["3a", "3b", "3c", "3e", "3f"],
+    "risk_level": "medium"
+  }
+}

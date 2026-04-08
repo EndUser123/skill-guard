@@ -1,0 +1,196 @@
+{
+  "skill_name": "example-skill",
+  "skill_version": "1.0.0",
+  "description": "Example eval suite for skill evaluation",
+  "created": "2026-03-14",
+  "benchmarks": {
+    "trigger_accuracy_target": 0.80,
+    "output_consistency_target": 0.90,
+    "execution_success_target": 0.95,
+    "variance_threshold": "low"
+  },
+  "evals": [
+    {
+      "id": "trigger-001",
+      "name": "Natural language skill creation",
+      "prompt": "help me create a skill for code review",
+      "expected_behavior": {
+        "should_trigger": true,
+        "target_skill": "/skill-complete",
+        "phase": "discovery"
+      },
+      "success_criteria": [
+        "User sees skill-complete workflow phases",
+        "Phase 1 discovery begins with intent extraction",
+        "Similarity check is offered or performed automatically"
+      ],
+      "priority": "high"
+    },
+    {
+      "id": "trigger-002",
+      "name": "Direct slash command invocation",
+      "prompt": "create a code review skill",
+      "expected_behavior": {
+        "should_trigger": true,
+        "target_skill": "/skill-complete",
+        "phase": "creation"
+      },
+      "success_criteria": [
+        "Skill-complete activates",
+        "Enters Phase 1 discovery workflow",
+        "Asks clarifying questions about intent"
+      ],
+      "priority": "high"
+    },
+    {
+      "id": "trigger-003",
+      "name": "Ambiguous request routing",
+      "prompt": "I want to improve my debugging skill",
+      "expected_behavior": {
+        "should_trigger": true,
+        "target_skill": "/skill-complete",
+        "phase": "discovery"
+      },
+      "success_criteria": [
+        "Distinguishes between new skill creation vs improvement",
+        "Routes to appropriate phase (Phase 1 for improvement)",
+        "Checks for existing /debug skill"
+      ],
+      "priority": "medium"
+    },
+    {
+      "id": "execution-001",
+      "name": "Phase 1 similarity conflict detection",
+      "prompt": "create a git commit message skill",
+      "expected_behavior": {
+        "should_trigger": true,
+        "target_skill": "/skill-complete",
+        "conflict_detection": true
+      },
+      "success_criteria": [
+        "Invokes /similarity automatically",
+        "Detects /git-conventional-commits with ≥80% similarity",
+        "Displays conflict table with overlapping features",
+        "Asks: enhance existing or create new?"
+      ],
+      "priority": "high",
+      "depends_on": "git-conventional-commits skill existing"
+    },
+    {
+      "id": "execution-002",
+      "name": "Phase 3 quality validation",
+      "prompt": "validate this new skill: /my-skill",
+      "expected_behavior": {
+        "should_trigger": true,
+        "target_skill": "/skill-complete",
+        "phase": "quality"
+      },
+      "success_criteria": [
+        "Invokes /testing-skills with skill path",
+        "Checks YAML frontmatter completeness",
+        "Validates trigger phrases",
+        "Verifies constitution links",
+        "Returns validation report"
+      ],
+      "priority": "high"
+    },
+    {
+      "id": "output-001",
+      "name": "Consistent output format",
+      "prompt": "create a skill for api documentation",
+      "expected_behavior": {
+        "should_trigger": true,
+        "target_skill": "/skill-complete"
+      },
+      "success_criteria": [
+        "Uses Template 2 (Executive Summary Format) for discovery",
+        "Uses Template 1 (Strict Analysis Format) for creation",
+        "Output matches template structure exactly",
+        "No markdown syntax errors"
+      ],
+      "priority": "medium"
+    },
+    {
+      "id": "isolation-001",
+      "name": "Isolation testing - no environment mutations",
+      "prompt": "test this skill in isolated context",
+      "expected_behavior": {
+        "should_trigger": true,
+        "target_skill": "/skill-complete",
+        "isolation_mode": true
+      },
+      "success_criteria": [
+        "Spawns sub-agent with ONLY the test skill",
+        "Runs 2-3 representative tasks in isolated context",
+        "Verifies no environment mutations",
+        "Verifies no side effects",
+        "Skill executes without affecting user's environment"
+      ],
+      "priority": "high"
+    },
+    {
+      "id": "consistency-001",
+      "name": "Flaky test detection - consistency verification",
+      "prompt": "run skill 3x with identical prompts",
+      "expected_behavior": {
+        "should_trigger": true,
+        "target_skill": "/skill-complete",
+        "consistency_check": true
+      },
+      "success_criteria": [
+        "Run skill 3x with identical prompts",
+        "Measure output variance across runs",
+        "Flag non-deterministic behavior",
+        "High variance = requires fixing before deployment",
+        "Low variance = consistent performance"
+      ],
+      "priority": "high"
+    },
+    {
+      "id": "integration-001",
+      "name": "Multi-phase workflow coordination",
+      "prompt": "help me build and ship a new claude skill from scratch",
+      "expected_behavior": {
+        "should_trigger": true,
+        "target_skill": "/skill-complete",
+        "full_workflow": true
+      },
+      "success_criteria": [
+        "Phase 1: Discovery with similarity check",
+        "Phase 2: Creation with progressive disclosure",
+        "Phase 3: Quality validation with testing-skills",
+        "Phase 5: Distribution workflow offered",
+        "Context preserved across all phases"
+      ],
+      "priority": "high",
+      "execution_time_budget": "10 minutes"
+    }
+  ],
+  "test_environment": {
+    "required_skills": [
+      "/skill-complete",
+      "/similarity",
+      "/testing-skills",
+      "/skill-creator"
+    ],
+    "required_files": [
+      ".claude/skills/skill-complete/SKILL.md",
+      ".claude/skills/skill-complete/references/workflow-phases.md"
+    ],
+    "optional_dependencies": [
+      "skill-creator plugin for evals/evals.json processing",
+      "eval-viewer for performance reports"
+    ]
+  },
+  "execution_instructions": {
+    "how_to_run": "Place this file in evals/evals.json in skill directory, then run skill-creator's eval suite",
+    "command": "Run via skill-creator plugin: /skill-creator eval /skill-complete",
+    "interpretation": "Use eval-viewer/generate_review.py for variance analysis and performance reports"
+  },
+  "success_thresholds": {
+    "critical": "All high-priority tests must pass",
+    "overall": "≥80% of tests should pass for production readiness",
+    "trigger_accuracy": "≥80% of trigger tests should correctly activate skill-complete",
+    "execution_success": "≥95% of execution tests should complete without errors"
+  }
+}

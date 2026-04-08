@@ -1,0 +1,168 @@
+{
+  "skill_name": "skill-ship",
+  "skill_version": "1.8.0",
+  "description": "Master coordinator for skill creation and improvement workflows",
+  "created": "2026-03-24",
+  "benchmarks": {
+    "trigger_accuracy_target": 0.80,
+    "output_consistency_target": 0.90,
+    "execution_success_target": 0.95,
+    "variance_threshold": "low"
+  },
+  "evals": [
+    {
+      "id": 1,
+      "name": "Create new skill from scratch",
+      "prompt": "create a skill for automating my code review workflow",
+      "expected_output": "skill-ship activates, enters Phase 1 discovery, asks clarifying questions",
+      "files": [],
+      "assertions": [
+        {
+          "text": "Skill activates with /skill-ship or skill-ship workflow",
+          "passed": false,
+          "evidence": ""
+        },
+        {
+          "text": "Phase 1 discovery begins with intent extraction",
+          "passed": false,
+          "evidence": ""
+        },
+        {
+          "text": "Similarity check is offered or performed",
+          "passed": false,
+          "evidence": ""
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Improve existing skill",
+      "prompt": "optimize my existing debugging skill",
+      "expected_output": "skill-ship recognizes improvement workflow, offers Phase 1.5 knowledge retrieval",
+      "files": [],
+      "assertions": [
+        {
+          "text": "Recognizes this as improvement vs creation",
+          "passed": false,
+          "evidence": ""
+        },
+        {
+          "text": "Offers knowledge retrieval phase",
+          "passed": false,
+          "evidence": ""
+        },
+        {
+          "text": "Does NOT offer full creation workflow",
+          "passed": false,
+          "evidence": ""
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Validate skill quality",
+      "prompt": "validate this skill: P:/.claude/skills/my-test-skill",
+      "expected_output": "skill-ship runs Phase 3 quality gates, checks YAML, triggers, context bloat",
+      "files": [],
+      "assertions": [
+        {
+          "text": "Phase 3 quality validation executes",
+          "passed": false,
+          "evidence": ""
+        },
+        {
+          "text": "YAML frontmatter is checked",
+          "passed": false,
+          "evidence": ""
+        },
+        {
+          "text": "Context bloat check is performed",
+          "passed": false,
+          "evidence": ""
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "name": "Trigger via slash command",
+      "prompt": "/skill-ship",
+      "expected_output": "skill-ship activates directly",
+      "files": [],
+      "assertions": [
+        {
+          "text": "Skill activates immediately",
+          "passed": false,
+          "evidence": ""
+        },
+        {
+          "text": "Shows workflow phases overview",
+          "passed": false,
+          "evidence": ""
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "name": "Ambiguous improvement request",
+      "prompt": "my skill isn't working right, can you help?",
+      "expected_output": "skill-ship classifies as repair/improvement, routes to appropriate phase",
+      "files": [],
+      "assertions": [
+        {
+          "text": "Recognizes repair intent",
+          "passed": false,
+          "evidence": ""
+        },
+        {
+          "text": "Does NOT assume new skill creation",
+          "passed": false,
+          "evidence": ""
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "name": "Artifact-emitting skill quality validation",
+      "prompt": "ship this skill: P:/.claude/skills/planning",
+      "expected_output": "skill-ship detects produces_artifact=true, activates Phase 3d artifact validation, checks rubric criteria",
+      "files": [],
+      "assertions": [
+        {
+          "text": "Phase 3d activates for artifact-emitting skill",
+          "passed": false,
+          "evidence": ""
+        },
+        {
+          "text": "artifact-rubric.md is loaded",
+          "passed": false,
+          "evidence": ""
+        },
+        {
+          "text": "Single-purpose criterion evaluated",
+          "passed": false,
+          "evidence": ""
+        },
+        {
+          "text": "No-raw-findings criterion evaluated",
+          "passed": false,
+          "evidence": ""
+        },
+        {
+          "text": "No-placeholder-residue criterion evaluated",
+          "passed": false,
+          "evidence": ""
+        },
+        {
+          "text": "Contradiction-free criterion evaluated",
+          "passed": false,
+          "evidence": ""
+        },
+        {
+          "text": "Decision-complete criterion evaluated",
+          "passed": false,
+          "evidence": ""
+        }
+      ]
+    }
+  ]
+}

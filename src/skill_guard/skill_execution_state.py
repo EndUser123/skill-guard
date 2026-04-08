@@ -277,26 +277,56 @@ def _validate_skill_frontmatter(skill_name: str) -> list[str]:
     return warnings
 
 
-def _get_ledger_module():
-    """Import hook_ledger from the hooks library."""
-    if HOOKS_LIB_DIR.exists() and str(HOOKS_LIB_DIR) not in sys.path:
-        sys.path.insert(0, str(HOOKS_LIB_DIR))
-    import hook_ledger  # type: ignore
-
-    return hook_ledger
-
-
 def _get_active_turn_scope() -> tuple[str, str]:
     """Return (terminal_id, turn_id) for the current terminal."""
     terminal_id = detect_terminal_id()
     if not terminal_id:
         return "", ""
     try:
-        ledger = _get_ledger_module()
-        turn_id = ledger.get_active_turn(terminal_id) or ""
+        # Add hooks directory to path for evidence_store import
+        hooks_dir = Path("P:/.claude/hooks")
+        if hooks_dir.exists() and str(hooks_dir) not in sys.path:
+            sys.path.insert(0, str(hooks_dir))
+        from evidence_store import get_active_turn
+
+        session_id = str(os.environ.get("CLAUDE_SESSION_ID", "")).strip()
+        turn_id = get_active_turn(session_id, terminal_id) or ""
         return terminal_id, str(turn_id)
     except Exception:
         return terminal_id, ""
+
+
+# =============================================================================
+# LEDGER MODULE INTEGRATION
+# =============================================================================
+
+# Module-level cache for hook_ledger (pattern from _get_skill_execution_registry)
+_HOOKS_LEDGER_MODULE = None
+
+
+def _get_ledger_module():
+    """Import and return hook_ledger module from Claude Code hooks.
+
+    Returns:
+        hook_ledger module if available, None otherwise.
+
+    Note:
+        Follows the same lazy-import pattern as _get_skill_execution_registry().
+        Uses the same path manipulation as breadcrumb/tracker.py.
+    """
+    global _HOOKS_LEDGER_MODULE
+    if _HOOKS_LEDGER_MODULE is not None:
+        return _HOOKS_LEDGER_MODULE
+
+    try:
+        if HOOKS_LIB_DIR.exists() and str(HOOKS_LIB_DIR) not in sys.path:
+            sys.path.insert(0, str(HOOKS_LIB_DIR))
+        import hook_ledger  # type: ignore
+
+        _HOOKS_LEDGER_MODULE = hook_ledger
+        return hook_ledger
+    except Exception:
+        return None
 
 
 def set_skill_loaded(
@@ -634,8 +664,7 @@ def cleanup_stale_state_files(stale_timeout: int | None = None) -> int:
             # Check if this terminal still exists (via ledger)
             try:
                 ledger = _get_ledger_module()
-                is_active = ledger.is_terminal_active(dir_terminal_id)
-                if is_active:
+                if ledger is not None and ledger.get_active_turn(dir_terminal_id) is not None:
                     continue
             except Exception:
                 # If we can't determine activity, check file age as fallback

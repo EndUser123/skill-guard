@@ -1,0 +1,9 @@
+{
+  "eval_id": 4,
+  "eval_name": "slash-command-invocation",
+  "prompt": "/skill-ship",
+  "assertions": [
+    {"text": "Skill activates immediately"},
+    {"text": "Shows workflow phases overview"}
+  ]
+}

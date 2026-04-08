@@ -1,0 +1,13 @@
+{
+  "findings": [
+    {
+      "id": "TEST-001",
+      "severity": "CRITICAL",
+      "title": "Missing test for systemContext behavior change",
+      "description": "The code change modified HookResult.context from a plain string to a dict with systemContext key, but there is NO test verifying this new behavior."
+    }
+  ],
+  "handoff": {
+    "status": "SUCCESS"
+  }
+}

@@ -163,9 +163,10 @@ def verify_with_enforcement(
     workflow_steps = trail.get("workflow_steps", [])
     completed_steps = trail.get("completed_steps", [])
 
-    # No workflow steps declared
+    # No workflow steps declared - use minimal default for all skills
+    # All skills get enforced, including reference skills
     if not workflow_steps:
-        return True, f"No workflow steps declared (level: {level.value})"
+        workflow_steps = ["invoke_skill", "apply_guidance"]
 
     # Normalize workflow_steps to list of step IDs (handles both str and dict formats)
     workflow_step_ids = _normalize_workflow_step_ids(workflow_steps)

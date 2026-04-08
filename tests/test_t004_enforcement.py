@@ -144,15 +144,18 @@ class TestT004EnforcementLevel:
         assert "no workflow steps" in message.lower()
 
     def test_verify_with_enforcement_no_workflow_steps(self):
-        """Test verify_with_enforcement with empty workflow_steps."""
+        """Test verify_with_enforcement with empty workflow_steps gets default enforcement."""
+        # After change: empty workflow_steps now gets default ["invoke_skill", "apply_guidance"]
+        # and verification proceeds (all skills are enforced)
         is_complete, message = verify_with_enforcement(
             "test_skill",
             trail={"workflow_steps": [], "completed_steps": []},
             duration_seconds=0.0,
             tool_count=0,
         )
-        assert is_complete, "Empty workflow_steps should pass"
-        assert "no workflow steps" in message.lower()
+        # Should fail MINIMAL level (duration <= 10s, tool_count < 2)
+        assert not is_complete, "Default workflow_steps should be enforced and fail MINIMAL checks"
+        assert "MINIMAL" in message or "invoke_skill" in message or "apply_guidance" in message
 
 
 if __name__ == "__main__":

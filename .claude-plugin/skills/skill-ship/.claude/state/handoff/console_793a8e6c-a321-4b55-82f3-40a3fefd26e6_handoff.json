@@ -1,0 +1,115 @@
+{
+  "resume_snapshot": {
+    "schema_version": 2,
+    "snapshot_id": "b2dfba02-471f-4464-b940-0f9a0486050c",
+    "terminal_id": "console_793a8e6c-a321-4b55-82f3-40a3fefd26e6",
+    "source_session_id": "c809d72c-b0a9-4ec1-805e-f945556dbe1c",
+    "created_at": "2026-04-06T05:19:17.845813+00:00",
+    "expires_at": "2026-04-06T05:39:17.845813+00:00",
+    "status": "pending",
+    "goal": "Continue current task (meta-discussion filtered)",
+    "current_task": "Continue current task (meta-discussion filtered)",
+    "progress_percent": 65,
+    "progress_state": "in_progress",
+    "blockers": [],
+    "active_files": [
+      "C:\\Users\\brsth\\Downloads\\skill-ship-redesign-spec.md",
+      "P:\\.claude\\skills\\skill-ship\\SKILL.md",
+      "P:\\.claude\\skills\\skill-ship\\references\\workflow-phases.md",
+      "C:\\Users\\brsth\\.claude\\plans\\skill-ship-policy-routing-and-evaluator-separation.md",
+      "P:\\.claude\\skills\\planning\\references\\adversarial-agent-prompts.md",
+      "C:\\Users\\brsth\\.claude\\plans\\adversarial\\skill_ship_policy_routing_and_evaluator_separation\\critic-findings.json",
+      "C:\\Users\\brsth\\.claude\\plans\\adversarial\\skill_ship_policy_routing_and_evaluator_separation\\compliance-findings.json",
+      "C:\\Users\\brsth\\.claude\\plans\\adversarial\\skill_ship_policy_routing_and_evaluator_separation\\logic-findings.json",
+      "C:\\Users\\brsth\\.claude\\plans\\adversarial\\skill_ship_policy_routing_and_evaluator_separation\\quality-findings.json",
+      "packages\\sdlc\\skills\\planning\\__lib\\auto_verify.py"
+    ],
+    "pending_operations": [
+      {
+        "type": "skill",
+        "target": "skill: skill-ship",
+        "state": "in_progress"
+      },
+      {
+        "type": "read",
+        "target": "C:\\Users\\brsth\\Downloads\\skill-ship-redesign-spec.md",
+        "state": "in_progress"
+      },
+      {
+        "type": "investigation",
+        "target": "files: **/skill-ship/SKILL.md",
+        "state": "in_progress"
+      },
+      {
+        "type": "investigation",
+        "target": "files: **/skill-ship/references/workflow-phases.md",
+        "state": "in_progress"
+      },
+      {
+        "type": "investigation",
+        "target": "files: **/skill-ship/**/*.md",
+        "state": "in_progress"
+      }
+    ],
+    "next_step": "Resume skill on skill: skill-ship.",
+    "decision_refs": [],
+    "evidence_refs": [
+      "ev_b911bfda6cc146eabf2cd42daf3f96a6",
+      "ev_497bec4733e34ee5b0ab4626e77f7673",
+      "ev_294a9ddf05e847f1a80269ff2fff841e",
+      "ev_4f2a7519db2e42de86cf9c0dbb6c0b77",
+      "ev_399956b7a0084f0c9ece8050320f2862",
+      "ev_1530bdd5023e4e40a1f597fe26a568db"
+    ],
+    "transcript_path": "C:\\Users\\brsth\\.claude\\projects\\P--\\c809d72c-b0a9-4ec1-805e-f945556dbe1c.jsonl",
+    "message_intent": "unsupported_language",
+    "quality_score": 0.4,
+    "tasks_snapshot": []
+  },
+  "decision_register": [],
+  "evidence_index": [
+    {
+      "id": "ev_b911bfda6cc146eabf2cd42daf3f96a6",
+      "type": "transcript",
+      "label": "Current compact transcript",
+      "path": "C:\\Users\\brsth\\.claude\\projects\\P--\\c809d72c-b0a9-4ec1-805e-f945556dbe1c.jsonl",
+      "content_hash": "sha256:528a365d7749ef1f3a25142a0425b46dc65bcefccb4f38ebeb65815a3eaa3e4f"
+    },
+    {
+      "id": "ev_497bec4733e34ee5b0ab4626e77f7673",
+      "type": "file",
+      "label": "skill-ship-redesign-spec.md",
+      "path": "C:\\Users\\brsth\\Downloads\\skill-ship-redesign-spec.md",
+      "content_hash": "sha256:4e5f18941b8375780c561247bbacf9102c80228e83ac6e6067d48c7dfd5da541"
+    },
+    {
+      "id": "ev_294a9ddf05e847f1a80269ff2fff841e",
+      "type": "file",
+      "label": "SKILL.md",
+      "path": "P:\\.claude\\skills\\skill-ship\\SKILL.md",
+      "content_hash": "sha256:264b81e044376ed928b1f18c93e06db8cb2e834606dcaed0bb5fc84667471af2"
+    },
+    {
+      "id": "ev_4f2a7519db2e42de86cf9c0dbb6c0b77",
+      "type": "file",
+      "label": "workflow-phases.md",
+      "path": "P:\\.claude\\skills\\skill-ship\\references\\workflow-phases.md",
+      "content_hash": "sha256:666abcf6e93f40f5abfe668ec4c4c4279f64c1af71640be5d3b895605767f2bf"
+    },
+    {
+      "id": "ev_399956b7a0084f0c9ece8050320f2862",
+      "type": "file",
+      "label": "skill-ship-policy-routing-and-evaluator-separation.md",
+      "path": "C:\\Users\\brsth\\.claude\\plans\\skill-ship-policy-routing-and-evaluator-separation.md",
+      "content_hash": "sha256:6bfdc4392a89ece2b5a07b59272122fc2d6afc2bf2dd53a780a16fcb186937ce"
+    },
+    {
+      "id": "ev_1530bdd5023e4e40a1f597fe26a568db",
+      "type": "file",
+      "label": "adversarial-agent-prompts.md",
+      "path": "P:\\packages\\sdlc\\skills\\planning\\references\\adversarial-agent-prompts.md",
+      "content_hash": "sha256:73943a0e9f5b72bb5bc36ab5b387dff625fd7140b4d378e4bf1c161aebc5ba4d"
+    }
+  ],
+  "checksum": "sha256:9a859010f9236afbdde69d9bccd039c65405fb10cec044e363e6a2dc957dbeaf"
+}
