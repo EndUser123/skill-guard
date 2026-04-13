@@ -83,11 +83,11 @@ def test_set_breadcrumb(cleanup_test_state):
 
 
 def test_verify_complete_trail(cleanup_test_state):
-    """Test verification of complete trail."""
+    """Test verification of complete trail with evidence (STRICT enforcement)."""
     print("Test 3: Verify complete breadcrumb trail")
     initialize_breadcrumb_trail("research")
 
-    # Complete all steps
+    # Complete all steps with evidence (required for STRICT enforcement)
     steps = [
         "analyze_query_intent",
         "select_search_mode",
@@ -99,7 +99,7 @@ def test_verify_complete_trail(cleanup_test_state):
     ]
 
     for step in steps:
-        set_breadcrumb("research", step)
+        set_breadcrumb("research", step, evidence={"verified": True, "output": f"result for {step}"})
 
     is_complete, message = verify_breadcrumb_trail("research")
     assert is_complete, f"Trail should be complete: {message}"
@@ -142,12 +142,16 @@ def test_invalid_step(cleanup_test_state):
 
 
 def test_no_workflow_steps(cleanup_test_state):
-    """Test skill with no workflow_steps declared."""
-    print("Test 6: Skill with no workflow_steps")
-    initialize_breadcrumb_trail("gto")  # gto has no workflow_steps
+    """Test skill with workflow_steps declared (gto now correctly parses them)."""
+    print("Test 6: Skill with workflow_steps")
+    initialize_breadcrumb_trail("gto")  # gto now has workflow_steps after regex fix
 
     trail = get_breadcrumb_trail("gto")
-    assert trail is None, "No trail should be created for skills without workflow_steps"
+    # gto's SKILL.md now correctly parses workflow_steps, so a trail IS created
+    assert trail is not None, "Trail should be created for skills with workflow_steps"
+    assert trail["skill"] == "gto"
+    assert len(trail["workflow_steps"]) == 1
+    assert trail["workflow_steps"][0]["id"] == "execute_gto_analysis"
 
     print("  ✓ PASS\n")
 

@@ -1,0 +1,116 @@
+{
+  "resume_snapshot": {
+    "schema_version": 2,
+    "snapshot_id": "570fefe7-cef9-4e41-8f5e-0682e469f182",
+    "terminal_id": "console_11938dbd-d991-4b17-8cc6-23d94ea126e7",
+    "source_session_id": "2d0c0f38-687f-4861-bdf7-90443b59abba",
+    "created_at": "2026-04-11T04:43:12.760316+00:00",
+    "expires_at": "2026-04-11T05:03:12.760316+00:00",
+    "status": "pending",
+    "goal": "I think we also have something like an audit log or breadcrumbs for these skills. So, now that you know how it can be done conceptually, are you trying to say that it's implemented in our environment but you're just not using it?",
+    "current_task": "I think we also have something like an audit log or breadcrumbs for these skills. So, now that you know how it can be done conceptually, are you trying to say that it's implemented in our environment but you're just not using it?",
+    "progress_percent": 65,
+    "progress_state": "in_progress",
+    "blockers": [],
+    "active_files": [
+      "C:\\Users\\brsth\\.claude\\plans\\plan-20260410-investigation-gate-terminal-scoped-state.md",
+      "P:\\.claude\\hooks\\PreToolUse_investigation_gate.py",
+      "P:\\.claude\\hooks\\tests\\test_investigation_gate_arch_recommendations.py",
+      "P:\\.claude\\hooks\\tests\\test_investigation_gate_problem_statement.py",
+      "P:\\.claude\\hooks\\tests\\test_investigation_loop_blocked.py",
+      "P:\\.claude\\hooks\\PreToolUse\\PreToolUse_skill_pattern_gate.py",
+      "P:\\.claude\\hooks\\packages\\skill-guard\\skill_guard\\skill_auto_discovery.py",
+      "P:\\.claude\\hooks\\tests\\test_skill_guard_regression.py",
+      "P:\\packages\\skill-guard\\src\\skill_guard\\breadcrumb\\tracker.py",
+      "P:\\.claude\\skills\\pre-mortem\\phases\\p1_initial_review.md"
+    ],
+    "pending_operations": [
+      {
+        "type": "skill",
+        "target": "skill: code",
+        "state": "in_progress"
+      },
+      {
+        "type": "read",
+        "target": "C:\\Users\\brsth\\.claude\\plans\\plan-20260410-investigation-gate-terminal-scoped-state.md",
+        "state": "in_progress"
+      },
+      {
+        "type": "read",
+        "target": "P:\\.claude\\hooks\\PreToolUse_investigation_gate.py",
+        "state": "in_progress"
+      },
+      {
+        "type": "investigation",
+        "target": "search: normalize_terminal_id",
+        "state": "in_progress"
+      },
+      {
+        "type": "investigation",
+        "target": "files: P:/__lib/terminal_id.py",
+        "state": "in_progress"
+      }
+    ],
+    "next_step": "Resume skill on skill: code.",
+    "decision_refs": [],
+    "evidence_refs": [
+      "ev_9aee6b8f69aa454a99f069fb9f89caba",
+      "ev_125b66a321594e12ad8089bf2110db10",
+      "ev_c604b881dcdb4a79ae4e80dd20ec2e22",
+      "ev_890f5b59da21494aa7aecd3da3e30cb8",
+      "ev_54aaac10bafd43f6be2b171a11abbb7a",
+      "ev_926bcda7039f4ed894204a23e656d596"
+    ],
+    "transcript_path": "C:\\Users\\brsth\\.claude\\projects\\P--\\2d0c0f38-687f-4861-bdf7-90443b59abba.jsonl",
+    "prior_transcript_path": null,
+    "message_intent": "question",
+    "quality_score": 0.4,
+    "tasks_snapshot": []
+  },
+  "decision_register": [],
+  "evidence_index": [
+    {
+      "id": "ev_9aee6b8f69aa454a99f069fb9f89caba",
+      "type": "transcript",
+      "label": "Current compact transcript",
+      "path": "C:\\Users\\brsth\\.claude\\projects\\P--\\2d0c0f38-687f-4861-bdf7-90443b59abba.jsonl",
+      "content_hash": "sha256:8a9900b79963096c2a00833f496c4b96947260fb31beeb06ae232718701a4fc0"
+    },
+    {
+      "id": "ev_125b66a321594e12ad8089bf2110db10",
+      "type": "file",
+      "label": "plan-20260410-investigation-gate-terminal-scoped-state.md",
+      "path": "C:\\Users\\brsth\\.claude\\plans\\plan-20260410-investigation-gate-terminal-scoped-state.md",
+      "content_hash": "sha256:f0d34551beee816b13a6e94f1dd14e5324e6d8b23db6a0b33d85782b23a4d36a"
+    },
+    {
+      "id": "ev_c604b881dcdb4a79ae4e80dd20ec2e22",
+      "type": "file",
+      "label": "PreToolUse_investigation_gate.py",
+      "path": "P:\\.claude\\hooks\\PreToolUse_investigation_gate.py",
+      "content_hash": "sha256:fde38867b1b8aa736a0a404f5fd2ed5110d2f92977481596f9a21eecd6f4c708"
+    },
+    {
+      "id": "ev_890f5b59da21494aa7aecd3da3e30cb8",
+      "type": "file",
+      "label": "test_investigation_gate_arch_recommendations.py",
+      "path": "P:\\.claude\\hooks\\tests\\test_investigation_gate_arch_recommendations.py",
+      "content_hash": "sha256:2149a146aadf07edd3791f3e02fd14ae91eb170b6e51a5255b77ca956ba55ca9"
+    },
+    {
+      "id": "ev_54aaac10bafd43f6be2b171a11abbb7a",
+      "type": "file",
+      "label": "test_investigation_gate_problem_statement.py",
+      "path": "P:\\.claude\\hooks\\tests\\test_investigation_gate_problem_statement.py",
+      "content_hash": "sha256:46779f433f7b443033ec0a19718e405a6fdcb5b61b655f4d5bb3772b24b35c3e"
+    },
+    {
+      "id": "ev_926bcda7039f4ed894204a23e656d596",
+      "type": "file",
+      "label": "test_investigation_loop_blocked.py",
+      "path": "P:\\.claude\\hooks\\tests\\test_investigation_loop_blocked.py",
+      "content_hash": "sha256:1dbb4fa2ddef5f80adcdd814d8f72f7a6bdacf6a791599c5a4294a3bd7f0cb76"
+    }
+  ],
+  "checksum": "sha256:ca6a58054f2050482980aca29570138a289d59978ffb39d88b8fd6fe94da4e19"
+}

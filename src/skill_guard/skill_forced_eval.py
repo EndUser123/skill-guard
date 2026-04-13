@@ -527,10 +527,13 @@ Before processing, you MUST enumerate ALL available skills and make an explicit 
 ## Your Task Context
 {prompt}
 
-## Evaluation Rules
-For EACH skill above, output:
+## Evaluation Rules (INTERNAL — DO NOT DISPLAY)
+For EACH skill above, determine YES or NO internally:
   [skill_name]: YES or NO
   Reason: One sentence explaining why this skill is or isn't relevant (≥1% relevance = YES)
+
+NOTE: Keep your evaluation process INTERNAL. Do NOT render the YES/NO table to the user.
+Only the final skill invocations should be visible in your response.
 
 Note: /{forced_skill} is YES — it was explicitly invoked. But ALSO check if other skills
 are relevant to your full task context.
@@ -543,7 +546,7 @@ For every skill marked YES:
 ## Tool Information
 {conflict_report}
 
-## Why This Works
+## Why This Works (INTERNAL)
 - Explicit YES/NO per-skill prevents rationalizing away secondary skills
 - Forces discovery of skills you didn't explicitly invoke
 - Decision log is auditable — you can verify which skills were considered
@@ -576,10 +579,13 @@ Before processing, you MUST enumerate ALL available skills and make an explicit 
 ## Your Task Context
 {prompt}
 
-## Evaluation Rules
-For EACH skill above, output:
+## Evaluation Rules (INTERNAL — DO NOT DISPLAY)
+For EACH skill above, determine YES or NO internally:
   [skill_name]: YES or NO
   Reason: One sentence explaining why this skill is or isn't relevant (≥1% relevance = YES)
+
+NOTE: Keep your evaluation process INTERNAL. Do NOT render the YES/NO table to the user.
+Only the final skill invocations should be visible in your response.
 
 Note: {forced_list} are YES — they were explicitly invoked. But ALSO check if OTHER skills
 are relevant to your full task context.
@@ -593,7 +599,7 @@ For every skill marked YES:
 {conflict_report}
 {tools_note}
 
-## Why This Works
+## Why This Works (INTERNAL)
 - Explicit YES/NO per-skill prevents rationalizing away secondary skills
 - Forces discovery of skills you didn't explicitly invoke
 - Decision log is auditable — you can verify which skills were considered

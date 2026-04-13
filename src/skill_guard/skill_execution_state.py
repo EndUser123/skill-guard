@@ -416,6 +416,15 @@ def set_skill_loaded(
         # v3.5: first-tool coherence tracking
         "allowed_first_tools": allowed_first_tools,
         "first_tool_validated": False,
+        # v4.0: workflow stage for topic drift prevention
+        "workflow_stage": {
+            "active_step": "",
+            "step_definition": "",
+            "done_criteria": [],
+            "do_not_distract": [],
+            "step_index": 0,
+            "total_steps": 0,
+        },
         # Frontmatter validation warnings
         "frontmatter_warnings": frontmatter_warnings,
     }
@@ -558,6 +567,59 @@ def mark_first_tool_validated() -> None:
             "PreToolUse",
             "skill_first_tool_validated",
             {"validated": True},
+        )
+    except Exception:
+        pass
+
+
+def update_workflow_stage(
+    active_step: str = "",
+    step_definition: str = "",
+    done_criteria: list[str] | None = None,
+    do_not_distract: list[str] | None = None,
+    step_index: int | None = None,
+    total_steps: int | None = None,
+) -> None:
+    """Update workflow stage fields for topic drift prevention.
+
+    Called when skill workflow steps are defined or progress.
+    This populates the workflow_stage fields that PreToolUse_skill_pattern_gate
+    Layer 0.5 checks to prevent topic drift.
+
+    Args:
+        active_step: Current step being worked on
+        step_definition: Description of current step
+        done_criteria: List of completion criteria for current step
+        do_not_distract: List of deferred items to avoid distracting from current step
+        step_index: Current step number (0-indexed)
+        total_steps: Total number of steps in workflow
+    """
+    terminal_id, turn_id = _get_active_turn_scope()
+    if not terminal_id or not turn_id:
+        return
+
+    payload: dict[str, Any] = {"updated": True}
+    if active_step:
+        payload["active_step"] = active_step
+    if step_definition:
+        payload["step_definition"] = step_definition
+    if done_criteria is not None:
+        payload["done_criteria"] = done_criteria
+    if do_not_distract is not None:
+        payload["do_not_distract"] = do_not_distract
+    if step_index is not None:
+        payload["step_index"] = step_index
+    if total_steps is not None:
+        payload["total_steps"] = total_steps
+
+    try:
+        ledger = _get_ledger_module()
+        ledger.append_event(
+            terminal_id,
+            turn_id,
+            "PostToolUse",
+            "skill_workflow_stage_update",
+            payload,
         )
     except Exception:
         pass

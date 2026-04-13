@@ -985,6 +985,16 @@ def run(input_data: dict) -> dict | None:
 
             # Skill() was called but no execution tools used and not a help request.
             # This is the "prose bypass" pattern: model read the skill and responded with text.
+            # BUT: if slash_cmd is NOT in SKILL_EXECUTION_REGISTRY, it's an LLM-only skill
+            # where Skill() call IS the correct execution — don't fire bypass.
+            if slash_cmd not in SKILL_EXECUTION_REGISTRY:
+                log(
+                    f"LLM-only skill /{slash_cmd} - Skill() call is correct execution, allowing stop"
+                )
+                if not router_snapshot_active:
+                    _clear_governance_state()
+                return None
+
             log(
                 f"PROSE BYPASS: /{slash_cmd} - Skill() called but no execution tools used. "
                 f"Tools: {tools_used_this_turn}"

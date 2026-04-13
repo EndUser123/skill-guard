@@ -1,0 +1,120 @@
+{
+  "resume_snapshot": {
+    "schema_version": 2,
+    "snapshot_id": "b1cfb4cf-b5dd-4b6e-840e-f0ec5a221d9f",
+    "terminal_id": "console_b9583d4b-b1e9-4aaa-b9f7-8c587beb19c9",
+    "source_session_id": "2791ad31-93b4-45df-a583-0f2927f7ba17",
+    "created_at": "2026-04-13T00:55:05.106516+00:00",
+    "expires_at": "2026-04-13T01:15:05.106516+00:00",
+    "status": "rejected_stale",
+    "goal": "yes please",
+    "current_task": "yes please",
+    "progress_percent": 65,
+    "progress_state": "in_progress",
+    "blockers": [],
+    "active_files": [
+      "P:/.claude/skills/yt-channel/SKILL.md",
+      "P:/packages/intelligence-stream/bin/csf-source",
+      "P:/packages/intelligence-stream/csf/source_enumerator.py",
+      "P:/.claude/hooks/Stop_router.py",
+      "P:/.claude/hooks/StopHook_skill_execution_gate.py",
+      "P:/.claude/hooks/__lib/hook_constants.py",
+      "P:/.claude/hooks/tests/test_hooks_validation.py",
+      "P:/packages/skill-guard/src/skill_guard/StopHook_skill_execution_gate.py",
+      "P:/packages/skill-guard/README.md",
+      "P:/packages/skill-guard/tests/test_StopHook_skill_execution_gate.py"
+    ],
+    "pending_operations": [
+      {
+        "type": "investigation",
+        "target": "files: P:/.claude/skills/yt-channel/**/*",
+        "state": "in_progress"
+      },
+      {
+        "type": "command",
+        "target": "ls -la \"P:/.claude/skills/yt-channel/\"",
+        "state": "in_progress"
+      },
+      {
+        "type": "command",
+        "target": "ls -la \"P:\\.claude\\skills\\yt-channel\\\"",
+        "state": "in_progress"
+      },
+      {
+        "type": "command",
+        "target": "ls -la P:/.claude/skills/yt-channel/",
+        "state": "in_progress"
+      },
+      {
+        "type": "read",
+        "target": "P:/.claude/skills/yt-channel/SKILL.md",
+        "state": "in_progress"
+      }
+    ],
+    "next_step": "Resume investigation on files: P:/.claude/skills/yt-channel/**/*.",
+    "decision_refs": [],
+    "evidence_refs": [
+      "ev_25427399b06c4303a3b126937886cebe",
+      "ev_8917a8fba1264eedac3825e61fda231f",
+      "ev_c24bed3a3b8040c997e860d6a7557eb8",
+      "ev_c98a1b32303945d88995243b82f82b9d",
+      "ev_f5f49462a79b447a8606debd4020ea2e",
+      "ev_84629c87324f401e93ab4ab31ec9c7c7"
+    ],
+    "transcript_path": "C:\\Users\\brsth\\.claude\\projects\\P--\\2791ad31-93b4-45df-a583-0f2927f7ba17.jsonl",
+    "prior_transcript_path": null,
+    "message_intent": "instruction",
+    "goal_origin": "user_message",
+    "quality_score": 0.4,
+    "tasks_snapshot": [],
+    "rejected_at": "2026-04-13T00:56:27.900404+00:00",
+    "rejected_by_session_id": "2791ad31-93b4-45df-a583-0f2927f7ba17",
+    "rejection_reason": "snapshot evidence path outside project directory"
+  },
+  "decision_register": [],
+  "evidence_index": [
+    {
+      "id": "ev_25427399b06c4303a3b126937886cebe",
+      "type": "transcript",
+      "label": "Current compact transcript",
+      "path": "C:\\Users\\brsth\\.claude\\projects\\P--\\2791ad31-93b4-45df-a583-0f2927f7ba17.jsonl",
+      "content_hash": "sha256:3f6bb6a75909e8baaaf050d37318cf38ac29d3c8684bfaeeb36aa9aa39e4fefa"
+    },
+    {
+      "id": "ev_8917a8fba1264eedac3825e61fda231f",
+      "type": "file",
+      "label": "SKILL.md",
+      "path": "P:\\packages\\intelligence-stream\\skills\\yt-channel\\SKILL.md",
+      "content_hash": "sha256:a0b5f2a2476ca45a00240ea9801b0753c2f58d96d1fbf21f7e151e65c2124996"
+    },
+    {
+      "id": "ev_c24bed3a3b8040c997e860d6a7557eb8",
+      "type": "file",
+      "label": "csf-source",
+      "path": "P:\\packages\\intelligence-stream\\bin\\csf-source",
+      "content_hash": "sha256:f9ee0f2be1bf28908cb50363c1c1277141eab69ff10902aab5d37bdf3052b6f4"
+    },
+    {
+      "id": "ev_c98a1b32303945d88995243b82f82b9d",
+      "type": "file",
+      "label": "source_enumerator.py",
+      "path": "P:\\packages\\intelligence-stream\\csf\\source_enumerator.py",
+      "content_hash": "sha256:0c58388dcc8fff763554af8a1255451388bcc08dd08c0b602e9aa07dd756239a"
+    },
+    {
+      "id": "ev_f5f49462a79b447a8606debd4020ea2e",
+      "type": "file",
+      "label": "Stop_router.py",
+      "path": "P:\\.claude\\hooks\\Stop_router.py",
+      "content_hash": "sha256:a8c75183120fe52e3fefa4aca7a62e00997997d1f4c8e75971e638d0a8098dc6"
+    },
+    {
+      "id": "ev_84629c87324f401e93ab4ab31ec9c7c7",
+      "type": "file",
+      "label": "StopHook_skill_execution_gate.py",
+      "path": "P:\\packages\\skill-guard\\src\\skill_guard\\StopHook_skill_execution_gate.py",
+      "content_hash": "sha256:c087f57023fa3527decf42c835dfef6b6f687561efc9e9c53d0b3754537f14a4"
+    }
+  ],
+  "checksum": "sha256:ae103c24a94b39bc86f909885cb79a41d06af45eeab09e8ce67af0730621c6fe"
+}

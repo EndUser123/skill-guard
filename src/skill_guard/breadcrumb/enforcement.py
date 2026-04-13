@@ -177,7 +177,13 @@ def verify_with_enforcement(
     elif level == EnforcementLevel.STANDARD:
         return _verify_standard(workflow_step_ids, completed_steps, duration_seconds, tool_count)
     else:  # STRICT
-        return _verify_strict(workflow_step_ids, completed_steps, duration_seconds, tool_count)
+        return _verify_strict(
+            workflow_step_ids,
+            completed_steps,
+            duration_seconds,
+            tool_count,
+            steps=trail.get("steps") if trail else None,
+        )
 
 
 def _verify_minimal(
@@ -251,8 +257,9 @@ def _verify_strict(
     completed_steps: list[str],
     duration_seconds: float,
     tool_count: int,
+    steps: dict[str, Any] | None = None,
 ) -> tuple[bool, str]:
-    """STRICT level: All workflow steps must complete."""
+    """STRICT level: All workflow steps must complete with evidence."""
     # Check all workflow steps are completed
     missing_steps = [step for step in workflow_steps if step not in completed_steps]
 
@@ -262,4 +269,16 @@ def _verify_strict(
             f"Completed: {len(completed_steps)}/{len(workflow_steps)}"
         )
 
-    return True, f"STRICT: All {len(workflow_steps)} workflow steps completed"
+    # STRICT also requires evidence for each completed step
+    if steps:
+        steps_without_evidence = [
+            step for step in completed_steps
+            if step not in steps or not steps[step].get("evidence")
+        ]
+        if steps_without_evidence:
+            return False, (
+                f"STRICT: Evidence required for: {', '.join(steps_without_evidence)}. "
+                f"Completed: {len(completed_steps)}/{len(workflow_steps)}"
+            )
+
+    return True, f"STRICT: All {len(workflow_steps)} workflow steps completed with evidence"

@@ -47,6 +47,12 @@ try:
 except ImportError:
     yaml = None  # pyyaml declared as optional dependency
 
+from collections import namedtuple
+
+# Namedtuple for workflow steps result with parse error tracking (v2.0)
+# Allows callers to distinguish "no steps declared" from "parse failure"
+WorkflowStepsResult = namedtuple("WorkflowStepsResult", ["steps", "parse_error"])
+
 # =============================================================================
 # CONFIGURATION
 # =============================================================================
@@ -152,23 +158,26 @@ def _get_breadcrumb_file(skill_name: str) -> Path:
     return _get_breadcrumb_dir() / f"breadcrumb_{skill_lower}.json"
 
 
-def _load_workflow_steps(skill_name: str) -> list[dict]:
+def _load_workflow_steps(skill_name: str) -> WorkflowStepsResult:
     """Load workflow_steps from a skill's SKILL.md frontmatter.
 
     Args:
         skill_name: Skill name (without slash)
 
     Returns:
-        List of workflow step dicts with id, kind, optional, and status.
-        Format: [{"id": str, "kind": str, "optional": bool}, ...]
+        WorkflowStepsResult with steps list and parse_error.
+        steps: List of workflow step dicts with id, kind, optional, first_tool.
+        parse_error: str|None - error message if both YAML and regex failed.
+        Format: WorkflowStepsResult(steps=[{"id": str, "kind": str, "optional": bool, "first_tool": str|None}, ...], parse_error=None)
+        The "first_tool" field (v2.0) declares the expected first tool for this step.
+        If not present, no constraint is enforced for that step.
     """
-    steps: list[dict] = []
-    defaults = {"kind": "execution", "optional": False}
+    defaults = {"kind": "execution", "optional": False, "first_tool": None}
     skill_dir = Path("P:/.claude/skills") / skill_name.lower()
     skill_file = skill_dir / "SKILL.md"
 
     if not skill_file.exists():
-        return steps
+        return WorkflowStepsResult(steps=[], parse_error=None)
 
     if yaml is None:
         import logging
@@ -178,16 +187,19 @@ def _load_workflow_steps(skill_name: str) -> list[dict]:
             "Install pyyaml or declare workflow_steps inline.",
             skill_name,
         )
-        return steps
+        return WorkflowStepsResult(steps=[], parse_error=None)
+
+    steps: list[dict] = []
+    parse_error: str | None = None
 
     try:
         content = skill_file.read_text(encoding="utf-8", errors="replace")
         parts = content.split("---")
         if len(parts) < 3:
-            return steps
+            return WorkflowStepsResult(steps=[], parse_error=None)
         fm_data = yaml.safe_load(parts[1])
         if not isinstance(fm_data, dict):
-            return steps
+            return WorkflowStepsResult(steps=[], parse_error=None)
         wf_steps = fm_data.get("workflow_steps", [])
         if isinstance(wf_steps, list):
             for s in wf_steps:
@@ -205,12 +217,80 @@ def _load_workflow_steps(skill_name: str) -> list[dict]:
         import logging
 
         logger = logging.getLogger(__name__)
-        logger.warning(
-            "Failed to load workflow_steps for skill %s: %s. "
-            "Returning empty steps list.",
-            skill_name,
-            str(e),
-        )
+        # YAML failed - try regex fallback for workflow_steps only
+        # This is more robust because it doesn't parse the entire frontmatter
+        steps = _regex_workflow_steps_fallback(content, defaults)
+        if steps:
+            logger.info(
+                "YAML parse failed for skill %s (%s), using regex fallback. "
+                "Found %d workflow_steps.",
+                skill_name,
+                str(e)[:100],
+                len(steps),
+            )
+        else:
+            # Both YAML and regex failed - capture parse error
+            parse_error = str(e)[:200]
+            logger.warning(
+                "Failed to load workflow_steps for skill %s: %s. "
+                "Returning empty steps with parse_error.",
+                skill_name,
+                parse_error,
+            )
+
+    return WorkflowStepsResult(steps=steps, parse_error=parse_error)
+
+
+def _regex_workflow_steps_fallback(content: str, defaults: dict) -> list[dict]:
+    """Extract workflow_steps using regex when YAML parsing fails.
+
+    This is a targeted extraction that only looks for workflow_steps content,
+    ignoring other frontmatter fields that may contain YAML-complex content.
+
+    Args:
+        content: Full SKILL.md content
+        defaults: Default values for step dicts
+
+    Returns:
+        List of workflow step dicts, or empty list if extraction fails
+    """
+    import re
+
+    steps = []
+
+    # Find the frontmatter (between first and second ---)
+    parts = content.split("---")
+    if len(parts) < 3:
+        return []
+
+    frontmatter = parts[1]
+
+    # Find workflow_steps section
+    # Pattern: workflow_steps key (possibly indented) followed by indented list items
+    # The key insight is we need to handle YAML where workflow_steps may be nested
+    # (e.g., under parameters:) or at the top level of frontmatter
+    wf_pattern = re.compile(
+        r"(?:^|\n)[ \t]*workflow_steps:\s*\n((?:[ \t]+- [^\n]+\n)+)",
+        re.MULTILINE,
+    )
+    match = wf_pattern.search(frontmatter)
+
+    if not match:
+        return []
+
+    steps_block = match.group(1)
+
+    # Extract each step line: "- step_id: description" or "- step_id"
+    step_pattern = re.compile(r"^[ \t]+- ([^:\n]+)(?::?\s*(.*))?$", re.MULTILINE)
+
+    for step_match in step_pattern.finditer(steps_block):
+        step_id = step_match.group(1).strip()
+        if step_id:
+            step_dict = {"id": step_id, **defaults}
+            # If there's a description after ": ", add it
+            if step_match.group(2):
+                step_dict["description"] = step_match.group(2).strip()
+            steps.append(step_dict)
 
     return steps
 
@@ -376,6 +456,9 @@ def set_breadcrumb(skill_name: str, step_name: str, evidence: dict[str, Any] | N
         trail["completed_steps"] = completed
         trail["current_step"] = step_name
         trail["last_updated"] = time.time()
+
+    # Increment tool count for MINIMAL/STANDARD enforcement tracking
+    trail["tool_count"] = trail.get("tool_count", 0) + 1
 
     # Update step status and evidence in steps dict
     # NOTE: Evidence can be updated even if step was already complete
