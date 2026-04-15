@@ -534,6 +534,71 @@ def _check_first_tool_coherence(tool_name: str, state: dict) -> dict:
     }
 
 
+def _check_first_command_pattern(tool_name: str, tool_input: dict, state: dict) -> dict:
+    """Check if the first command matches the skill's declared first-command patterns.
+
+    Skills can declare required_first_command_patterns in SKILL.md frontmatter.
+    When present, the first command-level tool call must match one of the
+    patterns before any workflow execution proceeds.
+    """
+    if not FIRST_TOOL_COHERENCE_ENABLED:
+        return {}
+
+    required_patterns = state.get("required_first_command_patterns", [])
+    if not required_patterns:
+        return {}
+
+    if state.get("first_command_validated", False):
+        return {}
+
+    if tool_name not in {"Bash", "Task"}:
+        return {}
+
+    skill = state.get("skill", "")
+    command = _extract_command(tool_name, tool_input)
+    if not command:
+        return {
+            "block": True,
+            "reason": (
+                f"⛔ FIRST-COMMAND COHERENCE MISMATCH for /{skill}\n\n"
+                f"Your first workflow command tool was '{tool_name}', but no command text was provided.\n\n"
+                f"Expected one of these patterns:\n"
+                f"{chr(10).join(f'  - {pattern}' for pattern in required_patterns)}\n\n"
+                f"{state.get('required_first_command_hint', 'Follow the skill workflow exactly.')}"
+            ),
+        }
+
+    for pattern in required_patterns:
+        if _check_regex(command, pattern):
+            try:
+                sys.path.insert(0, str(Path(__file__).absolute().parent.parent))
+                from skill_execution_state import (
+                    mark_first_command_validated,
+                )
+
+                mark_first_command_validated()
+            except ImportError:
+                pass
+
+            _log_coherence_event("first_command_pass", skill, tool_name, [pattern], "allow")
+            return {}
+
+    _log_coherence_event("first_command_blocked", skill, tool_name, required_patterns, "block")
+    hint = state.get("required_first_command_hint", "") or state.get("hint", "")
+    hint_block = f"\n\n{hint}" if hint else ""
+    return {
+        "block": True,
+        "reason": (
+            f"⛔ FIRST-COMMAND COHERENCE MISMATCH for /{skill}\n\n"
+            f"Your first workflow command was:\n{command[:200]}\n\n"
+            f"Expected one of these patterns:\n"
+            f"{chr(10).join(f'  - {pattern}' for pattern in required_patterns)}"
+            f"{hint_block}\n\n"
+            f"Re-read the skill instructions and run the correct first command."
+        ),
+    }
+
+
 def _load_frontmatter_execution_config(skill_name: str) -> dict:
     """Read execution config from a skill's SKILL.md frontmatter.
 
@@ -778,6 +843,10 @@ def handle_pre_tool_use(data: dict) -> dict:
     coherence_result = _check_first_tool_coherence(tool_name, state)
     if coherence_result.get("block"):
         return coherence_result
+
+    first_command_result = _check_first_command_pattern(tool_name, tool_input, state)
+    if first_command_result.get("block"):
+        return first_command_result
 
     # =========================================================================
     # LAYER 1.5: Dynamic knowledge skill detection (ROBUST)

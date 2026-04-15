@@ -7,7 +7,7 @@ Universal skill auto-discovery and enforcement for Claude Code.
 This package provides two main modules:
 
 1. **Skill Auto-Discovery**: Automatically discovers and enforces ALL skills
-   without manual registration, replacing manual SKILL_EXECUTION_REGISTRY.
+   without manual per-skill registration.
 
 2. **Breadcrumb Trail Verification**: Workflow step verification system for
    skill execution. Skills declare workflow_steps in SKILL.md frontmatter,

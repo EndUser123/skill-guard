@@ -37,7 +37,7 @@ from skill_guard import discover_all_skills, get_skill_config
 - 🍞 **Breadcrumb Tracking**: Monitors skill execution flow step-by-step with SQLite backend
 - ✅ **Self-Verification**: Helps skills verify they're working as intended
 - 📚 **Knowledge Skill Exemption**: Distinguishes execution skills (enforced) from reference skills (not enforced)
-- 🔄 **Backwards Compatible**: Works with explicit SKILL_EXECUTION_REGISTRY
+- 🔄 **Declarative**: Uses skill frontmatter and filesystem discovery as the source of truth
 - ⚡ **Fast**: 3-20x faster with SQLite backend and caching
 - 🗄️ **SQLite Storage**: Unified database with WAL mode for concurrent access
 
@@ -128,20 +128,17 @@ graph TD
     B --> C[Detect skill invocation]
     C --> D[Initialize breadcrumb tracking]
     D --> E[PreToolUse Hook]
-    E --> F[get_skill_config]
-    F --> G{Explicit registry?}
-    G -->|Yes| H[Use explicit config]
-    G -->|No| I[Read SKILL.md frontmatter]
-    I --> J[Extract allowed_first_tools]
-    J --> K[Check breadcrumb state]
-    K --> L{First tool correct?}
-    L -->|Yes| M[Allow tool use]
-    L -->|No| N[Block with hint]
-    M --> O[Update breadcrumb]
-    N --> P[Show error message]
-    O --> Q{Skill complete?}
-    Q -->|No| E
-    Q -->|Yes| R[Verify execution followed pattern]
+    E --> F[Read SKILL.md frontmatter]
+    F --> G[Extract execution metadata]
+    G --> H[Check breadcrumb state]
+    H --> I{First tool correct?}
+    I -->|Yes| J[Allow tool use]
+    I -->|No| K[Block with hint]
+    J --> L[Update breadcrumb]
+    K --> M[Show error message]
+    L --> N{Skill complete?}
+    N -->|No| E
+    N -->|Yes| O[Verify execution followed pattern]
 ```
 
 ### Execution Flow
@@ -191,10 +188,9 @@ python -m skill_guard.breadcrumb.migration --all
 
 ### Configuration Sources (Priority Order)
 
-1. **Explicit Registry**: Manual `SKILL_EXECUTION_REGISTRY` (backwards compatibility)
-2. **Frontmatter**: `allowed_first_tools` field in SKILL.md
-3. **Script Detection**: Auto-detects `scripts/*.py` for pattern matching
-4. **Category Defaults**: Sensible defaults based on skill category
+1. **Frontmatter**: Execution metadata declared in SKILL.md
+2. **Script Detection**: Auto-detects `scripts/*.py` for pattern matching
+3. **Category Defaults**: Sensible defaults based on skill category
 
 ### SKILL.md Frontmatter Schema
 
@@ -322,7 +318,7 @@ Get skill configuration with fallback to auto-discovery.
 
 **Parameters:**
 - `skill_name` (str): Name of the skill (without slash)
-- `explicit_registry` (dict | None): Optional explicit SKILL_EXECUTION_REGISTRY
+- `explicit_registry` (dict | None): Optional legacy override map used only by older callers
 
 **Returns:**
 ```python
@@ -374,7 +370,7 @@ MIT License - see [LICENSE](LICENSE) file.
 **Principles:**
 1. **Enforcement over Discovery**: Focus on ensuring correct skill usage, not just finding skills
 2. **Breadcrumb-Based**: Track execution flow for verification and debugging
-3. **Backwards Compatible**: Explicit SKILL_EXECUTION_REGISTRY still works
+3. **Declarative**: Skill frontmatter is the source of truth
 4. **Fail Clear**: Provide helpful error messages when enforcement blocks execution
 5. **Explicit First**: Frontmatter declarations beat automatic detection
 

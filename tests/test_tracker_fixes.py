@@ -124,7 +124,7 @@ def test_whitespace_skill_name():
 
 
 def test_registry_load_without_sys_path():
-    """Test that SKILL_EXECUTION_REGISTRY loads without sys.path.insert."""
+    """Test that the legacy metadata cache loads without sys.path.insert."""
     import sys
 
     # Record original sys.path
@@ -134,7 +134,7 @@ def test_registry_load_without_sys_path():
     from skill_guard import skill_execution_state
 
     # Get registry
-    registry = skill_execution_state._get_skill_execution_registry()
+    registry = skill_execution_state._get_legacy_skill_metadata_cache()
 
     # sys.path should not be modified
     # (PreToolUse directory should not be inserted)
@@ -145,7 +145,7 @@ def test_registry_load_without_sys_path():
 
 
 def test_registry_fallback_to_empty_dict():
-    """Test that registry returns empty dict when PreToolUse unavailable."""
+    """Test that the legacy metadata cache returns empty dict when unavailable."""
     from skill_guard import skill_execution_state
 
     # Force import error by temporarily mocking
@@ -156,7 +156,7 @@ def test_registry_fallback_to_empty_dict():
         importlib.reload(skill_execution_state)
 
         # Should return empty dict, not crash
-        registry = skill_execution_state._get_skill_execution_registry()
+        registry = skill_execution_state._get_legacy_skill_metadata_cache()
         assert isinstance(registry, dict)
 
 

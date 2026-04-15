@@ -4,8 +4,8 @@ Universal Skill Auto-Discovery and Enforcement
 
 Automatically discovers and enforces ALL skills without manual registration.
 
-Replaces manual SKILL_EXECUTION_REGISTRY with dynamic discovery from filesystem.
-Maintains backwards compatibility for explicit registry entries.
+Uses skill frontmatter and filesystem discovery as the source of truth.
+Any explicit overrides are treated as legacy compatibility, not the primary path.
 
 Author: CSF NIP
 Version: 1.0.0
@@ -150,14 +150,13 @@ def get_skill_config(
     Get skill configuration with auto-discovery fallback.
 
     Priority:
-    1. Explicit registry (backwards compatibility)
-    2. Frontmatter from SKILL.md
-    3. Script pattern detection
-    4. Category defaults
+    1. Frontmatter from SKILL.md
+    2. Script pattern detection
+    3. Category defaults
 
     Args:
         skill_name: Name of the skill (without slash)
-        explicit_registry: Optional explicit SKILL_EXECUTION_REGISTRY
+        explicit_registry: Optional legacy override mapping
 
     Returns:
         Configuration dict:
@@ -169,7 +168,7 @@ def get_skill_config(
             "discovered": True,
         }
     """
-    # Priority 1: Explicit registry
+    # Legacy override for callers that still provide it
     if explicit_registry and skill_name in explicit_registry:
         registry_entry = explicit_registry[skill_name]
         return {
@@ -180,7 +179,7 @@ def get_skill_config(
             "discovered": False,
         }
 
-    # Priority 2-4: Auto-discovery
+    # Auto-discovery from the filesystem and skill frontmatter
     discovered = discover_all_skills()
 
     if skill_name not in discovered:
@@ -188,7 +187,7 @@ def get_skill_config(
         return {
             "tools": [],
             "pattern": "",
-            "hint": f"Skill /{skill_name} not found in registry",
+            "hint": f"Skill /{skill_name} not found in skill files",
             "intent_enabled": False,
             "discovered": False,
         }

@@ -142,6 +142,29 @@ class TestValidateSkillFrontmatter:
                 d = _REAL_SKILLS_DIR / f"test-skill-{tier}"
                 (d / "SKILL.md").unlink(missing_ok=True)
 
+    def test_validate_warns_missing_required_first_command_patterns(self, tmp_path: Path) -> None:
+        """Workflow skills without required_first_command_patterns should emit an advisory warning."""
+        self._make_skill_md(
+            "test-workflow-skill",
+            (
+                "name: test-workflow-skill\n"
+                "description: A workflow skill\n"
+                "version: '1.0.0'\n"
+                "enforcement: strict\n"
+                "category: development\n"
+                "workflow_steps:\n"
+                "  - parse command\n"
+                "  - execute command\n"
+            ),
+        )
+        try:
+            warnings = skill_execution_state._validate_skill_frontmatter("test-workflow-skill")
+            first_command_warnings = [w for w in warnings if "required_first_command_patterns" in w]
+            assert len(first_command_warnings) == 1, f"Expected 1 first-command warning, got: {warnings}"
+        finally:
+            (_REAL_SKILLS_DIR / "test-workflow-skill").mkdir(exist_ok=True)
+            (_REAL_SKILLS_DIR / "test-workflow-skill" / "SKILL.md").unlink(missing_ok=True)
+
 
 class TestSkillLoadedIncludesFrontmatterWarnings:
     """Tests that set_skill_loaded includes frontmatter_warnings in state.
@@ -219,3 +242,42 @@ class TestSkillLoadedIncludesFrontmatterWarnings:
             assert state.get("frontmatter_warnings") == [], f"Expected no warnings, got: {state.get('frontmatter_warnings')}"
         finally:
             self._cleanup("test-complete-skill")
+
+    def test_set_skill_loaded_includes_first_command_warning(
+        self, tmp_path: Path, monkeypatch: pytest
+    ) -> None:
+        """set_skill_loaded records an advisory when workflow steps lack a first-command contract."""
+        self._make_skill_md(
+            "test-workflow-skill",
+            (
+                "name: test-workflow-skill\n"
+                "description: Workflow skill\n"
+                "version: '1.0.0'\n"
+                "enforcement: strict\n"
+                "category: development\n"
+                "workflow_steps:\n"
+                "  - parse command\n"
+                "  - execute command\n"
+            ),
+        )
+
+        captured_states: list[dict] = []
+
+        def mock_append_event(*args, **kwargs) -> None:
+            if args[3] == "skill_loaded":
+                captured_states.append(args[4])
+
+        monkeypatch.setattr(skill_execution_state, "_get_active_turn_scope", lambda: ("test-terminal", "test-turn"))
+        monkeypatch.setattr(skill_execution_state, "_get_ledger_module", lambda: type("MockLedger", (), {"append_event": mock_append_event}))
+
+        try:
+            skill_execution_state.set_skill_loaded("test-workflow-skill")
+
+            assert len(captured_states) == 1, f"Expected 1 state, got {len(captured_states)}"
+            state = captured_states[0]
+            warnings = state.get("frontmatter_warnings", [])
+            assert any("required_first_command_patterns" in warning for warning in warnings), (
+                f"Expected first-command advisory warning, got: {warnings}"
+            )
+        finally:
+            self._cleanup("test-workflow-skill")

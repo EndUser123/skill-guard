@@ -11,8 +11,8 @@ Provides terminal-isolated state storage for skill execution validation.
 v3.5 CHANGES:
 - Added first_tool_coherence tracking for intent-tool validation
 - Skills declaring allowed_first_tools in frontmatter get first-tool gating
-- Knowledge/consultation skills (ask, discover, etc.) now participate in
-  coherence checking when they declare allowed_first_tools metadata
+- Skills can also declare required_first_command_patterns to enforce the
+  first backend command after Skill()
 """
 
 from __future__ import annotations
@@ -56,22 +56,22 @@ VALID_TRANSITIONS: dict[str, list[str]] = {
 DEFAULT_STALE_TIMEOUT = 300
 
 # =============================================================================
-# SKILL EXECUTION REGISTRY (Reference for validation)
+# LEGACY EXECUTION METADATA CACHE
 # =============================================================================
-# Import registry for validation - loaded lazily to avoid circular imports
-_SKILL_EXECUTION_REGISTRY = None
+# Kept as a compatibility hook for tests and callers that still import it.
+_LEGACY_SKILL_METADATA_CACHE = None
 
 
-def _get_skill_execution_registry():
-    """Load SKILL_EXECUTION_REGISTRY from PreToolUse hook if available.
+def _get_legacy_skill_metadata_cache():
+    """Return the legacy execution metadata cache.
 
-    Returns empty dict if PreToolUse_skill_pattern_gate is not found.
-    This allows the library to work without hook dependencies.
+    This remains only for compatibility with older tests and callers.
+    New code should rely on skill frontmatter and auto-discovery instead.
     """
-    global _SKILL_EXECUTION_REGISTRY
-    if _SKILL_EXECUTION_REGISTRY is None:
-        _SKILL_EXECUTION_REGISTRY = {}
-    return _SKILL_EXECUTION_REGISTRY
+    global _LEGACY_SKILL_METADATA_CACHE
+    if _LEGACY_SKILL_METADATA_CACHE is None:
+        _LEGACY_SKILL_METADATA_CACHE = {}
+    return _LEGACY_SKILL_METADATA_CACHE
 
 
 # =============================================================================
@@ -166,11 +166,10 @@ def _get_state_dir() -> Path:
 
 
 def _load_skill_frontmatter(skill_name: str) -> dict[str, Any]:
-    """Load allowed_first_tools from a skill's SKILL.md frontmatter.
+    """Load execution metadata from a skill's SKILL.md frontmatter.
 
-    Reads the skill's YAML frontmatter and extracts the allowed_first_tools
-    field if present. This metadata is captured by the skill_registry's
-    catch-all metadata dict.
+    Reads the skill's YAML frontmatter and extracts execution-related
+    metadata fields used by the skill guard.
 
     Args:
         skill_name: Skill name (without slash)
@@ -180,6 +179,8 @@ def _load_skill_frontmatter(skill_name: str) -> dict[str, Any]:
     """
     result: dict[str, Any] = {
         "allowed_first_tools": [],
+        "required_first_command_patterns": [],
+        "required_first_command_hint": "",
         "layer1_enforcement": False,
         "usage_markers": [],
     }
@@ -209,6 +210,16 @@ def _load_skill_frontmatter(skill_name: str) -> dict[str, Any]:
         aft = fm_data.get("allowed_first_tools", [])
         if isinstance(aft, list):
             result["allowed_first_tools"] = [str(t) for t in aft]
+        rfcp = fm_data.get("required_first_command_patterns", [])
+        if isinstance(rfcp, list):
+            result["required_first_command_patterns"] = [
+                str(pattern) for pattern in rfcp if str(pattern).strip()
+            ]
+        elif isinstance(rfcp, str) and rfcp.strip():
+            result["required_first_command_patterns"] = [rfcp.strip()]
+        rfch = fm_data.get("required_first_command_hint", "")
+        if isinstance(rfch, str):
+            result["required_first_command_hint"] = rfch.strip()
         usage_markers = fm_data.get("usage_markers", [])
         if isinstance(usage_markers, list):
             result["usage_markers"] = [
@@ -271,6 +282,16 @@ def _validate_skill_frontmatter(skill_name: str) -> list[str]:
                 f"must be one of: {', '.join(sorted(_VALID_ENFORCEMENT_VALUES))}"
             )
 
+        workflow_steps = fm_data.get("workflow_steps", [])
+        required_first_command_patterns = fm_data.get(
+            "required_first_command_patterns", []
+        )
+        if workflow_steps and not required_first_command_patterns:
+            warnings.append(
+                "Missing required_first_command_patterns for a workflow skill; "
+                "the first backend command will not be enforced."
+            )
+
     except Exception:
         pass
 
@@ -300,7 +321,7 @@ def _get_active_turn_scope() -> tuple[str, str]:
 # LEDGER MODULE INTEGRATION
 # =============================================================================
 
-# Module-level cache for hook_ledger (pattern from _get_skill_execution_registry)
+# Module-level cache for hook_ledger (pattern from the legacy metadata cache)
 _HOOKS_LEDGER_MODULE = None
 
 
@@ -311,7 +332,7 @@ def _get_ledger_module():
         hook_ledger module if available, None otherwise.
 
     Note:
-        Follows the same lazy-import pattern as _get_skill_execution_registry().
+    Follows the same lazy-import pattern as the legacy metadata cache.
         Uses the same path manipulation as breadcrumb/tracker.py.
     """
     global _HOOKS_LEDGER_MODULE
@@ -349,36 +370,30 @@ def set_skill_loaded(
     """
     skill_lower = skill_name.lower()
 
-    # Load frontmatter metadata (allowed_first_tools) for ALL skills,
-    # including knowledge skills — this enables first-tool coherence
-    # checking even for consultation/discovery skills like /ask.
+    # Load frontmatter metadata for ALL skills, including knowledge skills.
+    # This enables first-tool coherence and first-command enforcement.
     frontmatter = _load_skill_frontmatter(skill_lower)
     allowed_first_tools = frontmatter.get("allowed_first_tools", [])
+    required_first_command_patterns = frontmatter.get("required_first_command_patterns", [])
+    required_first_command_hint = frontmatter.get("required_first_command_hint", "")
 
     # Validate frontmatter for required fields and enforcement tier
     frontmatter_warnings = _validate_skill_frontmatter(skill_lower)
 
-    # Load registry if config not provided
+    # Load discovered skill config if config not provided
     if required_tools is None or pattern is None:
-        # Try to load from PreToolUse_skill_pattern_gate if available
-        # Use _get_skill_execution_registry() which handles import failures gracefully
-        registry = _get_skill_execution_registry()
-        skill_config = registry.get(skill_lower, {})
+        # Use auto-discovery from the skill files as the source of truth.
+        # This avoids relying on hardcoded per-skill tables.
+        try:
+            from skill_guard.skill_auto_discovery import get_skill_config
+
+            skill_config = get_skill_config(skill_lower, None)
+        except Exception:
+            skill_config = {}
         required_tools = skill_config.get("tools", [])
         pattern = skill_config.get("pattern", "")
         hint = skill_config.get("hint", "")
         intent_enabled = skill_config.get("intent_enabled", False)
-
-        # VALIDATION: Detect skills in registry with empty required_tools
-        # This is RISK:9 mitigation - prevent security gaps from misconfigured skills
-        if skill_lower in registry and not required_tools:
-            warning_msg = (
-                f"[skill_execution_state] WARNING: Skill '{skill_lower}' is in "
-                f"SKILL_EXECUTION_REGISTRY but has empty required_tools. This will be treated "
-                f"as a knowledge skill (no execution validation). Fix: Add 'tools' field to "
-                f"registry entry or remove from registry if this is a knowledge skill."
-            )
-            sys.stderr.write(warning_msg + "\n")
 
     # Only write state if skill has execution requirements, first-tool coherence,
     # or meaningful frontmatter (which distinguishes from accidental knowledge skills).
@@ -387,7 +402,7 @@ def set_skill_loaded(
     # Knowledge skills with complete frontmatter: track anyway (complete metadata).
     # R3 FIX: When frontmatter_warnings is non-empty, always write state so the
     # consumer can display the warnings — even for pure knowledge skills.
-    if not required_tools and not allowed_first_tools:
+    if not required_tools and not allowed_first_tools and not required_first_command_patterns:
         # No execution requirements and no first-tool coherence.
         # Skip tracking for pure knowledge skills (no metadata at all).
         # We use frontmatter as the signal: if _load_skill_frontmatter returned
@@ -416,6 +431,9 @@ def set_skill_loaded(
         # v3.5: first-tool coherence tracking
         "allowed_first_tools": allowed_first_tools,
         "first_tool_validated": False,
+        "required_first_command_patterns": required_first_command_patterns,
+        "required_first_command_hint": required_first_command_hint,
+        "first_command_validated": False,
         # v4.0: workflow stage for topic drift prevention
         "workflow_stage": {
             "active_step": "",
@@ -566,6 +584,30 @@ def mark_first_tool_validated() -> None:
             turn_id,
             "PreToolUse",
             "skill_first_tool_validated",
+            {"validated": True},
+        )
+    except Exception:
+        pass
+
+
+def mark_first_command_validated() -> None:
+    """Mark that the first command-level workflow check passed.
+
+    Called by PreToolUse_skill_pattern_gate after validating the first
+    substantive command matches the skill's declared first-command pattern.
+    Subsequent command calls skip the first-command check.
+    """
+    terminal_id, turn_id = _get_active_turn_scope()
+    if not terminal_id or not turn_id:
+        return
+
+    try:
+        ledger = _get_ledger_module()
+        ledger.append_event(
+            terminal_id,
+            turn_id,
+            "PreToolUse",
+            "skill_first_command_validated",
             {"validated": True},
         )
     except Exception:

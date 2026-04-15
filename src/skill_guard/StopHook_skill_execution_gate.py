@@ -16,7 +16,7 @@ of executing the skill's designated workflow.
 v3.2 CHANGES:
 - Simplified to safety net only (PreToolUse is primary defense)
 - Late violation logging indicates PreToolUse failure
-- Extended registry schema with hint and intent_enabled
+- Kept enforcement focused on generic skill workflow validation
 
 v3.3 CHANGES:
 - Added Layer 1 marker-based governance (from v3.0 port)
@@ -42,6 +42,7 @@ import os
 import re
 import sys
 import time
+import yaml
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -129,198 +130,6 @@ LIGHTWEIGHT_SLASH_COMMANDS = {
     "recent",
     "constraints",
     "standards",
-}
-
-# =============================================================================
-# SKILL EXECUTION REGISTRY (Extended v3.2 Schema)
-# =============================================================================
-# Each skill declares:
-#   - tools: List of tool names that count as execution
-#   - pattern: Optional regex that must appear in tool input (e.g., command)
-#   - hint: User-facing message when blocked (NEW in v3.2)
-#   - intent_enabled: Use daemon semantic validation (NEW in v3.2)
-
-SKILL_EXECUTION_REGISTRY = {
-    # External CLI skills (require Bash with specific command)
-    "ask-olymp": {
-        "tools": ["Bash", "Task"],
-        "pattern": r"ask_cli\.py|ask-olymp",
-        "hint": "Use /ask-olymp via ask_cli.py with opencode provider",
-        "intent_enabled": False,
-    },
-    "olymp": {  # Alias
-        "tools": ["Bash", "Task"],
-        "pattern": r"ask_cli\.py|ask-olymp",
-        "hint": "Use /ask-olymp via ask_cli.py with opencode provider",
-        "intent_enabled": False,
-    },
-    "multi-llm": {  # Alias
-        "tools": ["Bash", "Task"],
-        "pattern": r"ask_cli\.py",
-        "hint": "Use /ask-olymp via ask_cli.py with opencode provider",
-        "intent_enabled": False,
-    },
-    # RCA/Truth - Python engines (v3.2: tighter pattern)
-    "rca": {
-        "tools": ["Bash", "Task"],
-        "pattern": r"src\.rca|SimpleRCAEngine|RCAEngine|EnhancementRouter",
-        "hint": "Use /rca via src.rca imports (SimpleRCAEngine, EnhancementRouter)",
-        "intent_enabled": True,
-    },
-    "truth": {
-        "tools": ["Bash", "Task"],
-        "pattern": r"src\.truth|validator|verify|truth_cli",
-        "hint": "Use /truth via truth_cli.py or src.truth imports",
-        "intent_enabled": True,
-    },
-    # Git operations
-    "git": {
-        "tools": ["Bash"],
-        "pattern": r"git\s+",
-        "hint": "Use git commands directly via Bash",
-        "intent_enabled": False,
-    },
-    "commit": {
-        "tools": ["Bash"],
-        "pattern": r"git\s+commit",
-        "hint": "Use git commit via Bash",
-        "intent_enabled": False,
-    },
-    "push": {
-        "tools": ["Bash"],
-        "pattern": r"git\s+push",
-        "hint": "Use git push via Bash",
-        "intent_enabled": False,
-    },
-    # Build/test
-    "build": {
-        "tools": ["Bash", "Task"],
-        "pattern": r"build|npm|pip|pytest|make",
-        "hint": "Use build tools via Bash or Task",
-        "intent_enabled": False,
-    },
-    # /test skill - requires actual test execution, not analysis
-    "test": {
-        "tools": ["Bash", "Task"],
-        "pattern": r"pytest|python\s+-m\s+pytest|npm\s+test|coverage",
-        "hint": "Run /test via actual test execution (pytest, npm test) - do not provide prose analysis without running tests",
-        "intent_enabled": False,
-    },
-    # File exploration skills - require Read/Glob/Grep
-    "discover": {
-        "tools": ["Read", "Glob", "Grep", "Bash"],
-        "pattern": None,
-        "hint": "Use Read, Glob, Grep, or Bash for file exploration",
-        "intent_enabled": False,
-    },
-    "arch": {
-        "tools": ["Read", "Grep", "Glob"],
-        "pattern": None,
-        "hint": "Use /arch via Read tool (loads templates directly, no Skill tool needed)",
-        "intent_enabled": False,
-    },
-    # /verify - Orchestrator skill with workflow_steps (EXECUTOR-style)
-    "verify": {
-        "tools": ["Skill", "Bash"],
-        "pattern": r"__main__\.py|verifier\.py|tier[0123]",
-        "hint": "Use /verify via Skill tool + Bash (orchestrates tiers via __main__.py)",
-        "intent_enabled": True,
-    },
-    "code": {
-        "tools": ["Read", "Grep", "Glob"],
-        "pattern": None,
-        "hint": "Use /code via Read tool (loads templates directly, no Skill tool needed)",
-        "intent_enabled": False,
-    },
-    "trace": {
-        "tools": ["Read", "Grep", "Glob"],
-        "pattern": None,
-        "hint": "Use /trace via Read tool (loads templates directly, no Skill tool needed)",
-        "intent_enabled": False,
-    },
-    "pre-mortem": {
-        "tools": ["Read", "Grep", "Glob"],
-        "pattern": None,
-        "hint": "Use /pre-mortem via Read tool (loads templates directly, no Skill tool needed)",
-        "intent_enabled": False,
-    },
-    "aid": {
-        "tools": ["Bash"],
-        "pattern": r"aid\s+|ai-distiller",
-        "hint": "Use aid via ai-distiller",
-        "intent_enabled": False,
-    },
-    # Web skills
-    "crawl": {
-        "tools": ["WebFetch", "Bash"],
-        "pattern": None,
-        "hint": "Use WebFetch or Bash for web crawling",
-        "intent_enabled": False,
-    },
-    "research": {
-        "tools": ["Bash", "Task"],
-        "pattern": r"(python(\.exe)?\s+(-m\s+research\.cli|.*[\\/]research[\\/]cli\.py)|uv\s+run\s+(-m\s+)?research\.cli)",
-        "hint": "Use /research via python -m research.cli (or research/cli.py)",
-        "intent_enabled": False,
-    },
-    # Task management
-    "tm": {
-        "tools": ["Bash", "Task"],
-        "pattern": r"tm|taskmaster",
-        "hint": "Use taskmaster via Bash or Task",
-        "intent_enabled": False,
-    },
-    # Orchestration
-    "exec": {
-        "tools": ["Bash", "Task"],
-        "pattern": None,
-        "hint": "Use exec via Bash or Task",
-        "intent_enabled": False,
-    },
-    "flow": {
-        "tools": ["Bash", "Task"],
-        "pattern": None,
-        "hint": "Use flow via Bash or Task",
-        "intent_enabled": False,
-    },
-    "orchestrator": {
-        "tools": ["Bash", "Task"],
-        "pattern": r"orchestrat",
-        "hint": "Use orchestrator via Bash or Task",
-        "intent_enabled": False,
-    },
-    # Quality/Analysis skills - require observation tools, session activity tracker
-    "q": {
-        "tools": ["Read", "Grep", "Glob"],
-        "pattern": r"session.*activity|wt_session|q_context",
-        "hint": "Use /q via session activity tracker (WT_SESSION) as PRIMARY source, git as verification only",
-        "intent_enabled": False,
-    },
-    "duf": {
-        "tools": ["Read", "Grep", "Glob"],
-        "pattern": r"pre-mortem|cognitive.*check",
-        "hint": "Use /duf via session activity tracker first",
-        "intent_enabled": False,
-    },
-    # Validation pipeline (PROCEDURE skill - sequential stages)
-    "v": {
-        "tools": ["Bash", "Task"],
-        "pattern": r"\.claude[\\/]skills[\\/]v[\\/]scripts[\\/]stage|pylint.*delta|adversarial.*(security|performance|quality|testing)",
-        "hint": "Use /v via sequential stage execution (stage1_syntax, stage2_pylint_delta, stage3_adversarial, etc.)",
-        "intent_enabled": False,
-    },
-    "quality": {  # Alias
-        "tools": ["Bash", "Task"],
-        "pattern": r"\.claude[\\/]skills[\\/]v[\\/]scripts[\\/]stage|pylint.*delta|adversarial.*(security|performance|quality|testing)",
-        "hint": "Use /v via sequential stage execution (stage1_syntax, stage2_pylint_delta, stage3_adversarial, etc.)",
-        "intent_enabled": False,
-    },
-    "pipeline": {  # Alias
-        "tools": ["Bash", "Task"],
-        "pattern": r"\.claude[\\/]skills[\\/]v[\\/]scripts[\\/]stage|pylint.*delta|adversarial.*(security|performance|quality|testing)",
-        "hint": "Use /v via sequential stage execution (stage1_syntax, stage2_pylint_delta, stage3_adversarial, etc.)",
-        "intent_enabled": False,
-    },
 }
 
 _SNAPSHOT_CACHE_KEY = "__skill_exec_transcript_snapshot"
@@ -603,6 +412,25 @@ def extract_tools_used(input_data: dict) -> list[str]:
     if isinstance(tools_used, list):
         return _normalize_tool_names(tools_used)
     return []
+
+
+def _get_first_bash_command_from_transcript(input_data: dict) -> str | None:
+    """Return the first Bash command string from the transcript's tool_use blocks.
+
+    Returns None if no Bash command was found.
+    """
+    snapshot = _get_transcript_snapshot(input_data)
+    tool_blocks = snapshot.get("tools_used", [])
+    if not isinstance(tool_blocks, list):
+        return None
+    for block in tool_blocks:
+        if isinstance(block, dict) and block.get("name") == "Bash":
+            tool_input = block.get("input", {})
+            if isinstance(tool_input, dict):
+                return tool_input.get("command", "")
+            elif isinstance(tool_input, str):
+                return tool_input
+    return None
 
 
 def extract_response_text(input_data: dict) -> str:
@@ -920,6 +748,48 @@ def run(input_data: dict) -> dict | None:
         except Exception:
             pass  # Ledger read failure — fail open, don't block
 
+    # Fix 1: required_first_command_patterns enforcement.
+    # After frontmatter_warnings advisory, check if the skill declares required first
+    # command patterns and validate the actual first Bash command matches.
+    if slash_cmd and slash_cmd not in BUILTIN_SLASH_COMMANDS and slash_cmd not in LIGHTWEIGHT_SLASH_COMMANDS and slash_cmd not in KNOWLEDGE_SKILLS:
+        _skill_md_path = Path(f"P:/.claude/skills/{slash_cmd}/SKILL.md")
+        if _skill_md_path.exists():
+            try:
+                with _skill_md_path.open("r", encoding="utf-8") as _f:
+                    _skill_md_text = _f.read()
+                # Extract YAML frontmatter (between --- markers)
+                if _skill_md_text.startswith("---"):
+                    _match = re.match(r"^---\n(.*?)\n---", _skill_md_text, re.DOTALL)
+                    if _match:
+                        _frontmatter = yaml.safe_load(_match.group(1)) or {}
+                        _patterns = _frontmatter.get("required_first_command_patterns", [])
+                        if _patterns:
+                            # Get first Bash command from transcript tool_use blocks
+                            _first_bash_cmd = _get_first_bash_command_from_transcript(input_data)
+                            if _first_bash_cmd is not None:
+                                _matched = any(
+                                    re.search(_pat, _first_bash_cmd) for _pat in _patterns
+                                )
+                                if not _matched:
+                                    log(
+                                        f"REQUIRED_FIRST_COMMAND: /{slash_cmd} first Bash "
+                                        f"command '{_first_bash_cmd}' does not match any "
+                                        f"required pattern: {_patterns}"
+                                    )
+                                    return {
+                                        "block": True,
+                                        "reason": (
+                                            f"SKILL REQUIRED FIRST COMMAND NOT MATCHED\n\n"
+                                            f"The skill /{slash_cmd} requires the first Bash "
+                                            f"command to match one of: {_patterns}\n\n"
+                                            f"Actual first command: {_first_bash_cmd}\n\n"
+                                            f"Run the correct command from the skill's "
+                                            f"Execution section, then retry."
+                                        ),
+                                    }
+            except Exception:
+                pass  # YAML/read failure — fail open, don't block
+
     # Stateless per-turn check: If slash command was used, verify Skill tool was called
     # AND that the model actually executed something afterwards.
     #
@@ -985,16 +855,6 @@ def run(input_data: dict) -> dict | None:
 
             # Skill() was called but no execution tools used and not a help request.
             # This is the "prose bypass" pattern: model read the skill and responded with text.
-            # BUT: if slash_cmd is NOT in SKILL_EXECUTION_REGISTRY, it's an LLM-only skill
-            # where Skill() call IS the correct execution — don't fire bypass.
-            if slash_cmd not in SKILL_EXECUTION_REGISTRY:
-                log(
-                    f"LLM-only skill /{slash_cmd} - Skill() call is correct execution, allowing stop"
-                )
-                if not router_snapshot_active:
-                    _clear_governance_state()
-                return None
-
             log(
                 f"PROSE BYPASS: /{slash_cmd} - Skill() called but no execution tools used. "
                 f"Tools: {tools_used_this_turn}"
