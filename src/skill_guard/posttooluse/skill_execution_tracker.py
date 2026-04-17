@@ -40,7 +40,7 @@ for _hooks_root in (
 
 class SkillExecutionTracker(PostToolUseHook):
     # Only relevant when Skill tool fires or subsequent tools during skill execution
-    tool_matcher = {"Skill", "Bash", "Write", "Edit", "Task"}
+    tool_matcher = {"Skill", "Bash", "Write", "Edit", "MultiEdit", "Task"}
     """
     Tracks skill loads and tool usage for execution validation.
     

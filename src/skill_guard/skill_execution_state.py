@@ -55,6 +55,8 @@ VALID_TRANSITIONS: dict[str, list[str]] = {
 # Default stale timeout in seconds
 DEFAULT_STALE_TIMEOUT = 300
 
+_VALID_CONTRACT_TYPES = {"workflow", "output", "hybrid", "analysis"}
+
 # =============================================================================
 # LEGACY EXECUTION METADATA CACHE
 # =============================================================================
@@ -72,6 +74,45 @@ def _get_legacy_skill_metadata_cache():
     if _LEGACY_SKILL_METADATA_CACHE is None:
         _LEGACY_SKILL_METADATA_CACHE = {}
     return _LEGACY_SKILL_METADATA_CACHE
+
+
+def _normalize_string_list(value: object) -> list[str]:
+    if isinstance(value, list):
+        return [str(item).strip() for item in value if str(item).strip()]
+    if isinstance(value, str) and value.strip():
+        return [value.strip()]
+    return []
+
+
+def _infer_contract_type(frontmatter: dict[str, Any]) -> str:
+    explicit = str(frontmatter.get("contract_type", "") or "").strip().lower()
+    if explicit in _VALID_CONTRACT_TYPES:
+        return explicit
+
+    workflow_signals = bool(
+        _normalize_string_list(frontmatter.get("workflow_steps", []))
+        or _normalize_string_list(frontmatter.get("required_phase_artifacts", []))
+        or str(frontmatter.get("workflow_binding", "") or "").strip().lower()
+        in {"exclusive", "hard"}
+        or str(frontmatter.get("workflow_enforcement", "") or "").strip().lower()
+        in {"hard", "strict"}
+    )
+    output_signals = bool(
+        bool(frontmatter.get("layer1_enforcement"))
+        or _normalize_string_list(frontmatter.get("required_markers", []))
+        or _normalize_string_list(frontmatter.get("required_sections", []))
+        or str(frontmatter.get("final_output_schema", "") or "").strip()
+        or str(frontmatter.get("output_enforcement", "") or "").strip().lower()
+        in {"hard", "strict", "warn", "advisory"}
+    )
+
+    if workflow_signals and output_signals:
+        return "hybrid"
+    if workflow_signals:
+        return "workflow"
+    if output_signals:
+        return "output"
+    return "analysis"
 
 
 # =============================================================================
@@ -141,7 +182,7 @@ def sanitize_terminal_id(terminal_id: str) -> str:
 def _get_state_file() -> Path:
     """Legacy path retained for compatibility only."""
     terminal_id = detect_terminal_id()
-    state_subdir = STATE_DIR / f"skill_execution_{terminal_id}"
+    state_subdir = STATE_DIR / f"skill_execution_{sanitize_terminal_id(terminal_id or 'unknown')}"
     state_subdir.mkdir(parents=True, exist_ok=True)
     return state_subdir / "skill_execution_pending.json"
 
@@ -157,12 +198,46 @@ def _get_state_dir() -> Path:
     creation syscalls on every invocation.
     """
     terminal_id = detect_terminal_id()
-    if terminal_id in _state_dir_cache:
-        return _state_dir_cache[terminal_id]
-    state_subdir = STATE_DIR / f"skill_execution_{terminal_id}"
+    cache_key = sanitize_terminal_id(terminal_id or "unknown")
+    if cache_key in _state_dir_cache:
+        return _state_dir_cache[cache_key]
+    state_subdir = STATE_DIR / f"skill_execution_{cache_key}"
     state_subdir.mkdir(parents=True, exist_ok=True)
-    _state_dir_cache[terminal_id] = state_subdir
+    _state_dir_cache[cache_key] = state_subdir
     return state_subdir
+
+
+def _get_state_file_for_terminal(terminal_id: str) -> Path:
+    """Return the compatibility state file for a specific terminal."""
+    state_subdir = STATE_DIR / f"skill_execution_{sanitize_terminal_id(terminal_id or 'unknown')}"
+    state_subdir.mkdir(parents=True, exist_ok=True)
+    return state_subdir / "skill_execution_pending.json"
+
+
+def _read_pending_state_file(terminal_id: str) -> dict[str, Any] | None:
+    state_file = _get_state_file_for_terminal(terminal_id)
+    if not state_file.exists():
+        return None
+    try:
+        data = json.loads(state_file.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def _write_pending_state_file(terminal_id: str, state: dict[str, Any]) -> bool:
+    try:
+        _atomic_write_json(_get_state_file_for_terminal(terminal_id), state)
+        return True
+    except OSError:
+        return False
+
+
+def _clear_pending_state_file(terminal_id: str) -> None:
+    try:
+        _get_state_file_for_terminal(terminal_id).unlink(missing_ok=True)
+    except OSError:
+        pass
 
 
 def _load_skill_frontmatter(skill_name: str) -> dict[str, Any]:
@@ -178,11 +253,25 @@ def _load_skill_frontmatter(skill_name: str) -> dict[str, Any]:
         Dict with frontmatter fields used by execution/governance tracking.
     """
     result: dict[str, Any] = {
+        "contract_type": "analysis",
         "allowed_first_tools": [],
         "required_first_command_patterns": [],
         "required_first_command_hint": "",
+        "enforcement": "",
+        "enforcement_tier": "",
+        "workflow_steps": [],
+        "completion_criteria": [],
+        "required_phase_artifacts": [],
+        "workflow_binding": "",
+        "workflow_enforcement": "",
+        "phase_recovery_mode": "",
+        "user_override": "",
         "layer1_enforcement": False,
         "usage_markers": [],
+        "output_enforcement": "",
+        "final_output_schema": "",
+        "required_markers": [],
+        "required_sections": [],
     }
     skill_dir = Path("P:/.claude/skills") / skill_name
     skill_file = skill_dir / "SKILL.md"
@@ -207,9 +296,12 @@ def _load_skill_frontmatter(skill_name: str) -> dict[str, Any]:
         fm_data = yaml.safe_load(parts[1])
         if not isinstance(fm_data, dict):
             return result
+        result["contract_type"] = _infer_contract_type(fm_data)
         aft = fm_data.get("allowed_first_tools", [])
         if isinstance(aft, list):
             result["allowed_first_tools"] = [str(t) for t in aft]
+        elif isinstance(aft, str) and aft.strip():
+            result["allowed_first_tools"] = [aft.strip()]
         rfcp = fm_data.get("required_first_command_patterns", [])
         if isinstance(rfcp, list):
             result["required_first_command_patterns"] = [
@@ -220,12 +312,77 @@ def _load_skill_frontmatter(skill_name: str) -> dict[str, Any]:
         rfch = fm_data.get("required_first_command_hint", "")
         if isinstance(rfch, str):
             result["required_first_command_hint"] = rfch.strip()
+        enforcement = fm_data.get("enforcement", "")
+        if isinstance(enforcement, str):
+            result["enforcement"] = enforcement.strip()
+        output_enforcement = fm_data.get("output_enforcement", "")
+        if isinstance(output_enforcement, str):
+            result["output_enforcement"] = output_enforcement.strip()
+        enforcement_tier = fm_data.get("enforcement_tier", "")
+        if isinstance(enforcement_tier, str):
+            result["enforcement_tier"] = enforcement_tier.strip()
+        completion_criteria = fm_data.get("completion_criteria", [])
+        if isinstance(completion_criteria, list):
+            result["completion_criteria"] = completion_criteria
+        final_output_schema = fm_data.get("final_output_schema", "")
+        if isinstance(final_output_schema, str):
+            result["final_output_schema"] = final_output_schema.strip()
+        rpa = fm_data.get("required_phase_artifacts", [])
+        if isinstance(rpa, list):
+            result["required_phase_artifacts"] = [
+                str(artifact) for artifact in rpa if str(artifact).strip()
+            ]
+        elif isinstance(rpa, str) and rpa.strip():
+            result["required_phase_artifacts"] = [rpa.strip()]
+        wf_steps = fm_data.get("workflow_steps", [])
+        if isinstance(wf_steps, list):
+            normalized_steps: list[str] = []
+            for step in wf_steps:
+                if isinstance(step, str):
+                    text = step.strip()
+                    if text:
+                        normalized_steps.append(text)
+                elif isinstance(step, dict):
+                    for key, value in step.items():
+                        key_text = str(key).strip()
+                        value_text = str(value).strip() if value is not None else ""
+                        if key_text and value_text:
+                            normalized_steps.append(f"{key_text}: {value_text}")
+                        elif key_text:
+                            normalized_steps.append(key_text)
+                        elif value_text:
+                            normalized_steps.append(value_text)
+                elif step is not None:
+                    text = str(step).strip()
+                    if text:
+                        normalized_steps.append(text)
+            result["workflow_steps"] = normalized_steps
+        elif isinstance(wf_steps, str) and wf_steps.strip():
+            result["workflow_steps"] = [wf_steps.strip()]
+        workflow_binding = fm_data.get("workflow_binding", "")
+        if isinstance(workflow_binding, str):
+            result["workflow_binding"] = workflow_binding.strip()
+        workflow_enforcement = fm_data.get("workflow_enforcement", "")
+        if isinstance(workflow_enforcement, str):
+            result["workflow_enforcement"] = workflow_enforcement.strip()
+        phase_recovery_mode = fm_data.get("phase_recovery_mode", "")
+        if isinstance(phase_recovery_mode, str):
+            result["phase_recovery_mode"] = phase_recovery_mode.strip()
+        user_override = fm_data.get("user_override", "")
+        if isinstance(user_override, str):
+            result["user_override"] = user_override.strip()
         usage_markers = fm_data.get("usage_markers", [])
         if isinstance(usage_markers, list):
             result["usage_markers"] = [
                 str(marker) for marker in usage_markers if str(marker).strip()
             ]
+        elif isinstance(usage_markers, str) and usage_markers.strip():
+            result["usage_markers"] = [usage_markers.strip()]
         result["layer1_enforcement"] = bool(fm_data.get("layer1_enforcement"))
+        result["required_markers"] = _normalize_string_list(fm_data.get("required_markers", []))
+        result["required_sections"] = _normalize_string_list(
+            fm_data.get("required_sections", [])
+        )
     except Exception:
         pass
     return result
@@ -283,10 +440,35 @@ def _validate_skill_frontmatter(skill_name: str) -> list[str]:
             )
 
         workflow_steps = fm_data.get("workflow_steps", [])
+        normalized_workflow_steps: list[str] = []
+        if isinstance(workflow_steps, list):
+            for step in workflow_steps:
+                if isinstance(step, str):
+                    text = step.strip()
+                    if text:
+                        normalized_workflow_steps.append(text)
+                elif isinstance(step, dict):
+                    for key, value in step.items():
+                        key_text = str(key).strip()
+                        value_text = str(value).strip() if value is not None else ""
+                        if key_text and value_text:
+                            normalized_workflow_steps.append(f"{key_text}: {value_text}")
+                        elif key_text:
+                            normalized_workflow_steps.append(key_text)
+                        elif value_text:
+                            normalized_workflow_steps.append(value_text)
+                elif step is not None:
+                    text = str(step).strip()
+                    if text:
+                        normalized_workflow_steps.append(text)
         required_first_command_patterns = fm_data.get(
             "required_first_command_patterns", []
         )
-        if workflow_steps and not required_first_command_patterns:
+        workflow_binding = str(fm_data.get("workflow_binding", "") or "").strip().lower()
+        required_phase_artifacts = fm_data.get("required_phase_artifacts", [])
+        if normalized_workflow_steps and not required_first_command_patterns:
+            if required_phase_artifacts or workflow_binding in {"exclusive", "hard"}:
+                return warnings
             warnings.append(
                 "Missing required_first_command_patterns for a workflow skill; "
                 "the first backend command will not be enforced."
@@ -402,6 +584,15 @@ def set_skill_loaded(
     # Knowledge skills with complete frontmatter: track anyway (complete metadata).
     # R3 FIX: When frontmatter_warnings is non-empty, always write state so the
     # consumer can display the warnings — even for pure knowledge skills.
+    enforcement_tier = str(frontmatter.get("enforcement_tier", "") or "").strip().lower()
+    if (
+        enforcement_tier == "none"
+        and not required_tools
+        and not allowed_first_tools
+        and not required_first_command_patterns
+        and not frontmatter_warnings
+    ):
+        return
     if not required_tools and not allowed_first_tools and not required_first_command_patterns:
         # No execution requirements and no first-tool coherence.
         # Skip tracking for pure knowledge skills (no metadata at all).
@@ -425,6 +616,10 @@ def set_skill_loaded(
         "intent_enabled": intent_enabled,
         "prompt_fingerprint": str(prompt_fingerprint or ""),
         "task_id": str(task_id or ""),
+        "terminal_id": "",
+        "turn_id": "",
+        "phase": _PHASE_PENDING,
+        "updated_at": time.time(),
         "tools_used": [],
         "commands_run": [],
         "execution_satisfied": False,
@@ -433,6 +628,18 @@ def set_skill_loaded(
         "first_tool_validated": False,
         "required_first_command_patterns": required_first_command_patterns,
         "required_first_command_hint": required_first_command_hint,
+        "contract_type": frontmatter.get("contract_type", ""),
+        "required_phase_artifacts": frontmatter.get("required_phase_artifacts", []),
+        "workflow_binding": frontmatter.get("workflow_binding", ""),
+        "workflow_enforcement": frontmatter.get("workflow_enforcement", ""),
+        "phase_recovery_mode": frontmatter.get("phase_recovery_mode", ""),
+        "user_override": frontmatter.get("user_override", ""),
+        "output_enforcement": frontmatter.get("output_enforcement", ""),
+        "final_output_schema": frontmatter.get("final_output_schema", ""),
+        "required_markers": frontmatter.get("required_markers", []),
+        "required_sections": frontmatter.get("required_sections", []),
+        "layer1_enforcement": bool(frontmatter.get("layer1_enforcement")),
+        "usage_markers": frontmatter.get("usage_markers", []),
         "first_command_validated": False,
         # v4.0: workflow stage for topic drift prevention
         "workflow_stage": {
@@ -445,10 +652,15 @@ def set_skill_loaded(
         },
         # Frontmatter validation warnings
         "frontmatter_warnings": frontmatter_warnings,
+        "completion_criteria": frontmatter.get("completion_criteria", []),
+        "enforcement_tier": str(frontmatter.get("enforcement_tier", "") or "").strip(),
     }
 
     terminal_id, turn_id = _get_active_turn_scope()
     if not terminal_id or not turn_id:
+        if not terminal_id:
+            return
+        _write_pending_state_file(terminal_id, state)
         return
 
     try:
@@ -471,8 +683,9 @@ def set_skill_loaded(
                     "markers": frontmatter.get("usage_markers", []),
                 },
             )
+        _write_pending_state_file(terminal_id, state)
     except Exception:
-        pass
+        _write_pending_state_file(terminal_id, state)
 
 
 def record_tool_use(tool_name: str, tool_input: dict[str, Any]) -> None:
@@ -518,32 +731,56 @@ def transition_phase(to_state: str) -> bool:
         True if transition succeeded, False if invalid transition or no state file
     """
     terminal_id, turn_id = _get_active_turn_scope()
-    if not terminal_id or not turn_id:
+    if not terminal_id:
         return False
 
-    try:
-        ledger = _get_ledger_module()
-        snapshot = ledger.materialize_turn(terminal_id, turn_id)
-        state = snapshot.get("skill_state", {})
-        from_phase = state.get("phase", _PHASE_PENDING)
+    if turn_id:
+        try:
+            ledger = _get_ledger_module()
+            snapshot = ledger.materialize_turn(terminal_id, turn_id)
+            state = snapshot.get("skill_state", {})
+            if not isinstance(state, dict):
+                state = {}
+            from_phase = state.get("phase", _PHASE_PENDING)
 
-        # Validate transition
-        allowed = VALID_TRANSITIONS.get(from_phase, [])
-        if to_state not in allowed:
-            return False
+            allowed = VALID_TRANSITIONS.get(from_phase, [])
+            if to_state not in allowed:
+                return False
 
-        # Update phase via ledger
-        ledger.append_event(
-            terminal_id,
-            turn_id,
-            "PostToolUse",
-            "skill_phase_transition",
-            {"phase": to_state, "from_phase": from_phase},
-        )
-        return True
+            ledger.append_event(
+                terminal_id,
+                turn_id,
+                "PostToolUse",
+                "skill_phase_transition",
+                {"phase": to_state, "from_phase": from_phase},
+            )
+            state = dict(state)
+            state["phase"] = to_state
+            state["terminal_id"] = terminal_id
+            state["turn_id"] = turn_id
+            state["updated_at"] = time.time()
+            _write_pending_state_file(terminal_id, state)
+            return True
+        except Exception:
+            pass
 
-    except Exception:
+    state = _read_pending_state_file(terminal_id)
+    if not isinstance(state, dict):
         return False
+    if turn_id and str(state.get("turn_id", "")) not in {"", turn_id}:
+        return False
+
+    from_phase = state.get("phase", _PHASE_PENDING)
+    allowed = VALID_TRANSITIONS.get(from_phase, [])
+    if to_state not in allowed:
+        return False
+
+    state["phase"] = to_state
+    state["terminal_id"] = terminal_id
+    state["turn_id"] = turn_id or str(state.get("turn_id", ""))
+    state["updated_at"] = time.time()
+    _write_pending_state_file(terminal_id, state)
+    return True
 
 
 def read_pending_state() -> dict | None:
@@ -554,16 +791,24 @@ def read_pending_state() -> dict | None:
     """
     try:
         terminal_id, turn_id = _get_active_turn_scope()
-        if not terminal_id or not turn_id:
+        if not terminal_id:
             return None
-        ledger = _get_ledger_module()
-        snapshot = ledger.materialize_turn(terminal_id, turn_id)
-        state = snapshot.get("skill_state")
-        if isinstance(state, dict):
-            return state
+        if turn_id:
+            ledger = _get_ledger_module()
+            snapshot = ledger.materialize_turn(terminal_id, turn_id)
+            state = snapshot.get("skill_state")
+            if isinstance(state, dict):
+                return state
+            file_state = _read_pending_state_file(terminal_id)
+            if isinstance(file_state, dict) and str(file_state.get("turn_id", "")) == turn_id:
+                return file_state
+            return None
+        return _read_pending_state_file(terminal_id)
     except Exception:
+        terminal_id = detect_terminal_id()
+        if terminal_id:
+            return _read_pending_state_file(terminal_id)
         return None
-    return None
 
 
 def mark_first_tool_validated() -> None:
@@ -670,19 +915,21 @@ def update_workflow_stage(
 def clear_state() -> None:
     """Clear current skill execution state for the active turn."""
     terminal_id, turn_id = _get_active_turn_scope()
-    if not terminal_id or not turn_id:
+    if not terminal_id:
         return
     try:
-        ledger = _get_ledger_module()
-        ledger.append_event(
-            terminal_id,
-            turn_id,
-            "Stop",
-            "skill_state_cleared",
-            {"cleared_at": time.time()},
-        )
+        if turn_id:
+            ledger = _get_ledger_module()
+            ledger.append_event(
+                terminal_id,
+                turn_id,
+                "Stop",
+                "skill_state_cleared",
+                {"cleared_at": time.time()},
+            )
     except Exception:
         pass
+    _clear_pending_state_file(terminal_id)
 
 
 # =============================================================================
@@ -715,6 +962,18 @@ def migrate_legacy_state() -> None:
             legacy_data["hint"] = ""
         if "intent_enabled" not in legacy_data:
             legacy_data["intent_enabled"] = False
+        legacy_data.setdefault("required_phase_artifacts", [])
+        legacy_data.setdefault("workflow_binding", "")
+        legacy_data.setdefault("workflow_enforcement", "")
+        legacy_data.setdefault("phase_recovery_mode", "")
+        legacy_data.setdefault("user_override", "")
+        legacy_data.setdefault("contract_type", "analysis")
+        legacy_data.setdefault("output_enforcement", "")
+        legacy_data.setdefault("final_output_schema", "")
+        legacy_data.setdefault("required_markers", [])
+        legacy_data.setdefault("required_sections", [])
+        legacy_data.setdefault("completion_criteria", [])
+        legacy_data.setdefault("enforcement_tier", "")
 
         # Write to new location
         new_state_file = _get_state_file()

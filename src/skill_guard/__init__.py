@@ -45,6 +45,21 @@ from .skill_auto_discovery import (
     discover_all_skills,
     get_skill_config,
 )
+from .slash_command_observability import (
+    BUILTIN_SLASH_COMMANDS,
+    LIGHTWEIGHT_SLASH_COMMANDS,
+    classify_slash_command,
+    extract_command_name,
+    extract_slash_command,
+    record_slash_outcome,
+    record_slash_request,
+    record_slash_resolution,
+    is_slash_prompt,
+    normalize_prompt,
+)
+from .skill_metadata_advisory import skill_metadata_advisory
+from .tdd_contract_auto_gate import tdd_contract_auto_gate
+from .turn_marker import ensure_turn_marker
 
 __version__ = "1.0.0"
 __all__ = [
@@ -52,6 +67,20 @@ __all__ = [
     "discover_all_skills",
     "get_skill_config",
     "KNOWLEDGE_SKILLS",
+    # Slash observability
+    "BUILTIN_SLASH_COMMANDS",
+    "LIGHTWEIGHT_SLASH_COMMANDS",
+    "classify_slash_command",
+    "extract_command_name",
+    "extract_slash_command",
+    "is_slash_prompt",
+    "normalize_prompt",
+    "record_slash_outcome",
+    "record_slash_request",
+    "record_slash_resolution",
+    "skill_metadata_advisory",
+    "tdd_contract_auto_gate",
+    "ensure_turn_marker",
     # Breadcrumb trail verification
     "initialize_breadcrumb_trail",
     "set_breadcrumb",

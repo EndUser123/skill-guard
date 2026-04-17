@@ -73,6 +73,13 @@ from __lib.runtime_env import ledger_available as _ledger_available
 
 LEDGER_AVAILABLE = _ledger_available()
 
+try:
+    from UserPromptSubmit_modules.slash_command_observability import record_slash_outcome
+except Exception:  # pragma: no cover - observability must fail open
+
+    def record_slash_outcome(*args, **kwargs):  # type: ignore[no-redef]
+        return False
+
 # =============================================================================
 # CONFIGURATION
 # =============================================================================
@@ -329,7 +336,15 @@ def _get_governance_state_file() -> Path:
         terminal_id = os.environ.get("CLAUDE_TERMINAL_ID", "")
     if not terminal_id:
         terminal_id = "unknown"
-    state_dir = STATE_DIR / f"skill_execution_{terminal_id}"
+    try:
+        from skill_execution_state import sanitize_terminal_id
+
+        safe_terminal = sanitize_terminal_id(terminal_id)
+    except Exception:
+        import re
+
+        safe_terminal = re.sub(r"[^a-zA-Z0-9_\-]", "_", terminal_id)
+    state_dir = STATE_DIR / f"skill_execution_{safe_terminal}"
     return state_dir / "skill_governance_state.json"
 
 
@@ -614,6 +629,100 @@ def _check_pattern_match(command: str, pattern: str) -> bool:
         return False
 
 
+def _tool_mentions_artifact(tool_event: object, artifact_name: str) -> bool:
+    """Return True when a tool event mentions the required artifact name."""
+    if not artifact_name:
+        return False
+
+    artifact_lower = artifact_name.lower()
+    if isinstance(tool_event, dict):
+        try:
+            blob = json.dumps(tool_event, ensure_ascii=False).lower()
+        except Exception:
+            blob = str(tool_event).lower()
+    else:
+        blob = str(tool_event).lower()
+    return artifact_lower in blob
+
+
+def _missing_required_phase_artifacts(
+    state: dict,
+    tool_history: list,
+) -> list[str]:
+    """Return required phase artifacts not observed in this turn's tool events."""
+    binding = str(state.get("workflow_binding", "") or "").strip().lower()
+    enforcement = str(state.get("workflow_enforcement", "") or "").strip().lower()
+    required = [
+        str(artifact).strip()
+        for artifact in (state.get("required_phase_artifacts", []) or [])
+        if str(artifact).strip()
+    ]
+
+    if not required:
+        return []
+    if binding != "exclusive" and enforcement not in {"hard", "strict"}:
+        return []
+    if not tool_history:
+        return required
+
+    missing: list[str] = []
+    for artifact in required:
+        if not any(_tool_mentions_artifact(event, artifact) for event in tool_history):
+            missing.append(artifact)
+    return missing
+
+
+def _normalize_list(value: object) -> list[str]:
+    if isinstance(value, list):
+        return [str(item).strip() for item in value if str(item).strip()]
+    if isinstance(value, str) and value.strip():
+        return [value.strip()]
+    return []
+
+
+def _contract_type(state: dict) -> str:
+    contract = str(state.get("contract_type", "") or "").strip().lower()
+    if contract in {"workflow", "output", "hybrid", "analysis"}:
+        return contract
+
+    workflow_signals = bool(
+        _normalize_list(state.get("workflow_steps", []))
+        or _normalize_list(state.get("required_phase_artifacts", []))
+        or str(state.get("workflow_binding", "") or "").strip().lower() in {"exclusive", "hard"}
+        or str(state.get("workflow_enforcement", "") or "").strip().lower() in {"hard", "strict"}
+    )
+    output_signals = bool(
+        bool(state.get("layer1_enforcement"))
+        or _normalize_list(state.get("required_markers", []))
+        or _normalize_list(state.get("required_sections", []))
+        or str(state.get("final_output_schema", "") or "").strip()
+        or str(state.get("output_enforcement", "") or "").strip().lower()
+        in {"hard", "strict", "warn", "advisory"}
+    )
+
+    if workflow_signals and output_signals:
+        return "hybrid"
+    if workflow_signals:
+        return "workflow"
+    if output_signals:
+        return "output"
+    return "analysis"
+
+
+def _requires_execution_tools(state: dict) -> bool:
+    """Return True when this skill must continue with execution tools after Skill()."""
+    contract = _contract_type(state)
+    if contract in {"workflow", "hybrid"}:
+        return True
+    if _normalize_list(state.get("required_phase_artifacts", [])):
+        return True
+    if str(state.get("workflow_binding", "") or "").strip().lower() in {"exclusive", "hard"}:
+        return True
+    if str(state.get("workflow_enforcement", "") or "").strip().lower() in {"hard", "strict"}:
+        return True
+    return False
+
+
 def validate_execution(state: dict, tool_history: list) -> dict:
     """Validate that skill was properly executed.
 
@@ -636,59 +745,79 @@ def validate_execution(state: dict, tool_history: list) -> dict:
 
     # Get required tools
     required_tools = state.get("required_tools", [])
-    if not required_tools:
-        # No tool requirement, consider satisfied
-        return {"satisfied": True, "reason": ""}
-
-    # Check if any required tool was used
     tools_used = state.get("tools_used", [])
-    execution_tool_used = any(t in required_tools for t in tools_used)
+    if required_tools:
+        execution_tool_used = any(t in required_tools for t in tools_used)
 
-    if not execution_tool_used:
-        # No execution tool used - violation
-        # v3.2: This is a LATE violation (PreToolUse should have blocked)
-        hint = state.get("hint", f"Use /{skill} via its designated execution mechanism")
-        reason = (
-            f"⚠️ LATE VIOLATION DETECTED: /{skill} execution not satisfied.\n"
-            f"💡 {hint}\n"
-            f"🔧 PreToolUse hook should have blocked this - check hook status.\n"
-            f"📋 Required tools: {', '.join(required_tools)}\n"
-            f"📋 Tools used: {', '.join(tools_used) if tools_used else 'None'}"
-        )
-        log_event(
-            "late_violation",
-            {
-                "skill": skill,
-                "required_tools": required_tools,
-                "tools_used": tools_used,
-            },
-        )
-        return {"satisfied": False, "reason": reason}
-
-    # Check pattern match for commands
-    pattern = state.get("pattern", "")
-    if pattern:
-        commands_run = state.get("commands_run", [])
-        pattern_matched = any(_check_pattern_match(cmd, pattern) for cmd in commands_run)
-
-        if not pattern_matched:
-            hint = state.get("hint", f"Use /{skill} with correct command pattern")
+        if not execution_tool_used:
+            # No execution tool used - violation
+            # v3.2: This is a LATE violation (PreToolUse should have blocked)
+            hint = state.get("hint", f"Use /{skill} via its designated execution mechanism")
             reason = (
-                f"⚠️ LATE VIOLATION DETECTED: /{skill} command pattern not matched.\n"
+                f"⚠️ LATE VIOLATION DETECTED: /{skill} execution not satisfied.\n"
                 f"💡 {hint}\n"
                 f"🔧 PreToolUse hook should have blocked this - check hook status.\n"
-                f"📋 Pattern: {pattern}\n"
-                f"📋 Commands run: {commands_run[:3]}"
+                f"📋 Required tools: {', '.join(required_tools)}\n"
+                f"📋 Tools used: {', '.join(tools_used) if tools_used else 'None'}"
             )
             log_event(
-                "late_violation_pattern",
+                "late_violation",
                 {
                     "skill": skill,
-                    "pattern": pattern,
-                    "commands": commands_run,
+                    "required_tools": required_tools,
+                    "tools_used": tools_used,
                 },
             )
             return {"satisfied": False, "reason": reason}
+
+        # Check pattern match for commands
+        pattern = state.get("pattern", "")
+        if pattern:
+            commands_run = state.get("commands_run", [])
+            pattern_matched = any(_check_pattern_match(cmd, pattern) for cmd in commands_run)
+
+            if not pattern_matched:
+                hint = state.get("hint", f"Use /{skill} with correct command pattern")
+                reason = (
+                    f"⚠️ LATE VIOLATION DETECTED: /{skill} command pattern not matched.\n"
+                    f"💡 {hint}\n"
+                    f"🔧 PreToolUse hook should have blocked this - check hook status.\n"
+                    f"📋 Pattern: {pattern}\n"
+                    f"📋 Commands run: {commands_run[:3]}"
+                )
+                log_event(
+                    "late_violation_pattern",
+                    {
+                        "skill": skill,
+                        "pattern": pattern,
+                        "commands": commands_run,
+                    },
+                )
+                return {"satisfied": False, "reason": reason}
+
+    # Workflow-bound skills must actually produce their declared phase artifacts.
+    # This stops lookalike/ad hoc pipelines from satisfying the contract with prose alone.
+    missing_phase_artifacts = _missing_required_phase_artifacts(state, tool_history)
+    if missing_phase_artifacts:
+        workflow_label = state.get("skill", "unknown")
+        reason = (
+            f"⚠️ LATE VIOLATION DETECTED: /{workflow_label} workflow contract not satisfied.\n"
+            f"💡 Re-run the skill and produce the required phase artifacts.\n"
+            f"📋 Required phase artifacts: {', '.join(state.get('required_phase_artifacts', []))}\n"
+            f"📋 Missing artifacts this turn: {', '.join(missing_phase_artifacts)}\n"
+            f"🔧 A lookalike workflow is not equivalent to the declared skill execution."
+        )
+        log_event(
+            "late_violation_workflow_contract",
+            {
+                "skill": workflow_label,
+                "required_phase_artifacts": state.get("required_phase_artifacts", []),
+                "missing_phase_artifacts": missing_phase_artifacts,
+                "workflow_binding": state.get("workflow_binding", ""),
+                "workflow_enforcement": state.get("workflow_enforcement", ""),
+            },
+        )
+        return {"satisfied": False, "reason": reason}
 
     return {"satisfied": True, "reason": ""}
 
@@ -711,6 +840,9 @@ def run(input_data: dict) -> dict | None:
         or input_data.get("governance") is not None
         or bool(input_data.get("turn_id"))
     )
+    state = input_data.get("skill_state") or _read_state()
+    if not isinstance(state, dict):
+        state = {}
 
     # R1 Consumer: Surface frontmatter_warnings from skill_loaded event.
     # This reads the warning written by set_skill_loaded() in skill_execution_state.
@@ -828,11 +960,61 @@ def run(input_data: dict) -> dict | None:
         """True when the user's args are exclusively help flags — prose is the correct response."""
         import re as _re
 
-        m = _re.match(r"^/[a-z0-9-]+\s+(.*)", (prompt or "").strip(), _re.IGNORECASE)
+        m = _re.match(r"^/[a-z0-9_-]+\s+(.*)", (prompt or "").strip(), _re.IGNORECASE)
         if not m:
             return False
         tokens = set(m.group(1).strip().split())
         return bool(tokens) and tokens.issubset(_HELP_FLAGS)
+
+    def _log_slash_outcome(
+        outcome: str,
+        reason: str = "",
+    ) -> None:
+        """Best-effort outcome logging for slash-command observability."""
+        if not slash_cmd:
+            return
+        try:
+            from types import SimpleNamespace
+
+            prompt_text = user_prompt or ""
+            args = ""
+            match = re.match(r"^/([a-z0-9_-]+)(?:\s+(.*))?$", prompt_text.strip(), re.IGNORECASE)
+            if match:
+                args = (match.group(2) or "").strip()
+
+            ctx = SimpleNamespace(
+                prompt=prompt_text,
+                data={
+                    "session_id": (
+                        input_data.get("session_id")
+                        or input_data.get("sessionId")
+                        or input_data.get("CLAUDE_SESSION_ID")
+                        or ""
+                    ),
+                    "terminal_id": (
+                        input_data.get("terminal_id")
+                        or input_data.get("terminalId")
+                        or input_data.get("CLAUDE_TERMINAL_ID")
+                        or ""
+                    ),
+                    "turn_id": input_data.get("turn_id") or active_turn_id or "",
+                },
+                session_id=(
+                    input_data.get("session_id")
+                    or input_data.get("sessionId")
+                    or input_data.get("CLAUDE_SESSION_ID")
+                    or ""
+                ),
+                terminal_id=(
+                    input_data.get("terminal_id")
+                    or input_data.get("terminalId")
+                    or input_data.get("CLAUDE_TERMINAL_ID")
+                    or ""
+                ),
+            )
+            record_slash_outcome(ctx, slash_cmd, args, outcome=outcome, reason=reason)
+        except Exception:
+            pass
 
     if (
         slash_cmd
@@ -841,13 +1023,34 @@ def run(input_data: dict) -> dict | None:
         and slash_cmd not in KNOWLEDGE_SKILLS
     ):
         if "Skill" in tools_used_this_turn:
+            contract_requires_workflow = _requires_execution_tools(state)
             execution_tools_after_skill = _EXECUTION_TOOLS.intersection(tools_used_this_turn)
             help_request = _is_help_only_request(user_prompt or "")
+
+            if not contract_requires_workflow:
+                log(
+                    f"Slash command /{slash_cmd} executed via Skill tool under {state.get('contract_type', 'analysis')} contract - allowing prose-only completion"
+                )
+                _log_slash_outcome(
+                    "completed",
+                    reason="skill_loaded_without_workflow_requirement",
+                )
+                if not router_snapshot_active:
+                    _clear_governance_state()
+                return None
 
             if execution_tools_after_skill or help_request:
                 log(
                     f"Slash command /{slash_cmd} executed via Skill tool - allowing stop "
                     f"(execution_tools={execution_tools_after_skill}, help_request={help_request})"
+                )
+                _log_slash_outcome(
+                    "completed",
+                    reason=(
+                        "execution_tools_after_skill"
+                        if execution_tools_after_skill
+                        else "help_request"
+                    ),
                 )
                 if not router_snapshot_active:
                     _clear_governance_state()
@@ -866,6 +1069,10 @@ def run(input_data: dict) -> dict | None:
                     "tools_used": tools_used_this_turn,
                     "user_prompt": (user_prompt or "")[:200],
                 },
+            )
+            _log_slash_outcome(
+                "bypassed",
+                reason="skill_loaded_but_no_execution_tools",
             )
             if not router_snapshot_active:
                 _clear_governance_state()
@@ -904,6 +1111,10 @@ def run(input_data: dict) -> dict | None:
                     "invoked": len(_invoked),
                     "blocked": len(_blocked),
                 },
+            )
+            _log_slash_outcome(
+                "observed",
+                reason="all_tool_attempts_blocked_by_hooks",
             )
             if not router_snapshot_active:
                 _clear_governance_state()
@@ -946,18 +1157,22 @@ def run(input_data: dict) -> dict | None:
         # Slash command invoked but Skill tool never called.
         # Block unless the hook system itself prevented all tool attempts.
         log(f"SLASH COMMAND BLOCK: /{slash_cmd} - tools used without Skill: {tools_used_this_turn}")
-        log_event(
-            "slash_command_ignored",
-            {
-                "skill": slash_cmd,
-                "user_prompt": (user_prompt or "")[:200],
-                "tools_used": tools_used_this_turn,
-                "enforcement": "block",
-            },
-        )
-        if not router_snapshot_active:
-            _clear_governance_state()
-        return _workflow_block(
+                log_event(
+                    "slash_command_ignored",
+                    {
+                        "skill": slash_cmd,
+                        "user_prompt": (user_prompt or "")[:200],
+                        "tools_used": tools_used_this_turn,
+                        "enforcement": "block",
+                    },
+                )
+                _log_slash_outcome(
+                    "blocked",
+                    reason="slash_command_ignored_without_skill",
+                )
+                if not router_snapshot_active:
+                    _clear_governance_state()
+                return _workflow_block(
             f'SLASH COMMAND NOT EXECUTED: /{slash_cmd}\n\n'
             f'You used tools ({", ".join(tools_used_this_turn) if tools_used_this_turn else "none"}) '
             f'without first calling Skill("{slash_cmd}").\n\n'
@@ -1054,10 +1269,14 @@ def run(input_data: dict) -> dict | None:
                 log_event(
                     "slash_command_bypass",
                     {
-                        "skill": slash_cmd,
-                        "user_prompt": user_prompt[:200],
-                        "tools_used": tools_used_this_turn,
-                    },
+                    "skill": slash_cmd,
+                    "user_prompt": user_prompt[:200],
+                    "tools_used": tools_used_this_turn,
+                },
+                )
+                _log_slash_outcome(
+                    "bypassed",
+                    reason="no_execution_tools_after_slash_prompt",
                 )
                 if not router_snapshot_active:
                     _clear_governance_state()
@@ -1069,6 +1288,11 @@ def run(input_data: dict) -> dict | None:
 
         if not router_snapshot_active:
             _clear_governance_state()
+        if slash_cmd:
+            _log_slash_outcome(
+                "handled",
+                reason="slash_command_did_not_require_skill_enforcement",
+            )
         log(f"Skipping governance: Skill tool not used. Tools used: {tools_used_this_turn}")
         return None
 
@@ -1089,14 +1313,30 @@ def run(input_data: dict) -> dict | None:
     if skill in KNOWLEDGE_SKILLS:
         if input_data.get("skill_state") is None:
             _clear_state()
+        if slash_cmd:
+            _log_slash_outcome(
+                "handled",
+                reason="knowledge_skill",
+            )
         return None
 
-    result = validate_execution(state, [])
+    transcript_tools = _get_transcript_snapshot(input_data).get("tools_used", [])
+    result = validate_execution(state, transcript_tools if isinstance(transcript_tools, list) else [])
     if input_data.get("skill_state") is None:
         _clear_state()
 
     if result["satisfied"]:
+        if slash_cmd:
+            _log_slash_outcome(
+                "completed",
+                reason="workflow_contract_satisfied",
+            )
         return None
+    if slash_cmd:
+        _log_slash_outcome(
+            "blocked",
+            reason="workflow_contract_not_satisfied",
+        )
     return {"block": True, "reason": result["reason"]}
 
 
