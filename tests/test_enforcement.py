@@ -105,5 +105,4 @@ def test_verify_with_enforcement_strict_complete(monkeypatch):
     assert is_complete is True
 
 
-# TODO: Add more tests based on actual functionality
 # Run: pytest tests/test_enforcement.py -v
