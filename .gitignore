@@ -72,3 +72,8 @@ Thumbs.db
 *.bak
 pre-pack-tree.txt
 post-pack-tree.txt
+
+# Session state artifacts
+.claude/
+.evidence/
+.state/
