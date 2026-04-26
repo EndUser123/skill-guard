@@ -1157,22 +1157,22 @@ def run(input_data: dict) -> dict | None:
         # Slash command invoked but Skill tool never called.
         # Block unless the hook system itself prevented all tool attempts.
         log(f"SLASH COMMAND BLOCK: /{slash_cmd} - tools used without Skill: {tools_used_this_turn}")
-                log_event(
-                    "slash_command_ignored",
-                    {
-                        "skill": slash_cmd,
-                        "user_prompt": (user_prompt or "")[:200],
-                        "tools_used": tools_used_this_turn,
-                        "enforcement": "block",
-                    },
-                )
-                _log_slash_outcome(
-                    "blocked",
-                    reason="slash_command_ignored_without_skill",
-                )
-                if not router_snapshot_active:
-                    _clear_governance_state()
-                return _workflow_block(
+        log_event(
+            "slash_command_ignored",
+            {
+                "skill": slash_cmd,
+                "user_prompt": (user_prompt or "")[:200],
+                "tools_used": tools_used_this_turn,
+                "enforcement": "block",
+            },
+        )
+        _log_slash_outcome(
+            "blocked",
+            reason="slash_command_ignored_without_skill",
+        )
+        if not router_snapshot_active:
+            _clear_governance_state()
+        return _workflow_block(
             f'SLASH COMMAND NOT EXECUTED: /{slash_cmd}\n\n'
             f'You used tools ({", ".join(tools_used_this_turn) if tools_used_this_turn else "none"}) '
             f'without first calling Skill("{slash_cmd}").\n\n'
