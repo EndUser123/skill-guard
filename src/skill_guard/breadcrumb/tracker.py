@@ -328,7 +328,7 @@ def initialize_breadcrumb_trail(skill_name: str, force: bool = False) -> None:
             pass
 
     # Load workflow steps from frontmatter
-    workflow_steps = _load_workflow_steps(skill_lower)
+    workflow_steps = _load_workflow_steps(skill_lower).steps
 
     # If no workflow steps declared, don't track
     if not workflow_steps:

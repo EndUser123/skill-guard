@@ -23,9 +23,13 @@ from pathlib import Path
 
 # Add hooks directory to path for imports from UserPromptSubmit_modules
 # This module lives in packages/skill-guard but needs to import from .claude/hooks
+# Must insert at position 0 — P:\__csf\__lib shadows __lib namespace
 _hooks_dir = Path("P:/.claude/hooks")
-if str(_hooks_dir) not in sys.path:
-    sys.path.insert(0, str(_hooks_dir))
+if _hooks_dir.exists():
+    s = str(_hooks_dir)
+    if s in sys.path:
+        sys.path.remove(s)
+    sys.path.insert(0, s)
 
 try:
     import yaml

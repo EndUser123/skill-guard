@@ -104,7 +104,7 @@ FIRST_TOOL_COHERENCE_ENABLED = (
     os.environ.get("FIRST_TOOL_COHERENCE_ENABLED", "true").lower() == "true"
 )
 
-STATE_DIR = Path("P:/.claude/state")
+STATE_DIR = Path("P:/.claude/.state")
 DISAGREEMENT_LOG = Path("P:/.claude/logs/skill_execution_gate.jsonl")
 COHERENCE_LOG = Path("P:/.claude/logs/first_tool_coherence.jsonl")
 
@@ -378,7 +378,7 @@ def _read_pending_command_intent() -> dict | None:
     state = None
     for candidate_terminal_id in dict.fromkeys(candidate_terminal_ids):
         state_file = (
-            Path("P:/.claude/hooks/state/terminals")
+            Path("P:/.claude/hooks/.state/terminals")
             / candidate_terminal_id
             / "pending_command_intent.json"
         )

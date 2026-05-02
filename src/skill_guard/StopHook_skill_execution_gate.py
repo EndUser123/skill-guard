@@ -51,12 +51,14 @@ if TYPE_CHECKING:
 
 HOOKS_DIR = Path(__file__).resolve().parent
 SKILL_GUARD_SRC = Path("P:/packages/skill-guard/src")
-
-# Import hook_main decorator
-if str(HOOKS_DIR) not in sys.path:
-    sys.path.insert(0, str(HOOKS_DIR))
-if SKILL_GUARD_SRC.exists() and str(SKILL_GUARD_SRC) not in sys.path:
-    sys.path.insert(0, str(SKILL_GUARD_SRC))
+MAIN_HOOKS_DIR = Path("P:/.claude/hooks")
+# Must insert MAIN_HOOKS_DIR at position 0 — P:\__csf\__lib shadows __lib
+for _p in (MAIN_HOOKS_DIR, HOOKS_DIR, SKILL_GUARD_SRC):
+    if _p.exists():
+        s = str(_p)
+        if s in sys.path:
+            sys.path.remove(s)
+        sys.path.insert(0, s)
 try:
     from __lib.hook_base import hook_main
     from __lib.hook_constants import KNOWLEDGE_SKILLS
@@ -86,7 +88,7 @@ except Exception:  # pragma: no cover - observability must fail open
 
 ENABLED = os.environ.get("SKILL_EXECUTION_GATE_ENABLED", "true").lower() == "true"
 
-STATE_DIR = Path("P:/.claude/state")
+STATE_DIR = Path("P:/.claude/.state")
 
 # Per-terminal log files (multi-terminal safe - no shared state)
 _log_tid = ""

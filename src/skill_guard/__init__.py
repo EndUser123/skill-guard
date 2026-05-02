@@ -60,6 +60,13 @@ from .slash_command_observability import (
 from .skill_metadata_advisory import skill_metadata_advisory
 from .tdd_contract_auto_gate import tdd_contract_auto_gate
 from .turn_marker import ensure_turn_marker
+from .execution_run import ExecutionRun, ExecutionEvent, RunStatus
+from .execution_store import ExecutionStore, ArtifactsExecutionStore
+from .execution_runtime import (
+    ExecutionRuntime,
+    ResponseCheckResult,
+    validate_response_requirements,
+)
 
 __version__ = "1.0.0"
 __all__ = [
@@ -81,6 +88,15 @@ __all__ = [
     "skill_metadata_advisory",
     "tdd_contract_auto_gate",
     "ensure_turn_marker",
+    # Execution contract runtime
+    "ExecutionRun",
+    "ExecutionEvent",
+    "RunStatus",
+    "ExecutionStore",
+    "ArtifactsExecutionStore",
+    "ExecutionRuntime",
+    "ResponseCheckResult",
+    "validate_response_requirements",
     # Breadcrumb trail verification
     "initialize_breadcrumb_trail",
     "set_breadcrumb",

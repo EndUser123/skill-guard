@@ -33,7 +33,7 @@ except ImportError:
 # CONFIGURATION
 # =============================================================================
 
-STATE_DIR = Path("P:/.claude/state")
+STATE_DIR = Path("P:/.claude/.state")
 HOOKS_LIB_DIR = Path("P:/.claude/hooks/__lib")
 
 # Phase machine states (for workflow_completion_tracker compatibility)
@@ -990,7 +990,7 @@ def migrate_legacy_state() -> None:
 def cleanup_stale_state_files(stale_timeout: int | None = None) -> int:
     """Remove state directories for terminals that no longer exist.
 
-    Scans P:/.claude/state/skill_execution_* directories and removes
+    Scans P:/.claude/.state/skill_execution_* directories and removes
     those belonging to terminals that are no longer active.
 
     Args:
