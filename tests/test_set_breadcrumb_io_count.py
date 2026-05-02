@@ -6,20 +6,33 @@ Run with: pytest tests/test_set_breadcrumb_io_count.py -v
 PERF-003: set_breadcrumb() makes 4 separate I/O calls per update:
   1. SQLite update (sqlite_backend.update_trail)
   2. JSONL log append (AppendOnlyBreadcrumbLog.append)
-  3. Cache update (_cache.update_state) — in-memory, but tracked
+  3. Cache update (_cache.update_state)
   4. JSON file rewrite with fsync (open + write + flush + fsync)
 
 This test verifies these 4 I/O operations occur and are NOT batched/deferred.
 """
 
-import json
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 
 class TestSetBreadcrumbIOCount:
     """Tests for set_breadcrumb() I/O operation count."""
+
+    @pytest.fixture
+    def mock_workflow_steps(self):
+        """Patch _load_workflow_steps to return valid workflow steps."""
+        # Create a WorkflowStepsResult-like object
+        dummy_steps = [
+            {"id": "step1", "kind": "execution", "optional": False},
+            {"id": "step2", "kind": "execution", "optional": False},
+        ]
+        # Return a mock that has .steps attribute
+        mock_result = MagicMock()
+        mock_result.steps = dummy_steps
+        mock_result.parse_error = None
+        return mock_result
 
     @pytest.fixture
     def mock_sqlite_backend(self):
@@ -35,7 +48,6 @@ class TestSetBreadcrumbIOCount:
         with patch(
             "skill_guard.breadcrumb.tracker.AppendOnlyBreadcrumbLog"
         ) as mock_class:
-            # Return a mock instance with append method
             mock_instance = MagicMock()
             mock_class.return_value = mock_instance
             yield mock_instance
@@ -67,17 +79,25 @@ class TestSetBreadcrumbIOCount:
             yield mock
 
     @pytest.fixture
-    def initialized_trail(self, mock_sqlite_backend, mock_append_log, mock_cache_update):
-        """Initialize a breadcrumb trail so set_breadcrumb has valid state.
+    def initialized_trail(
+        self,
+        mock_workflow_steps,
+        mock_sqlite_backend,
+        mock_append_log,
+        mock_cache_update,
+    ):
+        """Initialize a breadcrumb trail so set_breadcrumb has valid state."""
+        from skill_guard.breadcrumb import tracker
 
-        Uses "test_mark_complete" which IS in TEST_SKILL_NAMES so conftest's
-        patch_workflow_steps_for_test_skills provides dummy workflow steps.
-        """
-        from skill_guard.breadcrumb.tracker import initialize_breadcrumb_trail
+        # Patch _load_workflow_steps to return valid steps
+        with patch.object(tracker, "_load_workflow_steps", return_value=mock_workflow_steps):
+            # Clear any existing state
+            tracker._cache._cache.clear()
+            tracker._cache._access_times.clear()
 
-        # Call init - "test_mark_complete" is in TEST_SKILL_NAMES so patched _load_workflow_steps
-        # will return DUMMY_WORKFLOW_STEPS instead of trying to load from disk
-        initialize_breadcrumb_trail(skill_name="test_mark_complete")
+            # Initialize trail - this creates run_id in trail
+            tracker.initialize_breadcrumb_trail(skill_name="test_skill")
+
         # Reset mock call counts after init
         mock_append_log.reset_mock()
 
@@ -106,7 +126,7 @@ class TestSetBreadcrumbIOCount:
         mock_os_fsync.reset_mock()
 
         # Act
-        set_breadcrumb("test_mark_complete", "step1")
+        set_breadcrumb("test_skill", "step1")
 
         # Assert: SQLite update (if run_id exists)
         sqlite_calls = mock_sqlite_backend.update_trail.call_count
@@ -187,7 +207,9 @@ class TestSetBreadcrumbIOCount:
             "os.fsync should be called on every set_breadcrumb"
         )
 
-    def test_io_operations_are_not_batched(self, mock_open, mock_os_fsync, mock_append_log, initialized_trail):
+    def test_io_operations_are_not_batched(
+        self, mock_open, mock_os_fsync, mock_append_log, initialized_trail
+    ):
         """Characterization: I/O operations execute immediately, not batched.
 
         If operations were batched/deferred, mocking open would prevent
