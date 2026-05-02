@@ -165,15 +165,21 @@ class TestBareExceptSwallowsErrors:
         assert not any("logging" in l or "logger" in l or "warn" in l or "error" in l
                        for l in except_block_lines), "except block should not log"
 
-    def test_returns_false_on_error_not_none(self):
-        """Characterization: On error, function returns False (not None).
+    def test_returns_false_on_connection_none(self):
+        """Characterization: When get_connection returns None, function returns False.
 
-        This masks failures - caller cannot distinguish "not initialized" from "error".
+        Line 89-90 in tracker.py:
+            if conn is None:
+                return False
+
+        The conn is None case is handled BEFORE _db_initialized is set to True.
+        This is a distinct code path from the bare except.
         """
         from skill_guard.breadcrumb import tracker
 
-        # Force an error condition by making get_connection return None
-        # (which the code already handles by returning False)
+        # Reset state FIRST to ensure clean test
+        tracker._db_initialized = False
+
         with patch.object(tracker.database, "get_connection", return_value=None):
             result = tracker._ensure_database_initialized()
             assert result is False
@@ -188,6 +194,9 @@ class TestBareExceptSwallowsErrors:
         - Schema initialization error
         """
         from skill_guard.breadcrumb import tracker
+
+        # Reset state FIRST to ensure clean test
+        tracker._db_initialized = False
 
         class TestError(Exception):
             """Custom error for testing."""
