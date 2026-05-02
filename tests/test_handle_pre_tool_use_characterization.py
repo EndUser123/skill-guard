@@ -97,22 +97,30 @@ class TestHandlePreToolUseInvestigationTools:
 
 
 class TestHandlePreToolUseTopicDriftPrevention:
-    """Tests for topic drift prevention (lines 796-836)."""
+    """Tests for topic drift prevention (lines 796-836).
 
-    def test_topic_drift_blocks_do_not_distract(self):
-        """Characterization: tool targeting deferred item triggers block."""
+    Note: Topic drift check happens AFTER investigation tools check (line 735-736).
+    Read/Grep/Skill are INVESTIGATION_TOOLS and are always allowed first.
+    Topic drift prevention only applies to non-investigation tools like Bash/Edit/Write.
+    """
+
+    def test_topic_drift_blocks_do_not_distract_with_bash(self):
+        """Characterization: Bash targeting deferred item triggers topic drift block."""
         state = {
             "skill": "test-skill",
             "workflow_stage": {
                 "active_step": "step1",
                 "do_not_distract": ["important.txt"],
             },
+            "first_tool_validated": True,
+            "first_command_validated": True,
         }
         with patch("skill_guard.PreToolUse.PreToolUse_skill_pattern_gate._read_pending_state", return_value=state), \
-             patch("skill_guard.PreToolUse.PreToolUse_skill_pattern_gate._read_pending_command_intent", return_value=None):
+             patch("skill_guard.PreToolUse.PreToolUse_skill_pattern_gate._read_pending_command_intent", return_value=None), \
+             patch("skill_guard.PreToolUse.PreToolUse_skill_pattern_gate.get_skill_config", return_value=None):
             result = handle_pre_tool_use({
-                "tool_name": "Read",
-                "input": {"file_path": "important.txt"},
+                "tool_name": "Bash",
+                "input": {"command": "cat important.txt"},
                 "user_message": "some context"
             })
         assert result.get("block") is True
@@ -135,17 +143,22 @@ class TestHandlePreToolUseKnowledgeSkillDetection:
 
 
 class TestHandlePreToolUseExecutionPatternValidation:
-    """Tests for execution pattern validation (lines 865-913)."""
+    """Tests for execution pattern validation (lines 865-913).
+
+    Note: Execution pattern validation is checked in Layer 2 AFTER
+    first-tool coherence (Layer 1) and first-command coherence checks.
+    The first-command coherence check can fire first if required_first_command_patterns is set.
+    """
 
     def _execution_state(self):
         return {
             "skill": "yt-is",
             "required_tools": ["Bash"],
             "allowed_first_tools": ["Bash"],
-            "first_tool_validated": False,
+            "first_tool_validated": True,
+            "first_command_validated": True,
             "required_first_command_patterns": [r"^csf-source\s+sync(?:\s|$)"],
             "required_first_command_hint": "Use csf-source sync first.",
-            "first_command_validated": False,
         }
 
     def test_execution_pattern_valid_returns_empty(self):
@@ -165,7 +178,7 @@ class TestHandlePreToolUseExecutionPatternValidation:
         assert result == {}
 
     def test_execution_pattern_invalid_returns_block(self):
-        """Characterization: invalid execution pattern blocks tool."""
+        """Characterization: invalid execution pattern blocks tool with execution pattern mismatch."""
         with patch("skill_guard.PreToolUse.PreToolUse_skill_pattern_gate._read_pending_state", return_value=self._execution_state()), \
              patch("skill_guard.PreToolUse.PreToolUse_skill_pattern_gate._read_pending_command_intent", return_value=None), \
              patch("skill_guard.PreToolUse.PreToolUse_skill_pattern_gate.get_skill_config", return_value={
@@ -179,6 +192,7 @@ class TestHandlePreToolUseExecutionPatternValidation:
             result = handle_pre_tool_use({"tool_name": "Bash", "input": {"command": "csf-source invalid"}})
 
         assert result.get("block") is True
+        # The actual block reason contains execution pattern mismatch from _make_decision
         assert "execution pattern mismatch" in result.get("reason", "")
 
 

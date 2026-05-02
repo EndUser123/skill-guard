@@ -68,15 +68,16 @@ class TestSetBreadcrumbIOCount:
 
     @pytest.fixture
     def initialized_trail(self, mock_sqlite_backend, mock_append_log, mock_cache_update):
-        """Initialize a breadcrumb trail so set_breadcrumb has valid state."""
+        """Initialize a breadcrumb trail so set_breadcrumb has valid state.
+
+        Uses "test_mark_complete" which IS in TEST_SKILL_NAMES so conftest's
+        patch_workflow_steps_for_test_skills provides dummy workflow steps.
+        """
         from skill_guard.breadcrumb.tracker import initialize_breadcrumb_trail
 
-        # Call init which sets up the trail
-        initialize_breadcrumb_trail(
-            skill_name="test_skill",
-            workflow_steps=["step1", "step2"],
-            steps={"step1": {}, "step2": {}},
-        )
+        # Call init - "test_mark_complete" is in TEST_SKILL_NAMES so patched _load_workflow_steps
+        # will return DUMMY_WORKFLOW_STEPS instead of trying to load from disk
+        initialize_breadcrumb_trail(skill_name="test_mark_complete")
         # Reset mock call counts after init
         mock_append_log.reset_mock()
 
@@ -105,7 +106,7 @@ class TestSetBreadcrumbIOCount:
         mock_os_fsync.reset_mock()
 
         # Act
-        set_breadcrumb("test_skill", "step1")
+        set_breadcrumb("test_mark_complete", "step1")
 
         # Assert: SQLite update (if run_id exists)
         sqlite_calls = mock_sqlite_backend.update_trail.call_count

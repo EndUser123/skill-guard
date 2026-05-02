@@ -20,31 +20,35 @@ class TestEvictOnEmptyAccessTimes:
 
     def test_evict_if_needed_raises_valueerror_on_empty_access_times(self):
         """
-        Characterization: Calling _evict_if_needed() when _access_times is empty
-        raises ValueError from min().
+        Test that _evict_if_needed() does NOT raise ValueError when _access_times is empty.
 
-        Given: A BreadcrumbStateCache with empty _access_times but non-empty _cache
+        Given: A BreadcrumbStateCache where len(_cache) > max_size but _access_times is empty
         When:  _evict_if_needed() is called
-        Then:  ValueError is raised (min() on empty sequence)
+        Then:  No ValueError is raised (should handle empty _access_times gracefully)
 
-        This documents the CURRENT BROKEN BEHAVIOR - the fix should prevent this.
+        CURRENT BUG: This test FAILS because min(_access_times) raises ValueError on empty dict.
+        After fix: This test should PASS.
         """
-        cache = BreadcrumbStateCache()
-        # Force inconsistent state: _cache has entry but _access_times is empty
+        cache = BreadcrumbStateCache(max_size=1)
+        # Force inconsistent state: _cache has 2 entries (exceeds max_size of 1)
+        # but _access_times is intentionally empty
         cache._cache["test:terminal:123"] = {"completed_steps": ["test"]}
+        cache._cache["test2:terminal:456"] = {"completed_steps": ["test2"]}
         # _access_times is intentionally empty
 
-        with pytest.raises(ValueError):
-            cache._evict_if_needed()
+        # Should NOT raise - but currently does due to min() on empty dict
+        cache._evict_if_needed()
 
     def test_evict_if_needed_raises_valueerror_when_cache_exceeds_max_size(self):
         """
-        Characterization: When _cache has more entries than max_size but
-        _access_times is empty, _evict_if_needed() raises ValueError.
+        Test that _evict_if_needed() does NOT raise when cache exceeds max_size.
 
         Given: Cache where len(_cache) > max_size but _access_times is empty
         When:  _evict_if_needed() is called
-        Then:  ValueError is raised from min(empty_dict)
+        Then:  No ValueError is raised
+
+        CURRENT BUG: Raises ValueError from min(empty_dict).
+        After fix: Should PASS (evicts gracefully even with empty _access_times).
         """
         cache = BreadcrumbStateCache(max_size=1)
         # Make cache think it has 2 entries (exceeds max_size of 1)
@@ -52,5 +56,5 @@ class TestEvictOnEmptyAccessTimes:
         cache._cache["skill2:terminal:456"] = {"completed_steps": ["step2"]}
         # But _access_times is empty - inconsistent state
 
-        with pytest.raises(ValueError):
-            cache._evict_if_needed()
+        # Should NOT raise - but currently does due to min() on empty dict
+        cache._evict_if_needed()
