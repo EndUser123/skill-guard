@@ -383,8 +383,11 @@ def _load_skill_frontmatter(skill_name: str) -> dict[str, Any]:
         result["required_sections"] = _normalize_string_list(
             fm_data.get("required_sections", [])
         )
-    except Exception:
-        pass
+    except (yaml.YAMLError, ImportError) as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.warning("Failed to parse frontmatter for skill %s: %s", skill_name, e)
+        return None
     return result
 
 
