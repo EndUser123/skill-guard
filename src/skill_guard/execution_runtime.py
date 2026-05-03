@@ -116,6 +116,31 @@ class ExecutionRuntime:
         self.store.append_event(ExecutionEvent(event_type="run_created", skill=skill_name))
         return run
 
+    async def async_create_run(
+        self,
+        skill_name: str,
+        contract_type: str,
+        session_id: str,
+        required_artifacts: list[str] | None = None,
+        allowed_tools: list[str] | None = None,
+        blocked_tools: list[str] | None = None,
+        response_requirements: dict[str, Any] | None = None,
+    ) -> ExecutionRun:
+        """Async version of create_run — offloads blocking file I/O to a thread pool."""
+        run = ExecutionRun.new(
+            skill_name=skill_name,
+            contract_type=contract_type,  # type: ignore[arg-type]
+            terminal_id=self.store.console_dir().name,
+            session_id=session_id,
+            required_artifacts=required_artifacts or [],
+            allowed_tools=allowed_tools or [],
+            blocked_tools=blocked_tools or [],
+            response_requirements=response_requirements or {},
+        )
+        await asyncio.to_thread(self.store.save_run, run)
+        await asyncio.to_thread(self.store.append_event, ExecutionEvent(event_type="run_created", skill=skill_name))
+        return run
+
     def load_active_run(self) -> ExecutionRun | None:
         return self.store.load_active_run()
 
