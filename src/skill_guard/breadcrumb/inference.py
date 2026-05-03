@@ -167,6 +167,10 @@ def get_supported_tools() -> list[str]:
     return list(DEFAULT_TOOL_MAPPINGS.keys())
 
 
+# Separate instance for runtime-added mappings (avoids mutating module-level DEFAULT_TOOL_MAPPINGS)
+_RUNTIME_MAPPINGS: dict[str, str] = {}
+
+
 def add_tool_mapping(tool_name: str, step_name: str) -> None:
     """Add a custom tool-to-step mapping.
 
@@ -179,7 +183,7 @@ def add_tool_mapping(tool_name: str, step_name: str) -> None:
         >>> infer_step_from_tool_use("MyCustomTool", {})
         "custom_step"
     """
-    DEFAULT_TOOL_MAPPINGS[tool_name] = step_name
+    _RUNTIME_MAPPINGS[tool_name] = step_name
 
 
 def remove_tool_mapping(tool_name: str) -> None:
