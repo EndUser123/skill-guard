@@ -164,6 +164,7 @@ class ExecutionRun:
             status=RunStatus.ACTIVE,
             terminal_id=terminal_id,
             session_id=session_id,
+            turn_id=None,
             created_at=now,
             updated_at=now,
             required_artifacts=required_artifacts or [],

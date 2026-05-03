@@ -111,24 +111,25 @@ class TestAtomicWriteCorrectBehavior:
         assert all(exists for _, exists in file_existed_during_write), \
             f"File should exist at all times during atomic write, got: {file_existed_during_write}"
 
-    def test_data_survives_rename_failure(self, store, tmp_path):
+    def test_data_survives_replace_failure(self, store, tmp_path):
         """
-        CORRECT behavior: if rename/replace fails, original data should survive.
+        CORRECT behavior: if os.replace fails, original data should survive.
 
         With os.replace(), if the operation fails, the original file remains intact.
+        os.replace() is atomic at the OS level - no partial state.
         """
         state_file = tmp_path / "execution-state.json"
         original_content = {"original": "data"}
         state_file.write_text(json.dumps(original_content), encoding="utf-8")
 
-        def failing_rename(self, dst):
-            raise OSError("Simulated rename failure")
+        def failing_replace(src, dst):
+            raise OSError("Simulated replace failure")
 
-        with patch.object(Path, 'rename', failing_rename):
+        with patch('os.replace', failing_replace):
             with pytest.raises(OSError):
                 store._atomic_write_json(state_file, {"new": "data"})
 
-        # Original data should be intact (but with current bug, it's gone)
+        # Original data should be intact
         content = json.loads(state_file.read_text(encoding="utf-8"))
         assert content == original_content, "Original data should survive failed atomic write"
 

@@ -16,7 +16,8 @@ class TestWorkflowStepsParsing:
 
     def test_load_workflow_steps_from_code_skill(self):
         """Test loading workflow_steps from /code skill SKILL.md."""
-        steps = _load_workflow_steps("code")
+        result = _load_workflow_steps("code")
+        steps = result.steps
         assert isinstance(steps, list)
 
         if steps:
@@ -51,7 +52,8 @@ class TestWorkflowStepsParsing:
 
     def test_load_workflow_steps_from_trace_skill(self):
         """Test loading workflow_steps from /trace skill SKILL.md."""
-        steps = _load_workflow_steps("trace")
+        result = _load_workflow_steps("trace")
+        steps = result.steps
         assert isinstance(steps, list)
 
         if steps:
@@ -71,7 +73,8 @@ class TestWorkflowStepsParsing:
 
     def test_load_workflow_steps_from_arch_skill(self):
         """Test loading workflow_steps from /arch skill SKILL.md."""
-        steps = _load_workflow_steps("arch")
+        result = _load_workflow_steps("arch")
+        steps = result.steps
         assert isinstance(steps, list)
 
         if steps:

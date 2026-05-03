@@ -43,6 +43,7 @@ def _skills_dir() -> Path:
 
 
 SLASH_COMMAND_RE = re.compile(r"^/([a-z0-9_-]+)(?:\s+(.*))?$", re.IGNORECASE)
+NAMESPACED_SLASH_COMMAND_RE = re.compile(r"^/([a-z0-9_-]+):([a-z0-9_-]+)(?:\s+(.*))?$", re.IGNORECASE)
 LEADING_PROMPT_GLYPHS_RE = re.compile(r"^\s*(?:[❯›»>$#]+\s*)+")
 BACKING_SKILL_RE = re.compile(r'Skill\(\s*["\']([A-Za-z0-9_-]+)["\']\s*\)')
 
@@ -119,6 +120,10 @@ def normalize_prompt(prompt: str) -> str:
 def extract_slash_command(prompt: str) -> tuple[str | None, str]:
     """Return the slash command name and argument tail."""
     normalized = _normalize_prompt(prompt)
+    match = NAMESPACED_SLASH_COMMAND_RE.match(normalized)
+    if match:
+        # Namespaced skill: /plugin:skill-name → "plugin:skill-name"
+        return (match.group(1).lower() + ":" + match.group(2).lower()), (match.group(3) or "").strip()
     match = SLASH_COMMAND_RE.match(normalized)
     if not match:
         return None, ""

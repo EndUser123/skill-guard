@@ -18,29 +18,23 @@ from skill_guard.breadcrumb.inference import (
 class TestAddToolMappingMutableState:
     """Tests that capture the mutable state bug in add_tool_mapping()."""
 
-    def test_add_tool_mapping_mutates_module_level_dict(self):
-        """Characterization: add_tool_mapping() directly mutates DEFAULT_TOOL_MAPPINGS.
+    def test_add_tool_mapping_uses_runtime_mappings(self):
+        """Fixed behavior: add_tool_mapping() writes to _RUNTIME_MAPPINGS, not DEFAULT_TOOL_MAPPINGS."""
+        from skill_guard.breadcrumb.inference import _RUNTIME_MAPPINGS
 
-        Given: DEFAULT_TOOL_MAPPINGS is a module-level dict
-        When: add_tool_mapping("CustomTool", "custom_step") is called
-        Then: DEFAULT_TOOL_MAPPINGS itself is mutated (not a copy)
-        """
-        initial_keys = set(DEFAULT_TOOL_MAPPINGS.keys())
-        assert "CustomTool" not in initial_keys
+        initial_runtime_keys = set(_RUNTIME_MAPPINGS.keys())
+        assert "CustomTool" not in initial_runtime_keys
 
         add_tool_mapping("CustomTool", "custom_step")
 
-        # BUG: The module-level dict is directly mutated
-        assert "CustomTool" in DEFAULT_TOOL_MAPPINGS
-        assert DEFAULT_TOOL_MAPPINGS["CustomTool"] == "custom_step"
+        # FIXED: Now writes to _RUNTIME_MAPPINGS, not the module-level DEFAULT_TOOL_MAPPINGS
+        assert "CustomTool" in _RUNTIME_MAPPINGS
+        assert _RUNTIME_MAPPINGS["CustomTool"] == "custom_step"
+        # DEFAULT_TOOL_MAPPINGS should NOT be mutated
+        assert "CustomTool" not in DEFAULT_TOOL_MAPPINGS
 
-    def test_mutation_is_observable_after_call(self):
-        """Characterization: The mutation is observable via get_supported_tools().
-
-        Given: A fresh inference module
-        When: add_tool_mapping() is called
-        Then: get_supported_tools() returns the modified mapping
-        """
+    def test_mutation_via_runtime_mappings_is_observable(self):
+        """Fixed behavior: Custom mappings are observable via get_supported_tools() through _RUNTIME_MAPPINGS."""
         custom_tool = "TestObservableTool"
         custom_step = "test_step"
 
@@ -49,35 +43,27 @@ class TestAddToolMappingMutableState:
         from skill_guard.breadcrumb.inference import get_supported_tools
         supported = get_supported_tools()
 
-        # BUG: The mutation is globally observable
+        # FIXED: The custom mapping is still observable (via merged runtime mappings)
         assert custom_tool in supported
 
-    def test_multiple_calls_produce_different_results(self):
-        """Characterization: add_tool_mapping() is not idempotent - calls accumulate.
+    def test_multiple_calls_accumulate_in_runtime_mappings(self):
+        """Fixed behavior: add_tool_mapping() accumulates in _RUNTIME_MAPPINGS, not DEFAULT_TOOL_MAPPINGS."""
+        from skill_guard.breadcrumb.inference import _RUNTIME_MAPPINGS
 
-        Given: DEFAULT_TOOL_MAPPINGS with N tools
-        When: add_tool_mapping("ToolA", "step_a") and add_tool_mapping("ToolB", "step_b") are called
-        Then: Both tools remain in DEFAULT_TOOL_MAPPINGS (mutations accumulate)
-        """
         tool_a = "AccumToolA"
         tool_b = "AccumToolB"
 
         add_tool_mapping(tool_a, "step_a")
         add_tool_mapping(tool_b, "step_b")
 
-        # BUG: Both mutations persist - no isolation between calls
-        assert tool_a in DEFAULT_TOOL_MAPPINGS
-        assert tool_b in DEFAULT_TOOL_MAPPINGS
-        assert DEFAULT_TOOL_MAPPINGS[tool_a] == "step_a"
-        assert DEFAULT_TOOL_MAPPINGS[tool_b] == "step_b"
+        # FIXED: Both mutations accumulate in _RUNTIME_MAPPINGS
+        assert tool_a in _RUNTIME_MAPPINGS
+        assert tool_b in _RUNTIME_MAPPINGS
+        assert _RUNTIME_MAPPINGS[tool_a] == "step_a"
+        assert _RUNTIME_MAPPINGS[tool_b] == "step_b"
 
-    def test_infer_step_reflects_custom_mapping(self):
-        """Characterization: Custom mappings affect infer_step_from_tool_use().
-
-        Given: A custom tool mapping
-        When: infer_step_from_tool_use() is called with that tool
-        Then: The custom step is returned (proving global mutation)
-        """
+    def test_infer_step_reflects_runtime_mapping(self):
+        """Fixed behavior: Custom mappings affect infer_step_from_tool_use() via _RUNTIME_MAPPINGS."""
         custom_tool = "MyCustomInfTool"
         custom_step = "custom_inference"
 
@@ -85,21 +71,17 @@ class TestAddToolMappingMutableState:
 
         result = infer_step_from_tool_use(custom_tool, {})
 
-        # BUG: The custom mapping affects the global inference
+        # FIXED: The custom mapping still affects the global inference (via _RUNTIME_MAPPINGS)
         assert result == custom_step
 
-    def test_mutation_affects_all_callers(self):
-        """Characterization: Mutation is visible to all code using the module.
-
-        This test captures that DEFAULT_TOOL_MAPPINGS is a shared global state
-        that gets modified by add_tool_mapping(), affecting all callers.
-        """
-        # Add a mapping
+    def test_runtime_mappings_isolated_from_default(self):
+        """Fixed behavior: _RUNTIME_MAPPINGS is isolated — DEFAULT_TOOL_MAPPINGS unchanged."""
         shared_tool = "SharedMutTool"
         add_tool_mapping(shared_tool, "shared_step")
 
-        # The mapping is now visible to any code importing this module
+        # FIXED: DEFAULT_TOOL_MAPPINGS is NOT mutated
         from skill_guard.breadcrumb.inference import DEFAULT_TOOL_MAPPINGS as mappings
-
-        # BUG: All code see the same mutated state
-        assert shared_tool in mappings
+        assert shared_tool not in mappings
+        # But it IS in _RUNTIME_MAPPINGS and get_supported_tools()
+        from skill_guard.breadcrumb.inference import _RUNTIME_MAPPINGS
+        assert shared_tool in _RUNTIME_MAPPINGS

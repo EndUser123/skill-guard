@@ -36,12 +36,16 @@ def clean_tracker_state():
     original_db_init = tracker._db_initialized
     tracker._db_initialized = False
 
+    # PERF-003: Reset write counter to ensure test isolation
+    tracker._json_write_counter = 0
+
     yield
 
     # Clean after test
     tracker._cache._cache.clear()
     tracker._cache._access_times.clear()
     tracker._db_initialized = original_db_init
+    tracker._json_write_counter = 0
 
 
 @pytest.fixture
@@ -269,8 +273,9 @@ class TestSetBreadcrumbIOCount:
                     with patch("skill_guard.breadcrumb.tracker.os.fsync", track_fsync):
                         tracker.set_breadcrumb("test_skill", "step1")
 
-                assert file_open_count == 1, f"Single open call expected, got {file_open_count}"
-                assert fsync_count == 1, f"Single fsync call expected, got {fsync_count}"
+                # PERF-003: First call only has log + cache (2 I/O), no file write
+                assert file_open_count == 0, f"No file write on first call (debounced), got {file_open_count}"
+                assert fsync_count == 0, f"No fsync on first call (debounced), got {fsync_count}"
                 assert mock_log_instance.append.call_count == 1, f"Single log append expected, got {mock_log_instance.append.call_count}"
         finally:
             tracker.AppendOnlyBreadcrumbLog = original_log

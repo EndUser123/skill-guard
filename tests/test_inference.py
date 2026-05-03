@@ -1,7 +1,7 @@
 """Auto-scaffolded test for inference."""
 
 import pytest
-from inference import inference
+from skill_guard.breadcrumb import inference
 
 
 def test_inference_exists():

@@ -1,7 +1,7 @@
 """Auto-scaffolded test for skill_execution_state."""
 
 import pytest
-from skill_execution_state import skill_execution_state
+from skill_guard import skill_execution_state
 
 
 def test_skill_execution_state_exists():

@@ -1,7 +1,7 @@
 """Auto-scaffolded test for tracker."""
 
 import pytest
-from tracker import tracker
+from skill_guard.breadcrumb import tracker
 
 
 def test_tracker_exists():
