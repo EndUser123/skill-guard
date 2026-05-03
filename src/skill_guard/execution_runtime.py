@@ -16,6 +16,7 @@ validate_response_requirements() is a module-level helper (no state needed).
 
 from __future__ import annotations
 
+import asyncio
 import os
 import time
 from dataclasses import dataclass, field

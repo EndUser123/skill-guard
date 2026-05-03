@@ -119,14 +119,15 @@ class TestLoadSkillFrontmatterExceptionHandling:
         """
         import yaml
 
-        # Case 1: Completely unparseable YAML - raises YAMLError -> returns None
+        # Case 1: YAML that actually fails to parse (raises YAMLError) -> returns None
+        # Use key: value without colon properly - "invalid: yaml: content" is invalid YAML
         skill_file_mock.write_text(
-            "---\ninvalid[[[ yaml: content\n---\n# Skill\n",
+            "---\ninvalid: yaml: content: here\n  missing: proper: structure\n---\n# Skill\n",
             encoding="utf-8"
         )
 
         def mock_read_text_unparseable(self, encoding=None, errors=None):
-            return "---\ninvalid[[[ yaml: content\n---\n# Skill\n"
+            return "---\ninvalid: yaml: content: here\n  missing: proper: structure\n---\n# Skill\n"
 
         monkeypatch.setattr(Path, "read_text", mock_read_text_unparseable)
         monkeypatch.setattr(Path, "exists", lambda self: True)
