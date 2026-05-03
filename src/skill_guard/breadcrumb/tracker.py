@@ -69,8 +69,11 @@ HOOKS_LIB_DIR = Path("P:/.claude/hooks/__lib")
 # Database path (uses existing diagnostics.db)
 DB_PATH = database.DEFAULT_DB_PATH
 
+import threading
+
 # Track if database has been initialized
 _db_initialized = False
+_db_init_lock = threading.RLock()
 
 
 def _ensure_database_initialized() -> bool:
@@ -81,20 +84,21 @@ def _ensure_database_initialized() -> bool:
     """
     global _db_initialized
 
-    if _db_initialized:
-        return True
+    with _db_init_lock:
+        if _db_initialized:
+            return True
 
-    try:
-        conn = database.get_connection(DB_PATH)
-        if conn is None:
+        try:
+            conn = database.get_connection(DB_PATH)
+            if conn is None:
+                return False
+
+            database.initialize_schema(conn)
+            _db_initialized = True
+            return True
+
+        except (OSError, RuntimeError, IOError) as e:
             return False
-
-        database.initialize_schema(conn)
-        _db_initialized = True
-        return True
-
-    except Exception:
-        return False
 
 
 def _append_ledger_event(event_type: str, payload: dict[str, Any]) -> None:

@@ -177,6 +177,9 @@ class BreadcrumbStateCache:
         if len(self._cache) <= self.max_size:
             return
 
+        if not self._access_times:
+            return
+
         # Find least recently used entry
         lru_key = min(self._access_times, key=self._access_times.get)
 

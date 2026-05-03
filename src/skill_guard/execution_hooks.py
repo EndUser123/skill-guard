@@ -173,8 +173,15 @@ def _parse_transcript_for_response(transcript_path: str) -> str:
                     )
                 elif isinstance(content_blocks, str):
                     return content_blocks
-    except Exception:
-        pass
+                elif isinstance(content_blocks, dict):
+                    # Handle dict content (e.g., {"type": "text", "text": "..."})
+                    if content_blocks.get("type") == "text" and "text" in content_blocks:
+                        return content_blocks["text"]
+    except Exception as e:
+        # Log specific exceptions but don't silently swallow - let them bubble up
+        import sys
+        print(f"Error parsing transcript entry: {e}", file=sys.stderr)
+        raise
     return ""
 
 
