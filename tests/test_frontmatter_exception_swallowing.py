@@ -1,13 +1,10 @@
-"""Characterization tests for _load_skill_frontmatter exception swallowing.
+"""Tests for _load_skill_frontmatter exception handling.
 
-These tests CAPTURE CURRENT BEHAVIOR before refactoring.
+These tests verify the CORRECT exception handling behavior:
+- yaml.YAMLError and ImportError are caught and return None (with logging)
+- KeyboardInterrupt and SystemExit propagate (NOT caught by the function)
+
 Run with: pytest tests/test_frontmatter_exception_swallowing.py -v
-
-The bug: _load_skill_frontmatter() at line 386 uses `except Exception: pass`
-which silently swallows YAML parse failures AND also catches KeyboardInterrupt
-and SystemExit (which should NEVER be caught with `except Exception`).
-
-These tests document what the code currently DOES, not what it SHOULD do.
 """
 
 import pytest
@@ -15,8 +12,8 @@ from unittest.mock import patch, MagicMock
 from pathlib import Path
 
 
-class TestLoadSkillFrontmatterExceptionSwallowing:
-    """Tests that capture the current silent exception swallowing behavior."""
+class TestLoadSkillFrontmatterExceptionHandling:
+    """Tests for correct exception handling in _load_skill_frontmatter."""
 
     @pytest.fixture
     def skill_file_mock(self, tmp_path):
@@ -26,15 +23,15 @@ class TestLoadSkillFrontmatterExceptionSwallowing:
         skill_file = skill_dir / "SKILL.md"
         return skill_file
 
-    def test_yaml_parse_failure_returns_none_silently(self, skill_file_mock, monkeypatch):
-        """Characterization: YAML parse failures are silently absorbed, returning default dict.
+    def test_yaml_parse_failure_returns_none(self, skill_file_mock, monkeypatch):
+        """YAML parse failures return None with logging.
 
         Given: A SKILL.md with invalid YAML in the frontmatter section
         When: _load_skill_frontmatter attempts to parse it
-        Then: No exception is raised, instead returns default result dict
+        Then: No exception is raised, returns None (with warning logged)
         """
         import yaml
-        # Create SKILL.md with invalid YAML between --- markers
+
         skill_file_mock.write_text(
             "---\ninvalid: yaml: content: here\n  missing: proper: structure\n---\n"
             "# Skill Content\n",
@@ -50,19 +47,18 @@ class TestLoadSkillFrontmatterExceptionSwallowing:
 
         from skill_guard.skill_execution_state import _load_skill_frontmatter
 
-        # This should NOT raise - current behavior swallows the exception
+        # This should NOT raise - YAML errors are caught and return None
         result = _load_skill_frontmatter("test_skill")
 
-        # Default result is returned (all defaults, no parsed data)
-        assert result["contract_type"] == "analysis"
-        assert result["allowed_first_tools"] == []
+        # Now returns None for YAML errors (logged warning)
+        assert result is None
 
-    def test_keyboard_interrupt_caught_by_except_exception(self, skill_file_mock, monkeypatch):
-        """Characterization: KeyboardInterrupt is caught by 'except Exception: pass'.
+    def test_keyboard_interrupt_propagates(self, skill_file_mock, monkeypatch):
+        """KeyboardInterrupt is NOT caught - it propagates.
 
         Given: A SKILL.md with valid frontmatter
         When: yaml.safe_load raises KeyboardInterrupt
-        Then: No KeyboardInterrupt propagates - it is silently swallowed
+        Then: KeyboardInterrupt propagates out of the function
         """
         import yaml
 
@@ -76,24 +72,23 @@ class TestLoadSkillFrontmatterExceptionSwallowing:
         def mock_safe_load_with_interrupt(data):
             raise KeyboardInterrupt("User pressed Ctrl+C")
 
+        # Mock both yaml.safe_load and the path operations
         monkeypatch.setattr(yaml, "safe_load", mock_safe_load_with_interrupt)
         monkeypatch.setattr(Path, "exists", lambda self: True)
+        monkeypatch.setattr(Path, "read_text", lambda self, encoding=None, errors=None: "---\ncontract_type: test\n---\n# Skill\n")
 
         from skill_guard.skill_execution_state import _load_skill_frontmatter
 
-        # This should NOT raise KeyboardInterrupt - current behavior swallows it
-        # The 'except Exception: pass' catches it since KeyboardInterrupt IS-A Exception
-        result = _load_skill_frontmatter("test_skill")
+        # KeyboardInterrupt should propagate, not be caught
+        with pytest.raises(KeyboardInterrupt):
+            _load_skill_frontmatter("test_skill")
 
-        # Default result is returned
-        assert result["contract_type"] == "analysis"
-
-    def test_system_exit_caught_by_except_exception(self, skill_file_mock, monkeypatch):
-        """Characterization: SystemExit is caught by 'except Exception: pass'.
+    def test_system_exit_propagates(self, skill_file_mock, monkeypatch):
+        """SystemExit is NOT caught - it propagates.
 
         Given: A SKILL.md with valid frontmatter
         When: yaml.safe_load raises SystemExit
-        Then: No SystemExit propagates - it is silently swallowed
+        Then: SystemExit propagates out of the function
         """
         import yaml
 
@@ -107,26 +102,24 @@ class TestLoadSkillFrontmatterExceptionSwallowing:
 
         monkeypatch.setattr(yaml, "safe_load", mock_safe_load_with_system_exit)
         monkeypatch.setattr(Path, "exists", lambda self: True)
+        monkeypatch.setattr(Path, "read_text", lambda self, encoding=None, errors=None: "---\ncontract_type: test\n---\n# Skill\n")
 
         from skill_guard.skill_execution_state import _load_skill_frontmatter
 
-        # This should NOT raise SystemExit - current behavior swallows it
-        # The 'except Exception: pass' catches it since SystemExit IS-A Exception
-        result = _load_skill_frontmatter("test_skill")
+        # SystemExit should propagate, not be caught
+        with pytest.raises(SystemExit):
+            _load_skill_frontmatter("test_skill")
 
-        # Default result is returned
-        assert result["contract_type"] == "analysis"
+    def test_yaml_errors_distinguishable_from_non_dict_results(self, skill_file_mock, monkeypatch):
+        """YAML parse errors return None, but non-dict YAML returns default dict (now distinguishable).
 
-    def test_yaml_errors_indistinguishable_from_success(self, skill_file_mock, monkeypatch):
-        """Characterization: YAML YAMLError looks identical to successful parse in results.
-
-        Given: A SKILL.md with YAML parseable but semantically wrong content
-        When: _load_skill_frontmatter runs
-        Then: Same default result as when YAML completely fails to parse
+        Given: Two SKILL.md files - one with unparseable YAML, one with YAML that parses to a list
+        When: _load_skill_frontmatter runs on each
+        Then: Unparseable YAML returns None, non-dict YAML returns default dict (they are now distinguishable)
         """
         import yaml
 
-        # Case 1: Completely unparseable YAML
+        # Case 1: Completely unparseable YAML - raises YAMLError -> returns None
         skill_file_mock.write_text(
             "---\ninvalid[[[ yaml: content\n---\n# Skill\n",
             encoding="utf-8"
@@ -142,7 +135,7 @@ class TestLoadSkillFrontmatterExceptionSwallowing:
 
         result_unparseable = _load_skill_frontmatter("test_skill")
 
-        # Case 2: YAML parses but returns wrong type (not a dict)
+        # Case 2: YAML parses but returns wrong type (not a dict) -> returns default dict
         skill_file_mock.write_text(
             "---\n- just a list\n- not a dict\n---\n# Skill\n",
             encoding="utf-8"
@@ -155,6 +148,7 @@ class TestLoadSkillFrontmatterExceptionSwallowing:
 
         result_list = _load_skill_frontmatter("test_skill")
 
-        # Both return the same default result - errors are indistinguishable from success
-        assert result_unparseable == result_list
-        assert result_unparseable["allowed_first_tools"] == []
+        # Now distinguishable: unparseable returns None, non-dict returns default dict
+        assert result_unparseable is None
+        assert result_list is not None
+        assert result_list["contract_type"] == "analysis"  # default dict, not None

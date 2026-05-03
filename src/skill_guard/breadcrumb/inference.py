@@ -82,7 +82,11 @@ def _infer_step_from_tool(tool_name: str, tool_input: dict[str, Any]) -> str | N
         # Use full tool name for mapping
         pass
 
-    # Check exact match first
+    # Check runtime mappings first (user-added takes precedence)
+    if normalized_name in _RUNTIME_MAPPINGS:
+        return _RUNTIME_MAPPINGS[normalized_name]
+
+    # Check exact match in default mappings
     if normalized_name in DEFAULT_TOOL_MAPPINGS:
         return DEFAULT_TOOL_MAPPINGS[normalized_name]
 
@@ -164,7 +168,8 @@ def get_supported_tools() -> list[str]:
     Returns:
         List of tool names that can be mapped to workflow steps
     """
-    return list(DEFAULT_TOOL_MAPPINGS.keys())
+    all_mappings = {**DEFAULT_TOOL_MAPPINGS, **_RUNTIME_MAPPINGS}
+    return list(all_mappings.keys())
 
 
 # Separate instance for runtime-added mappings (avoids mutating module-level DEFAULT_TOOL_MAPPINGS)
@@ -192,7 +197,7 @@ def remove_tool_mapping(tool_name: str) -> None:
     Args:
         tool_name: Name of the tool to unmap
     """
-    DEFAULT_TOOL_MAPPINGS.pop(tool_name, None)
+    _RUNTIME_MAPPINGS.pop(tool_name, None)
 
 
 def clear_custom_mappings() -> None:
