@@ -121,14 +121,14 @@ class TestAtomicWriteCorrectBehavior:
         original_content = {"original": "data"}
         state_file.write_text(json.dumps(original_content), encoding="utf-8")
 
-        def failing_replace(src, dst):
-            raise OSError("Simulated replace failure")
+        def failing_rename(self, dst):
+            raise OSError("Simulated rename failure")
 
-        with patch('os.replace', failing_replace):
+        with patch.object(Path, 'rename', failing_rename):
             with pytest.raises(OSError):
                 store._atomic_write_json(state_file, {"new": "data"})
 
-        # Original data should be intact
+        # Original data should be intact (but with current bug, it's gone)
         content = json.loads(state_file.read_text(encoding="utf-8"))
         assert content == original_content, "Original data should survive failed atomic write"
 
