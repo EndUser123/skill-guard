@@ -642,53 +642,30 @@ def _load_frontmatter_execution_config(skill_name: str) -> dict:
 # =============================================================================
 
 
-def handle_pre_tool_use(data: dict) -> dict:
-    """Main PreToolUse handler for skill pattern validation.
+# =============================================================================
+# LAYER 0: WORKFLOW STEPS CHECKER
+# =============================================================================
 
-    Checks three layers:
-    0. Workflow steps enforcement: Skills with workflow_steps MUST use Skill tool first
-    1. First-tool coherence (v3.5): Does the first tool match the skill's
-       declared allowed_first_tools? Applies to ALL skills including knowledge.
-    2. Execution pattern validation (v3.2): Does the tool command match the
-       skill's required execution pattern? Applies to execution-type skills.
+
+def _check_workflow_steps(tool_name: str, tool_input: dict, slash_command: str) -> dict:
+    """Check if skill with workflow_steps is being invoked properly (Layer 0).
+
+    This implements the stateless skill-first gate that only examines:
+    1. The current user message for slash commands
+    2. The current tool call for Skill usage
 
     Args:
-        data: Hook input dict with tool_name, tool_input, etc.
+        tool_name: Name of the tool being called
+        tool_input: Input parameters for the tool
+        slash_command: The slash command extracted from user message
 
     Returns:
-        Empty dict to allow, or {"block": true, "reason": "..."} to block
+        Empty dict to allow, or {"block": True, "reason": "..."} to block
     """
-    # Extract tool information
-    tool_name = data.get("tool_name", "")
-    tool_input = data.get("input", {})
-
-    # =========================================================================
-    # STATELESS SKILL-FIRST GATE (Per-Turn Check)
-    # =========================================================================
-    # This implements a stateless skill-first check that only examines:
-    # 1. The current user message for slash commands
-    # 2. The current tool call for Skill usage
-    #
-    # This eliminates circular dependencies on state files and prevents deadlocks.
-    # If no slash command was used, or if Skill tool was used first, allow all tools.
-
-    # Get user message from input data
-    user_message = ""
-    try:
-        # Try multiple possible locations for user message
-        user_message = str(data.get("user_message", "") or data.get("prompt", "") or "")
-    except Exception:
-        pass
-
-    # Extract slash command from user message using robust regex (handles edge cases)
-    slash_command = extract_command_name(user_message)
-
-    # Stateless skill-first check
     if slash_command:
         # User typed a slash command - check if Skill tool is being used
         if tool_name == "Skill":
             # Skill tool is being used - check if it matches the slash command
-            tool_input = data.get("input", {})
             skill_name = tool_input.get("skill", "")
 
             if skill_name.lower() == slash_command.lower():
@@ -726,132 +703,149 @@ def handle_pre_tool_use(data: dict) -> dict:
             # Error checking workflow_steps - allow tools (fail open)
             pass
 
-    # =========================================================================
-    # END STATELESS SKILL-FIRST GATE
-    # =========================================================================
+    return {}
 
-    # Always allow investigation tools before any state-file gating.
-    # These tools are used to understand the problem, not execute the skill.
-    if tool_name in INVESTIGATION_TOOLS:
-        return {}
 
-    # =========================================================================
-    # LAYER 0.5 (STATE-FILE): Read pending_command_intent for post-compaction detection
-    # =========================================================================
-    # After compaction, the current user message may not contain the slash command
-    # (transcript is compacted). The pending_command_intent.json state file survives
-    # compaction and records what slash command was invoked.
-    #
-    # This layer reads that state file to detect slash commands that would otherwise
-    # be invisible post-compaction. If a slash command is found in the state file
-    # and the Skill tool hasn't been called yet this turn, block.
-    #
-    # TTL: Entries older than SKILL_FIRST_INTENT_TTL_SECONDS are discarded as stale.
-    # Fingerprint: If fingerprint matches current prompt, skip (already handled this turn).
+# =============================================================================
+# LAYER 0.5: STATE-FILE INTENT CHECKER
+# =============================================================================
 
+
+def _check_state_file_intent(tool_name: str) -> dict:
+    """Check pending_command_intent from state file for post-compaction detection.
+
+    After compaction, the current user message may not contain the slash command
+    (transcript is compacted). The pending_command_intent.json state file survives
+    compaction and records what slash command was invoked.
+
+    Args:
+        tool_name: Name of the tool being called
+
+    Returns:
+        Empty dict to allow, or {"block": True, "reason": "..."} to block
+    """
     intent_state = _read_pending_command_intent()
-    if intent_state:
-        slash_from_state = intent_state.get("skill", "")
-        if slash_from_state:
-            # Check if Skill tool is being used this turn
-            if tool_name != "Skill":
-                # Skill tool not called yet - check if this is a skill with workflow_steps
-                try:
-                    from skill_guard.breadcrumb.tracker import _load_workflow_steps
-
-                    result = _load_workflow_steps(slash_from_state)
-                    workflow_steps = result.steps
-
-                    if workflow_steps:
-                        # Skill has workflow_steps - block until Skill tool is called
-                        return {
-                            "block": True,
-                            "reason": (
-                                f"⛔ SKILL-FIRST GATE (state-file)\n\n"
-                                f"Pending slash command /{slash_from_state} detected from prior state.\n\n"
-                                f"The skill /{slash_from_state} has {len(workflow_steps)} declared workflow steps.\n\n"
-                                f"Your FIRST action must be: Skill(skill='{slash_from_state}')\n\n"
-                                f"Do NOT respond with prose analysis or use other tools before calling Skill.\n"
-                                f"Do NOT bypass this gate by outputting inline analysis text without calling Skill(...)."
-                            ),
-                        }
-                except ImportError:
-                    # breadcrumb system not available - allow tools (fail open)
-                    pass
-                except Exception:
-                    # Error checking workflow_steps - allow tools (fail open)
-                    pass
-
-    # Read current skill state
-    state = _read_pending_state()
-
-    if not state:
-        # No skill loaded, allow all tools
+    if not intent_state:
         return {}
 
-    skill = state.get("skill", "")
-    if not skill:
+    slash_from_state = intent_state.get("skill", "")
+    if not slash_from_state:
         return {}
 
-    # =========================================================================
-    # LAYER 0.5: Topic drift prevention (v1.0)
-    # Prevents pivoting to discovered-but-deferred issues (do_not_distract).
-    # Active when workflow_stage.active_step is set and do_not_distract has items.
-    # =========================================================================
+    # Check if Skill tool is being used this turn
+    if tool_name != "Skill":
+        # Skill tool not called yet - check if this is a skill with workflow_steps
+        try:
+            from skill_guard.breadcrumb.tracker import _load_workflow_steps
+
+            result = _load_workflow_steps(slash_from_state)
+            workflow_steps = result.steps
+
+            if workflow_steps:
+                # Skill has workflow_steps - block until Skill tool is called
+                return {
+                    "block": True,
+                    "reason": (
+                        f"⛔ SKILL-FIRST GATE (state-file)\n\n"
+                        f"Pending slash command /{slash_from_state} detected from prior state.\n\n"
+                        f"The skill /{slash_from_state} has {len(workflow_steps)} declared workflow steps.\n\n"
+                        f"Your FIRST action must be: Skill(skill='{slash_from_state}')\n\n"
+                        f"Do NOT respond with prose analysis or use other tools before calling Skill.\n"
+                        f"Do NOT bypass this gate by outputting inline analysis text without calling Skill(...)."
+                    ),
+                }
+        except ImportError:
+            # breadcrumb system not available - allow tools (fail open)
+            pass
+        except Exception:
+            # Error checking workflow_steps - allow tools (fail open)
+            pass
+
+    return {}
+
+
+# =============================================================================
+# LAYER 0.5: TOPIC DRIFT PREVENTION CHECKER
+# =============================================================================
+
+
+def _check_topic_drift(
+    tool_name: str, tool_input: dict, user_message: str, state: dict
+) -> dict:
+    """Check if tool use violates topic drift prevention rules.
+
+    Prevents pivoting to discovered-but-deferred issues (do_not_distract).
+    Active when workflow_stage.active_step is set and do_not_distract has items.
+
+    Args:
+        tool_name: Name of the tool being called
+        tool_input: Input parameters for the tool
+        user_message: Current user message
+        state: Current skill execution state
+
+    Returns:
+        Empty dict to allow, or {"block": True, "reason": "..."} to block
+    """
     workflow_stage = state.get("workflow_stage", {})
     active_step = workflow_stage.get("active_step", "")
     do_not_distract = workflow_stage.get("do_not_distract", [])
 
-    if active_step and do_not_distract:
-        # Check if tool is being used for something in do_not_distract list
-        # Extract what the tool is targeting from tool_input
-        target_info = ""
-        if tool_name == "Read":
-            target_info = tool_input.get("file_path", "")
-        elif tool_name == "Edit":
-            target_info = tool_input.get("file_path", "")
-        elif tool_name == "Write":
-            target_info = tool_input.get("file_path", "")
-        elif tool_name == "Bash":
-            target_info = tool_input.get("command", "")
+    if not active_step or not do_not_distract:
+        return {}
 
-        # Check if target matches any do_not_distract item
-        target_lower = target_info.lower()
-        for blocked in do_not_distract:
-            blocked_lower = blocked.lower()
-            # Check for partial match in target or user message
-            if (
-                blocked_lower in target_lower
-                or blocked_lower in user_message.lower()
-            ):
-                return {
-                    "block": True,
-                    "reason": (
-                        f"⛔ TOPIC DRIFT PREVENTION\n\n"
-                        f"You are working on: {active_step}\n\n"
-                        f"The tool targets something you've deferred: '{blocked}'\n\n"
-                        f"Complete the current step first, then address deferred items.\n\n"
-                        f"To bypass: Add --allow-topic-switch to your message."
-                    ),
-                }
+    # Check if tool is being used for something in do_not_distract list
+    # Extract what the tool is targeting from tool_input
+    target_info = ""
+    if tool_name == "Read":
+        target_info = tool_input.get("file_path", "")
+    elif tool_name == "Edit":
+        target_info = tool_input.get("file_path", "")
+    elif tool_name == "Write":
+        target_info = tool_input.get("file_path", "")
+    elif tool_name == "Bash":
+        target_info = tool_input.get("command", "")
 
-    # =========================================================================
-    # LAYER 1: First-tool coherence (v3.5)
-    # Applies to ALL skills that declare allowed_first_tools, including
-    # knowledge/consultation skills like /ask, /discover, /test.
-    # =========================================================================
-    coherence_result = _check_first_tool_coherence(tool_name, state)
-    if coherence_result.get("block"):
-        return coherence_result
+    # Check if target matches any do_not_distract item
+    target_lower = target_info.lower()
+    for blocked in do_not_distract:
+        blocked_lower = blocked.lower()
+        # Check for partial match in target or user message
+        if (
+            blocked_lower in target_lower
+            or blocked_lower in user_message.lower()
+        ):
+            return {
+                "block": True,
+                "reason": (
+                    f"⛔ TOPIC DRIFT PREVENTION\n\n"
+                    f"You are working on: {active_step}\n\n"
+                    f"The tool targets something you've deferred: '{blocked}'\n\n"
+                    f"Complete the current step first, then address deferred items.\n\n"
+                    f"To bypass: Add --allow-topic-switch to your message."
+                ),
+            }
 
-    first_command_result = _check_first_command_pattern(tool_name, tool_input, state)
-    if first_command_result.get("block"):
-        return first_command_result
+    return {}
 
-    # =========================================================================
-    # LAYER 1.5: Dynamic knowledge skill detection (ROBUST)
-    # Check if skill requires execution by inspecting state, not hardcoded set
-    # =========================================================================
+
+# =============================================================================
+# LAYER 1.5: KNOWLEDGE SKILL CHECKER
+# =============================================================================
+
+
+def _check_knowledge_skill(skill: str, state: dict) -> dict:
+    """Check if skill is a knowledge skill that should skip execution validation.
+
+    Dynamic knowledge skill detection - checks if skill requires execution
+    by inspecting state, not hardcoded set.
+
+    Args:
+        skill: Skill name
+        state: Current skill execution state
+
+    Returns:
+        Empty dict to allow, or {"block": True, "reason": "..."} to block
+    """
     # Method 1: Check state's required_tools field (most authoritative)
     required_tools_state = state.get("required_tools", [])
     if not required_tools_state:
@@ -862,10 +856,31 @@ def handle_pre_tool_use(data: dict) -> dict:
     if skill in KNOWLEDGE_SKILLS:
         return {}
 
-    # =========================================================================
-    # LAYER 2: Execution pattern validation (v3.2)
-    # Only applies to execution-type skills (not knowledge skills).
-    # =========================================================================
+    return {}
+
+
+# =============================================================================
+# LAYER 2: EXECUTION PATTERN CHECKER
+# =============================================================================
+
+
+def _check_execution_pattern(
+    tool_name: str, tool_input: dict, skill: str, state: dict
+) -> dict:
+    """Check if tool command matches the skill's required execution pattern.
+
+    Only applies to execution-type skills (not knowledge skills).
+    Runs parallel regex + daemon validation.
+
+    Args:
+        tool_name: Name of the tool being called
+        tool_input: Input parameters for the tool
+        skill: Skill name
+        state: Current skill execution state
+
+    Returns:
+        Empty dict to allow, or {"block": True, "reason": "..."} to block
+    """
     # Get skill configuration — explicit registry, then auto-discovery
     skill_config = get_skill_config(skill, SKILL_EXECUTION_REGISTRY)
     if not skill_config or not skill_config.get("tools"):
@@ -909,6 +924,113 @@ def handle_pre_tool_use(data: dict) -> dict:
 
     if decision["action"] == "block":
         return {"block": True, "reason": decision["reason"]}
+
+    return {}
+
+
+# =============================================================================
+# MAIN HANDLER
+# =============================================================================
+
+
+def handle_pre_tool_use(data: dict) -> dict:
+    """Main PreToolUse handler for skill pattern validation.
+
+    Checks three layers:
+    0. Workflow steps enforcement: Skills with workflow_steps MUST use Skill tool first
+    1. First-tool coherence (v3.5): Does the first tool match the skill's
+       declared allowed_first_tools? Applies to ALL skills including knowledge.
+    2. Execution pattern validation (v3.2): Does the tool command match the
+       skill's required execution pattern? Applies to execution-type skills.
+
+    Args:
+        data: Hook input dict with tool_name, tool_input, etc.
+
+    Returns:
+        Empty dict to allow, or {"block": true, "reason": "..."} to block
+    """
+    # Extract tool information
+    tool_name = data.get("tool_name", "")
+    tool_input = data.get("input", {})
+
+    # =========================================================================
+    # LAYER 0: WORKFLOW STEPS ENFORCEMENT (STATELESS SKILL-FIRST GATE)
+    # =========================================================================
+    # Get user message from input data
+    user_message = ""
+    try:
+        # Try multiple possible locations for user message
+        user_message = str(data.get("user_message", "") or data.get("prompt", "") or "")
+    except Exception:
+        pass
+
+    # Extract slash command from user message using robust regex
+    slash_command = extract_command_name(user_message)
+
+    # Stateless skill-first check
+    workflow_result = _check_workflow_steps(tool_name, tool_input, slash_command)
+    if workflow_result.get("block"):
+        return workflow_result
+
+    # =========================================================================
+    # END LAYER 0
+    # =========================================================================
+
+    # Always allow investigation tools before any state-file gating.
+    # These tools are used to understand the problem, not execute the skill.
+    if tool_name in INVESTIGATION_TOOLS:
+        return {}
+
+    # =========================================================================
+    # LAYER 0.5 (STATE-FILE): Read pending_command_intent for post-compaction detection
+    # =========================================================================
+    state_file_result = _check_state_file_intent(tool_name)
+    if state_file_result.get("block"):
+        return state_file_result
+
+    # =========================================================================
+    # LAYER 0.5: READ PENDING STATE AND CHECK TOPIC DRIFT
+    # =========================================================================
+    # Read current skill state
+    state = _read_pending_state()
+
+    if not state:
+        # No skill loaded, allow all tools
+        return {}
+
+    skill = state.get("skill", "")
+    if not skill:
+        return {}
+
+    # Topic drift prevention check
+    topic_drift_result = _check_topic_drift(tool_name, tool_input, user_message, state)
+    if topic_drift_result.get("block"):
+        return topic_drift_result
+
+    # =========================================================================
+    # LAYER 1: First-tool coherence (v3.5)
+    # =========================================================================
+    coherence_result = _check_first_tool_coherence(tool_name, state)
+    if coherence_result.get("block"):
+        return coherence_result
+
+    first_command_result = _check_first_command_pattern(tool_name, tool_input, state)
+    if first_command_result.get("block"):
+        return first_command_result
+
+    # =========================================================================
+    # LAYER 1.5: Dynamic knowledge skill detection (ROBUST)
+    # =========================================================================
+    knowledge_result = _check_knowledge_skill(skill, state)
+    if knowledge_result.get("block"):
+        return knowledge_result
+
+    # =========================================================================
+    # LAYER 2: Execution pattern validation (v3.2)
+    # =========================================================================
+    execution_result = _check_execution_pattern(tool_name, tool_input, skill, state)
+    if execution_result.get("block"):
+        return execution_result
 
     return {}
 

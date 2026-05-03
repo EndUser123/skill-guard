@@ -131,11 +131,11 @@ class TestSetBreadcrumbIOCount:
                 total_io = log_append_calls + cache_update_calls + file_open_count + fsync_count
                 print(f"\nI/O counts: log={log_append_calls}, cache={cache_update_calls}, open={file_open_count}, fsync={fsync_count}")
 
-                assert total_io >= 3, f"Expected >= 3 I/O operations, got {total_io}"
-                assert log_append_calls >= 1, "Log append should be called"
-                assert cache_update_calls >= 1, "Cache update should be called"
-                assert file_open_count >= 1, "File open should be called"
-                assert fsync_count >= 1, "fsync should be called"
+                assert total_io == 2, f"Expected exactly 2 I/O operations (log + cache) after PERF-003 optimization, got {total_io}"
+                assert log_append_calls == 1, "Log append should be called once"
+                assert cache_update_calls == 1, "Cache update should be called once"
+                assert file_open_count == 0, "JSON file write should be debounced (PERF-003), got {file_open_count}"
+                assert fsync_count == 0, "fsync should be debounced (PERF-003), got {fsync_count}"
             finally:
                 # Restore
                 tracker._cache.update_state = original_cache_update
@@ -222,8 +222,10 @@ class TestSetBreadcrumbIOCount:
                 with patch("skill_guard.breadcrumb.tracker.os.fsync", track_fsync):
                     tracker.set_breadcrumb("test_skill", "step1")
 
-            assert file_open_count >= 1, "JSON file should be opened for writing"
-            assert fsync_count >= 1, "os.fsync should be called"
+            # PERF-003: JSON file write is debounced (every N calls)
+            # First call should NOT trigger file write since counter starts at 0
+            assert file_open_count == 0, f"JSON file write should be debounced on single call, got {file_open_count}"
+            assert fsync_count == 0, f"fsync should be debounced on single call, got {fsync_count}"
 
     def test_io_operations_are_not_batched(self, clean_tracker_state, mock_workflow_steps):
         """Characterization: I/O operations execute immediately, not batched."""

@@ -87,6 +87,7 @@ class ExecutionRun:
     status: str = RunStatus.ACTIVE
     terminal_id: str = ""
     session_id: str = ""
+    turn_id: str | None = None
 
     created_at: float = field(default_factory=lambda: datetime.now(timezone.utc).timestamp())
     updated_at: float = field(default_factory=lambda: datetime.now(timezone.utc).timestamp())
@@ -110,6 +111,7 @@ class ExecutionRun:
             "status": self.status,
             "terminal_id": self.terminal_id,
             "session_id": self.session_id,
+            "turn_id": self.turn_id,
             "created_at": self.created_at,
             "updated_at": self.updated_at,
             "required_artifacts": self.required_artifacts,
@@ -130,6 +132,7 @@ class ExecutionRun:
             status=d.get("status", RunStatus.ACTIVE),
             terminal_id=d.get("terminal_id", ""),
             session_id=d.get("session_id", ""),
+            turn_id=d.get("turn_id"),
             created_at=d.get("created_at", datetime.now(timezone.utc).timestamp()),
             updated_at=d.get("updated_at", datetime.now(timezone.utc).timestamp()),
             required_artifacts=d.get("required_artifacts", []),

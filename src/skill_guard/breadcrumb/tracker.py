@@ -75,6 +75,12 @@ import threading
 _db_initialized = False
 _db_init_lock = threading.RLock()
 
+# PERF-003: Debounce JSON file writes to reduce I/O
+# Only write JSON file every N set_breadcrumb calls
+_WRITE_EVERY = 5
+_json_write_counter = 0
+_json_write_lock = threading.Lock()
+
 
 def _ensure_database_initialized() -> bool:
     """Ensure database schema is initialized.
@@ -500,14 +506,21 @@ def set_breadcrumb(skill_name: str, step_name: str, evidence: dict[str, Any] | N
     # HYBRID LOGGING: Update cache (in-memory, fast)
     _cache.update_state(skill_lower, trail)
 
-    # HYBRID LOGGING: Write breadcrumb file (backward compatibility snapshot)
-    # Note: This could be optimized to only write periodically, but keeping
-    # for backward compatibility with existing systems that read JSON files
-    breadcrumb_file = _get_breadcrumb_file(skill_lower)
-    with open(breadcrumb_file, "w", encoding="utf-8") as f:
-        f.write(json.dumps(trail, indent=2))
-        f.flush()
-        os.fsync(f.fileno())
+    # PERF-003: Debounce JSON file writes (every N calls)
+    # JSON file is for backward compatibility only; JSONL log is the source of truth
+    global _json_write_counter
+    with _json_write_lock:
+        _json_write_counter += 1
+        should_write = _json_write_counter >= _WRITE_EVERY
+        if should_write:
+            _json_write_counter = 0
+
+    if should_write:
+        breadcrumb_file = _get_breadcrumb_file(skill_lower)
+        with open(breadcrumb_file, "w", encoding="utf-8") as f:
+            f.write(json.dumps(trail, indent=2))
+            f.flush()
+            os.fsync(f.fileno())
     _append_ledger_event(
         "breadcrumb_step_complete",
         {
