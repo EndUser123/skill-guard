@@ -14,7 +14,7 @@ import re
 
 
 class TestSkillExecutionStateGodObject:
-    """Tests documenting the current file structure issues."""
+    """Tests verifying the DESIRED state after refactoring - tests should FAIL now."""
 
     @pytest.fixture
     def source_file(self):
@@ -26,60 +26,24 @@ class TestSkillExecutionStateGodObject:
         """Full source code of the file."""
         return source_file.read_text(encoding="utf-8")
 
-    def test_file_has_over_1000_lines(self, source_file):
-        """Characterization: File has over 1000 lines, indicating potential god object."""
+    def test_file_should_have_under_500_lines(self, source_file):
+        """REFACTOR GOAL: File should have < 500 lines after splitting responsibilities.
+
+        Currently has 1057 lines - this test FAILS showing refactoring is needed.
+        """
         line_count = len(source_file.read_text(encoding="utf-8").splitlines())
-        assert line_count > 1000, f"File has {line_count} lines, expected > 1000"
-
-    def test_multiple_responsibility_clusters_exist(self, source_code):
-        """Characterization: File contains multiple distinct responsibility clusters."""
-        # Phase constants cluster
-        phase_constants = re.search(
-            r'_PHASE_PENDING\s*=\s*"pending"', source_code
-        )
-        # Terminal detection cluster
-        terminal_detection = re.search(
-            r'def detect_terminal_id', source_code
-        )
-        # Frontmatter loading cluster
-        frontmatter_loading = re.search(
-            r'def _load_skill_frontmatter', source_code
-        )
-        # State I/O cluster
-        state_io = re.search(
-            r'def _atomic_write_json', source_code
-        )
-        # Ledger integration cluster
-        ledger_integration = re.search(
-            r'def _get_ledger_module', source_code
-        )
-        # State update functions cluster
-        state_updates = re.search(
-            r'def set_skill_loaded', source_code
-        )
-        # Migration helpers cluster
-        migration_helpers = re.search(
-            r'def migrate_legacy_state', source_code
+        assert line_count < 500, (
+            f"File has {line_count} lines, refactoring should reduce to < 500. "
+            f"Phase constants, terminal detection, frontmatter, state I/O, ledger "
+            f"integration, and migration helpers should be separate modules."
         )
 
-        clusters = {
-            "phase_constants": bool(phase_constants),
-            "terminal_detection": bool(terminal_detection),
-            "frontmatter_loading": bool(frontmatter_loading),
-            "state_io": bool(state_io),
-            "ledger_integration": bool(ledger_integration),
-            "state_updates": bool(state_updates),
-            "migration_helpers": bool(migration_helpers),
-        }
+    def test_main_module_should_have_fewer_than_10_top_level_functions(self, source_file):
+        """REFACTOR GOAL: Main module should have < 10 top-level functions after splitting.
 
-        found_clusters = sum(clusters.values())
-        assert found_clusters >= 5, (
-            f"Expected at least 5 responsibility clusters, found {found_clusters}: {clusters}"
-        )
-
-    def test_responsibilities_not_separated_into_modules(self, source_file):
-        """Characterization: All responsibilities live in single file, not separated modules."""
-        # Parse the source to count top-level function definitions
+        Currently has many functions handling too many responsibilities.
+        This test FAILS showing refactoring is needed.
+        """
         source_code = source_file.read_text(encoding="utf-8")
         tree = ast.parse(source_code)
 
@@ -89,103 +53,140 @@ class TestSkillExecutionStateGodObject:
             if isinstance(node, ast.FunctionDef) and node.col_offset == 0
         ]
 
-        # The file should have many functions if all responsibilities are in one place
-        assert len(module_level_functions) >= 15, (
-            f"File has only {len(module_level_functions)} top-level functions. "
-            f"A god object with 20+ responsibilities would have significantly more."
+        assert len(module_level_functions) < 10, (
+            f"File has {len(module_level_functions)} top-level functions. "
+            f"After refactoring, should have < 10 (main module only coordinates submodules)."
         )
 
-    def test_responsibility_clusters_not_documented_separately(self, source_code):
-        """Characterization: Responsibilities are NOT separated by module boundaries."""
-        # Check for module-level separation comments or section headers
+    def test_phase_constants_should_be_in_separate_module(self, source_code):
+        """REFACTOR GOAL: Phase constants should be in src/skill_guard/phases.py
+
+        Currently phase constants (_PHASE_PENDING, VALID_TRANSITIONS, etc.) live
+        in skill_execution_state.py. After refactoring, they should be in a
+        separate module like phases.py.
+
+        This test FAILS because the constants still live in the main file.
+        """
+        # Phase constants should NOT be in skill_execution_state.py after refactoring
+        phase_in_main = re.search(r'_PHASE_PENDING\s*=\s*"pending"', source_code)
+        assert phase_in_main is None, (
+            "Phase constants (_PHASE_PENDING, etc.) still in skill_execution_state.py. "
+            "They should be moved to src/skill_guard/phases.py"
+        )
+
+    def test_terminal_detection_should_be_in_separate_module(self, source_code):
+        """REFACTOR GOAL: Terminal detection should only delegate, not implement.
+
+        Currently detect_terminal_id() is implemented here but also imports from utils.
+        After refactoring, this module should only delegate to utils.terminal_detection.
+        """
+        # detect_terminal_id should be removed from this module (only in utils)
+        detect_in_main = re.search(r'^def detect_terminal_id', source_code, re.MULTILINE)
+        assert detect_in_main is None, (
+            "detect_terminal_id() still implemented in skill_execution_state.py. "
+            "Should only delegate to utils.terminal_detection module."
+        )
+
+    def test_frontmatter_loading_should_be_in_separate_module(self, source_code):
+        """REFACTOR GOAL: Frontmatter loading should be in frontmatter.py module.
+
+        Currently _load_skill_frontmatter and _validate_skill_frontmatter are here.
+        After refactoring, should be in src/skill_guard/frontmatter.py.
+        """
+        load_func = re.search(r'def _load_skill_frontmatter', source_code)
+        assert load_func is None, (
+            "_load_skill_frontmatter still in skill_execution_state.py. "
+            "Should be moved to src/skill_guard/frontmatter.py"
+        )
+
+    def test_state_io_should_be_in_separate_module(self, source_code):
+        """REFACTOR GOAL: State I/O operations should be in state_io.py module.
+
+        Currently _atomic_write_json, _get_state_file, etc. are here.
+        After refactoring, should be in src/skill_guard/state_io.py.
+        """
+        atomic_write = re.search(r'def _atomic_write_json', source_code)
+        assert atomic_write is None, (
+            "_atomic_write_json and state I/O functions still in skill_execution_state.py. "
+            "Should be moved to src/skill_guard/state_io.py"
+        )
+
+    def test_ledger_integration_should_be_in_separate_module(self, source_code):
+        """REFACTOR GOAL: Ledger integration should be in ledger.py module.
+
+        Currently _get_ledger_module is here. After refactoring, should be
+        in src/skill_guard/ledger.py or similar.
+        """
+        ledger_func = re.search(r'def _get_ledger_module', source_code)
+        assert ledger_func is None, (
+            "_get_ledger_module still in skill_execution_state.py. "
+            "Should be moved to a separate ledger integration module."
+        )
+
+    def test_migration_helpers_should_be_in_separate_module(self, source_code):
+        """REFACTOR GOAL: Migration helpers should be in migration.py module.
+
+        Currently migrate_legacy_state and cleanup_stale_state_files are here.
+        After refactoring, should be in src/skill_guard/migration.py.
+        """
+        migrate = re.search(r'def migrate_legacy_state', source_code)
+        assert migrate is None, (
+            "migrate_legacy_state still in skill_execution_state.py. "
+            "Should be moved to src/skill_guard/migration.py"
+        )
+
+    def test_separate_module_files_should_exist(self):
+        """REFACTOR GOAL: Separate module files should exist for each responsibility.
+
+        After refactoring, these files should exist:
+        - phases.py (phase constants)
+        - frontmatter.py (frontmatter loading/validation)
+        - state_io.py (state file I/O)
+        - ledger.py (ledger integration)
+
+        This test FAILS because these files don't exist yet.
+        """
+        base = Path("P:/packages/skill-guard/src/skill_guard")
+        expected_modules = ["phases.py", "frontmatter.py", "state_io.py", "ledger.py"]
+
+        missing = [m for m in expected_modules if not (base / m).exists()]
+
+        assert not missing, (
+            f"Missing separate module files: {missing}. "
+            f"Refactoring should split skill_execution_state.py into these modules."
+        )
+
+    def test_legacy_cache_should_be_in_separate_module(self, source_code):
+        """REFACTOR GOAL: Legacy cache pattern should be in cache.py module.
+
+        Currently _LEGACY_SKILL_METADATA_CACHE and _get_legacy_skill_metadata_cache
+        are here. After refactoring, should be in src/skill_guard/cache.py.
+        """
+        legacy_cache = re.search(r'_LEGACY_SKILL_METADATA_CACHE', source_code)
+        assert legacy_cache is None, (
+            "_LEGACY_SKILL_METADATA_CACHE still in skill_execution_state.py. "
+            "Should be moved to src/skill_guard/cache.py"
+        )
+
+    def test_no_section_comment_headers_in_main_module(self, source_code):
+        """REFACTOR GOAL: Main module should NOT need section comment headers.
+
+        Currently the file uses comments like "# TERMINAL DETECTION", "# STATE MANAGEMENT"
+        to organize responsibilities within a single file. After proper refactoring
+        into separate modules, these section headers should not be needed in the main module.
+        """
         section_markers = [
             "TERMINAL DETECTION",
             "STATE MANAGEMENT",
             "FRONTMATTER",
             "LEDGER MODULE INTEGRATION",
             "MIGRATION HELPERS",
-            "PHASE",
-            "CONFIGURATION",
         ]
 
         found_markers = [marker for marker in section_markers if marker in source_code]
 
-        # The file uses section headers as comments (indicating awareness of too many responsibilities)
-        assert len(found_markers) >= 4, (
-            f"File uses {len(found_markers)} section comment headers to organize "
-            f"responsibilities that should be separate modules. "
-            f"Found: {found_markers}"
-        )
-
-    def test_phase_constants_should_be_separate_module(self, source_code):
-        """Characterization: Phase constants cluster exists and should be its own module."""
-        # Phase constants pattern
-        phase_pattern = re.search(
-            r'_PHASE_PENDING\s*=\s*"pending".*VALID_TRANSITIONS.*DEFAULT_STALE_TIMEOUT',
-            source_code,
-            re.DOTALL
-        )
-        assert phase_pattern is not None, "Phase constants cluster not found"
-
-    def test_terminal_detection_should_be_separate_module(self, source_code):
-        """Characterization: Terminal detection should be its own module."""
-        terminal_detect = re.search(r'def detect_terminal_id', source_code)
-        assert terminal_detect is not None, "Terminal detection not found"
-
-        # Should import from utils, but the function lives here
-        import_in_function = re.search(
-            r'from skill_guard\.utils\.terminal_detection import detect_terminal_id',
-            source_code
-        )
-        assert import_in_function is not None, "Terminal detection imports from utils but function still lives here"
-
-    def test_state_io_should_be_separate_module(self, source_code):
-        """Characterization: State I/O operations should be their own module."""
-        atomic_write = re.search(r'def _atomic_write_json', source_code)
-        state_file_funcs = re.search(r'def _get_state_file', source_code)
-        assert atomic_write is not None and state_file_funcs is not None, (
-            "State I/O functions should be separate module"
-        )
-
-    def test_frontmatter_loading_should_be_separate_module(self, source_code):
-        """Characterization: Frontmatter loading/validation should be its own module."""
-        load_func = re.search(r'def _load_skill_frontmatter', source_code)
-        validate_func = re.search(r'def _validate_skill_frontmatter', source_code)
-        assert load_func is not None and validate_func is not None, (
-            "Frontmatter functions should be separate module"
-        )
-
-    def test_ledger_integration_should_be_separate_module(self, source_code):
-        """Characterization: Ledger module integration should be its own module."""
-        ledger_func = re.search(r'def _get_ledger_module', source_code)
-        assert ledger_func is not None, "Ledger integration should be separate module"
-
-    def test_state_update_functions_should_be_separate_module(self, source_code):
-        """Characterization: High-level state operations should be their own module."""
-        state_ops = [
-            "def set_skill_loaded",
-            "def record_tool_use",
-            "def transition_phase",
-            "def read_pending_state",
-            "def mark_first_tool_validated",
-            "def update_workflow_stage",
-            "def clear_state",
-        ]
-        for op in state_ops:
-            assert re.search(op, source_code) is not None, f"{op} should be in separate module"
-
-    def test_migration_helpers_should_be_separate_module(self, source_code):
-        """Characterization: Migration helpers should be their own module."""
-        migrate = re.search(r'def migrate_legacy_state', source_code)
-        cleanup = re.search(r'def cleanup_stale_state_files', source_code)
-        assert migrate is not None and cleanup is not None, (
-            "Migration helpers should be separate module"
-        )
-
-    def test_legacy_cache_should_be_separate_module(self, source_code):
-        """Characterization: Legacy metadata cache pattern should be its own module."""
-        legacy_cache = re.search(r'_LEGACY_SKILL_METADATA_CACHE', source_code)
-        get_cache_func = re.search(r'def _get_legacy_skill_metadata_cache', source_code)
-        assert legacy_cache is not None and get_cache_func is not None, (
-            "Legacy cache should be separate module"
+        assert not found_markers, (
+            f"Section comment headers still present in skill_execution_state.py: {found_markers}. "
+            f"These organizational comments indicate responsibilities that should be "
+            f"in separate modules, not commented sections in a single god object."
         )

@@ -1,168 +1,151 @@
 """
-Characterization tests for BUG-016: non-atomic delete-then-rename in _atomic_write_json.
+RED phase tests for BUG-016: non-atomic delete-then-rename in _atomic_write_json.
 
-These tests CAPTURE CURRENT BEHAVIOR before refactoring.
+These tests assert CORRECT behavior and FAIL against the buggy implementation.
 The bug: _atomic_write_json uses unlink() then rename() as separate operations,
-creating a data-loss window between them if the process crashes or rename fails.
+creating a data-loss window. Correct behavior: use os.replace() for atomic overwrite.
 
 Run with: pytest P:/packages/skill-guard/tests/test_atomic_write_gap.py -v
 """
 
 import pytest
 import json
+import os
 from pathlib import Path
-from unittest.mock import patch, MagicMock, call
-from skill_guard.execution_store import ExecutionStore
+from unittest.mock import patch
+
+from skill_guard.execution_store import ArtifactsExecutionStore
 
 
-class TestAtomicWriteGap:
-    """Tests showing the non-atomic delete-then-rename pattern."""
+class TestAtomicWriteCorrectBehavior:
+    """Tests asserting the CORRECT atomic write behavior."""
 
     @pytest.fixture
     def store(self, tmp_path):
-        """Create ExecutionStore with temporary console dir."""
-        with patch.object(ExecutionStore, 'console_dir', return_value=tmp_path):
-            yield ExecutionStore()
+        """Create ArtifactsExecutionStore with temp artifacts root."""
+        with patch.object(ArtifactsExecutionStore, 'ARTIFACTS_ROOT', tmp_path):
+            yield ArtifactsExecutionStore("test_console")
 
-    def test_unlink_then_rename_sequence(self, store, tmp_path):
+    def test_no_unlink_before_rename(self, store, tmp_path):
         """
-        Characterization: _atomic_write_json calls unlink BEFORE rename.
+        CORRECT behavior: unlink should NOT be called before rename.
 
-        Current sequence:
-        1. path.unlink()  <- deletes existing file
-        2. tmp.rename(path)  <- renames temp to target
-
-        If crash occurs between step 1 and 2, data is lost.
+        The atomic write should use os.replace() which atomically overwrites
+        the target file. No separate unlink call should occur.
         """
         state_file = tmp_path / "execution-state.json"
-        data = {"test": "value"}
-
-        # Create existing file to trigger the unlink path
         state_file.write_text("{}", encoding="utf-8")
 
         calls = []
 
-        original_unlink = Path.unlink
-        original_rename = Path.rename
-
         def tracked_unlink(self):
             calls.append(('unlink', str(self)))
-            return original_unlink(self)
+            raise AssertionError("unlink should NOT be called - use os.replace() instead")
 
         def tracked_rename(self, target):
             calls.append(('rename', str(self), str(target)))
-            return original_rename(self, target)
+            return Path.rename(self, target)
 
         with patch.object(Path, 'unlink', tracked_unlink):
             with patch.object(Path, 'rename', tracked_rename):
-                store._atomic_write_json(state_file, data)
+                store._atomic_write_json(state_file, {"test": "value"})
 
-        # Verify unlink happens BEFORE rename
-        assert len(calls) == 2, f"Expected 2 calls, got {len(calls)}: {calls}"
-        assert calls[0][0] == 'unlink', f"First call should be unlink, got: {calls[0]}"
-        assert calls[1][0] == 'rename', f"Second call should be rename, got: {calls[1]}"
-        assert calls[0][1] == str(state_file), f"Unlink should target original path: {calls[0][1]}"
+        # With os.replace(), unlink should not be called at all
+        unlink_calls = [c for c in calls if c[0] == 'unlink']
+        assert len(unlink_calls) == 0, f"unlink was called {len(unlink_calls)} times - should use os.replace() for atomic overwrite"
 
-    def test_no_rollback_on_rename_failure_after_unlink(self, store, tmp_path):
+    def test_uses_os_replace_for_atomic_overwrite(self, store, tmp_path):
         """
-        Characterization: If rename fails after unlink, data is permanently lost.
+        CORRECT behavior: use os.replace() for atomic overwrite.
 
-        Current behavior: No rollback mechanism exists. If rename() raises after
-        unlink() succeeds, the original data is gone with no recovery path.
-        """
-        state_file = tmp_path / "execution-state.json"
-        original_data = {"original": "data"}
-        new_data = {"new": "data"}
-
-        # Create existing file
-        state_file.write_text(json.dumps(original_data), encoding="utf-8")
-
-        rename_called = []
-
-        def failing_rename(self, target):
-            rename_called.append((str(self), str(target)))
-            raise OSError("Simulated rename failure")
-
-        with patch.object(Path, 'rename', failing_rename):
-            with pytest.raises(OSError):
-                store._atomic_write_json(state_file, new_data)
-
-        # Verify unlink was called (data deleted)
-        assert state_file.exists() is False, "File should be deleted after unlink"
-
-        # Verify no rollback occurred - data is simply gone
-        assert rename_called[0][0] == str(state_file.with_suffix(".json.tmp"))
-
-    def test_data_loss_window_between_unlink_and_rename(self, store, tmp_path):
-        """
-        Characterization: There is a window between unlink and rename where
-        no file exists at the target path.
-
-        This window could cause:
-        - Other processes to see missing file
-        - Race conditions in multi-threaded access
-        - Data loss if process crashes
+        os.replace() atomically replaces the target file - no gap, no data loss.
+        This is the correct approach on both POSIX and Windows.
         """
         state_file = tmp_path / "execution-state.json"
         state_file.write_text("{}", encoding="utf-8")
 
-        file_exists_during_calls = []
+        replace_called = []
 
-        original_unlink = Path.unlink
-        original_rename = Path.rename
+        original_replace = os.replace
 
-        def check_exists_unlink(self):
-            file_exists_during_calls.append(('before_unlink', str(self), Path(self).exists()))
-            result = original_unlink(self)
-            file_exists_during_calls.append(('after_unlink', str(self), Path(self).exists()))
+        def tracked_replace(src, dst):
+            replace_called.append((src, dst))
+            return original_replace(src, dst)
+
+        with patch('os.replace', tracked_replace):
+            store._atomic_write_json(state_file, {"test": "value"})
+
+        assert len(replace_called) == 1, f"os.replace() should be called once, got {len(replace_called)} calls"
+        src, dst = replace_called[0]
+        assert src.endswith('.tmp'), f"Source should be temp file, got: {src}"
+        assert str(state_file) == dst, f"Destination should be state_file, got: {dst}"
+
+    def test_no_data_loss_gap_during_write(self, store, tmp_path):
+        """
+        CORRECT behavior: file should never disappear during atomic write.
+
+        With os.replace(), the target file exists atomically - either the old
+        content or new content, never missing.
+        """
+        state_file = tmp_path / "execution-state.json"
+        original_content = {"original": "data"}
+        state_file.write_text(json.dumps(original_content), encoding="utf-8")
+
+        file_existed_during_write = []
+
+        # Patch os.replace to check file existence
+        original_replace = os.replace
+
+        def tracked_replace(src, dst):
+            # Before replace, the state file should still exist with old content
+            file_existed_during_write.append(('before', state_file.exists()))
+            # After replace, the state file should exist with new content
+            result = original_replace(src, dst)
+            file_existed_during_write.append(('after', state_file.exists()))
             return result
 
-        def check_exists_rename(self, target):
-            file_exists_during_calls.append(('before_rename', str(self), Path(self).exists()))
-            result = original_rename(self, target)
-            file_exists_during_calls.append(('after_rename', str(target), Path(target).exists()))
-            return result
+        with patch('os.replace', tracked_replace):
+            store._atomic_write_json(state_file, {"new": "data"})
 
-        with patch.object(Path, 'unlink', check_exists_unlink):
-            with patch.object(Path, 'rename', check_exists_rename):
-                store._atomic_write_json(state_file, {"test": "value"})
+        # File should exist at ALL times during the write operation
+        assert all(exists for _, exists in file_existed_during_write), \
+            f"File should exist at all times during atomic write, got: {file_existed_during_write}"
 
-        # Find the gap: after unlink but before rename completes
-        gap_indices = [
-            i for i, (stage, path, exists) in enumerate(file_exists_during_calls)
-            if 'after_unlink' in stage and not exists
-        ]
+    def test_data_survives_rename_failure(self, store, tmp_path):
+        """
+        CORRECT behavior: if rename/replace fails, original data should survive.
 
-        # There should be at least one check after unlink where file doesn't exist
-        after_unlink_checks = [(s, p, e) for s, p, e in file_exists_during_calls if 'unlink' in s]
-        has_gap = any(not e for _, _, e in after_unlink_checks if 'after' in _)
+        With os.replace(), if the operation fails, the original file remains intact.
+        """
+        state_file = tmp_path / "execution-state.json"
+        original_content = {"original": "data"}
+        state_file.write_text(json.dumps(original_content), encoding="utf-8")
 
-        assert has_gap, f"No data-loss gap detected. File exists at all checks: {file_exists_during_calls}"
+        def failing_replace(src, dst):
+            raise OSError("Simulated replace failure")
+
+        with patch('os.replace', failing_replace):
+            with pytest.raises(OSError):
+                store._atomic_write_json(state_file, {"new": "data"})
+
+        # Original data should be intact
+        content = json.loads(state_file.read_text(encoding="utf-8"))
+        assert content == original_content, "Original data should survive failed atomic write"
 
 
 class TestAtomicWritePatternAnalysis:
-    """Analysis of the correct vs incorrect atomic write patterns."""
+    """Analysis of the atomic write patterns."""
 
-    def test_correct_atomic_write_should_use_rename_overwrite(self):
+    def test_windows_rename_behavior_requires_replace_not_unlink_plus_rename(self):
         """
-        Correct atomic write pattern:
-        1. Write to temp file
-        2. Rename temp to target (overwrites atomically on POSIX, or fails)
+        On Windows, os.rename() fails if destination exists.
+        On POSIX, os.rename() atomically overwrites.
 
-        The rename operation is atomic on the same filesystem:
-        - On POSIX: rename() is atomic - target either exists fully or not at all
-        - On Windows: rename() fails if target exists (different behavior!)
-
-        The problem with current code: unlink before rename is WRONG because:
-        - Creates a window where file doesn't exist
-        - If rename fails, data is gone forever
-        - On Windows, rename to existing path fails, so unlink was added "to fix" that
-          but this creates the data-loss window
+        The unlink+rename pattern was added to "fix" Windows behavior but creates
+        a data-loss window. The correct solution is os.replace() which:
+        - Works atomically on both Windows and POSIX
+        - Overwrites the destination if it exists
+        - Never leaves a gap between delete and rename
         """
-        # This test documents the CORRECT pattern that SHOULD be used
-        # The correct approach on Windows is to use replace() which IS atomic
-        # and handles the overwriting case
-
-        # Document that the current unlink+rename pattern is fundamentally broken
-        # as a "fix" for Windows rename behavior
-        pass
+        # Document the correct solution
+        assert hasattr(os, 'replace'), "os.replace() is available on Python 3.3+"
