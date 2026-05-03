@@ -84,9 +84,7 @@ class ArtifactsExecutionStore(ExecutionStore):
         path.parent.mkdir(parents=True, exist_ok=True)
         tmp = path.with_suffix(path.suffix + ".tmp")
         tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
-        if path.exists():
-            path.unlink()
-        tmp.rename(path)
+        os.replace(str(tmp), str(path))
 
     def load_active_run(self) -> ExecutionRun | None:
         state_path = self._state_path()
