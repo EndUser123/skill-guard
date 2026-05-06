@@ -28,7 +28,7 @@ class TestArtifactsExecutionStore:
         with patch.object(ArtifactsExecutionStore, "ARTIFACTS_ROOT", tmp_path):
             store = ArtifactsExecutionStore("console_abc123")
             console_dir = store.console_dir()
-            assert console_dir.name == "console_console_abc123"
+            assert console_dir.name == "console_abc123"
             assert console_dir.parent == tmp_path
 
     def test_save_and_load_roundtrip(self, temp_store):
@@ -132,3 +132,48 @@ class TestExecutionStoreInterface:
             store.append_event(ExecutionEvent(event_type="tool_allowed", tool="Read"))
             events = store.replay_events()
             assert len(events) == 2
+
+
+class TestCreateOrReplaceRun:
+    """
+    INVARIANT 1 tests for create_or_replace_run().
+
+    Verifies: second run replaces first, prior run ends with status=replaced.
+    """
+
+    @pytest.fixture
+    def temp_store(self, tmp_path):
+        with patch.object(ArtifactsExecutionStore, "ARTIFACTS_ROOT", tmp_path):
+            store = ArtifactsExecutionStore("t1")
+            yield store
+
+    def test_no_prev_just_saves(self, temp_store):
+        """No existing run → save_run called, no end_run."""
+        run = ExecutionRun.new("gto", "workflow-execution", "t1", "s1")
+        temp_store.create_or_replace_run(run)
+        loaded = temp_store.load_active_run()
+        assert loaded is not None
+        assert loaded.run_id == run.run_id
+
+    def test_prev_replaced_ends_with_replaced_status(self, temp_store):
+        """Existing run → end_run(prev, "replaced") called, new run saved."""
+        run1 = ExecutionRun.new("gto", "workflow-execution", "t1", "s1")
+        temp_store.save_run(run1)
+        events_count_before = len(temp_store.replay_events())
+
+        run2 = ExecutionRun.new("bf", "structured-output", "t1", "s2")
+        temp_store.create_or_replace_run(run2)
+
+        # New run is active
+        loaded = temp_store.load_active_run()
+        assert loaded.run_id == run2.run_id
+
+        # run1 ended: backup exists
+        backup = temp_store._state_path().with_suffix(".json.ended")
+        assert backup.exists()
+
+        # One additional event (run_ended) in the log
+        events = temp_store.replay_events()
+        run_ended_events = [e for e in events if e.event_type == "run_ended"]
+        assert len(run_ended_events) == 1
+        assert run_ended_events[0].status == "replaced"

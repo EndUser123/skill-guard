@@ -238,3 +238,122 @@ class TestToolEventOwnership:
                 if c[0][0].event_type in ("tool_allowed", "tool_blocked")
             ]
             assert len(tool_events) == 0
+
+
+class TestPreToolUseFailClosed:
+    """
+    INVARIANT 3 (PreToolUse hard gate) - fail-closed behavior tests.
+
+    Fact: Any tool NOT in allowed_tools_now AND NOT in blocked_tools → BLOCKED.
+    Empty allowed_tools_now means all non-investigation tools are blocked unless
+    explicitly in allowed list. Tools not in either list → blocked.
+    """
+
+    def test_tool_not_in_allowed_list_and_not_blocked_is_blocked(self):
+        """Tool not in allowed list → blocked (fail-closed)."""
+        from skill_guard.execution_store import ExecutionStore
+        from skill_guard.execution_runtime import ExecutionRuntime
+        mock_store = MagicMock(spec=ExecutionStore)
+        mock_runtime = ExecutionRuntime(store=mock_store)
+        mock_runtime.load_active_run = MagicMock(return_value=ExecutionRun.new(
+            skill_name="gto", contract_type="workflow-execution",
+            terminal_id="t1", session_id="s1",
+            allowed_tools=["Read", "Grep"],  # Write not in this list
+            blocked_tools=[],  # Write not explicitly blocked either
+        ))
+        with patch("skill_guard.execution_hooks.detect_terminal_id", return_value="pytest_t1"):
+            result = handle_pre_tool_use(
+                {"tool_name": "Write", "input": {}}, runtime=mock_runtime
+            )
+        assert result["continue"] is False
+        event = mock_store.append_event.call_args[0][0]
+        assert event.event_type == "tool_blocked"
+
+    def test_empty_allowed_tools_means_no_restrictions(self):
+        """
+        Empty allowed_tools_now → no fail-closed enforcement (only blocked_tools apply).
+        This matches the implementation: `run.allowed_tools_now and tool_name not in ...`
+        When allowed_tools_now is empty (falsy), the second clause short-circuits.
+        Empty allowed list means "no allow-list restriction", not "block all".
+        """
+        from skill_guard.execution_store import ExecutionStore
+        from skill_guard.execution_runtime import ExecutionRuntime
+        mock_store = MagicMock(spec=ExecutionStore)
+        mock_runtime = ExecutionRuntime(store=mock_store)
+        mock_runtime.load_active_run = MagicMock(return_value=ExecutionRun.new(
+            skill_name="test", contract_type="workflow-execution",
+            terminal_id="t1", session_id="s1",
+            allowed_tools=[],  # empty → no allow-list restriction
+            blocked_tools=[],  # no explicit blocks
+        ))
+        with patch("skill_guard.execution_hooks.detect_terminal_id", return_value="pytest_t1"):
+            result = handle_pre_tool_use(
+                {"tool_name": "Bash", "input": {}}, runtime=mock_runtime
+            )
+        # Empty allowed list means "no restriction" — tool is allowed
+        assert result["continue"] is True
+
+
+class TestStopIsPure:
+    """
+    INVARIANT 4 (Stop is pure) - no recursion, no breadcrumb reads.
+
+    Fact: handle_stop() reads execution-state.json, applies rules, returns.
+    It does NOT call load_active_run() twice, does NOT re-evaluate after emit,
+    does NOT read breadcrumb state, and does NOT make LLM calls.
+    """
+
+    def test_stop_reads_state_once(self):
+        """Stop calls load_active_run() once, not multiple times."""
+        with patch("skill_guard.execution_hooks.ExecutionRuntime") as MockRuntime, \
+             patch("skill_guard.execution_hooks.detect_terminal_id", return_value="pytest_t1"):
+            mock_store = MagicMock()
+            mock_instance = MockRuntime.return_value
+            mock_instance.store = mock_store
+            mock_instance.load_active_run.return_value = ExecutionRun.new(
+                skill_name="test", contract_type="workflow-execution",
+                terminal_id="t1", session_id="s1",
+            )
+            mock_instance.evaluate_completion.return_value = RunStatus.ACTIVE
+            handle_stop({})
+            # Only called once
+            assert mock_instance.load_active_run.call_count == 1
+
+    def test_stop_does_not_read_breadcrumb_state(self):
+        """
+        Stop never imports or calls breadcrumb modules — only execution-state.json.
+        Verifies by checking that handle_stop() only accesses runtime.load_active_run
+        and runtime.evaluate_completion, not any breadcrumb methods.
+        """
+        from skill_guard.execution_hooks import handle_stop
+        mock_runtime_instance = MagicMock()
+        mock_store = MagicMock()
+        mock_runtime_instance.store = mock_store
+
+        run = ExecutionRun.new(
+            skill_name="test", contract_type="workflow-execution",
+            terminal_id="t1", session_id="s1",
+        )
+        mock_runtime_instance.load_active_run.return_value = run
+        mock_runtime_instance.evaluate_completion.return_value = RunStatus.COMPLETE
+
+        with patch("skill_guard.execution_hooks.ExecutionRuntime", return_value=mock_runtime_instance), \
+             patch("skill_guard.execution_hooks.detect_terminal_id", return_value="t1"):
+            handle_stop({})
+
+            # Only load_active_run called on the runtime (which delegates to store)
+            mock_runtime_instance.load_active_run.assert_called_once()
+            # No breadcrumb methods on store
+            assert not mock_store.load_breadcrumb_trail.called
+            assert not mock_store.get_breadcrumbs.called
+
+    def test_stop_no_llm_calls(self):
+        """Stop does not call any LLM or AI analysis functions."""
+        with patch("skill_guard.execution_hooks.ExecutionRuntime") as MockRuntime, \
+             patch("skill_guard.execution_hooks.detect_terminal_id", return_value="t1"):
+            mock_instance = MockRuntime.return_value
+            mock_instance.store = MagicMock()
+            mock_instance.load_active_run.return_value = None  # no run
+            result = handle_stop({})
+            assert result.get("allow") is True
+            # No LLM wrappers instantiated

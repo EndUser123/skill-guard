@@ -12,6 +12,8 @@ from skill_guard.hook_compat import HookResult, register_hook
 from .slash_command_observability import classify_slash_command
 from skill_guard.skill_execution_state import _load_skill_frontmatter
 from .slash_command_observability import extract_command_name
+from skill_guard._skill_frontmatter_loader import classify_migration_status
+from skill_guard.skill_auto_discovery import KNOWLEDGE_SKILLS
 
 _script_path = Path(__file__)
 for _hooks_root in (
@@ -25,7 +27,6 @@ for _hooks_root in (
 
 try:
     from notification_queue import add_notification
-    from notification_queue import clear_by_type
 except Exception:  # pragma: no cover - advisory should fail open
 
     def add_notification(
@@ -36,13 +37,6 @@ except Exception:  # pragma: no cover - advisory should fail open
         session_id: str = "",
     ) -> None:  # type: ignore[no-redef]
         return None
-
-    def clear_by_type(
-        notification_type: str,
-        source: str | None = None,
-        session_id: str | None = None,
-    ) -> int:  # type: ignore[no-redef]
-        return 0
 
 
 logger = logging.getLogger(__name__)
@@ -218,16 +212,53 @@ def skill_metadata_advisory(context: Any) -> str | None:
         return None
 
     metadata = _load_skill_frontmatter(candidate)
+    if metadata is None:
+        metadata = {}
+
+    # Skip migration advisories for knowledge/reference skills — these are
+    # documentation-only and have no execution contract to migrate.
+    is_knowledge = (
+        candidate in KNOWLEDGE_SKILLS
+        or metadata.get("category") in ("knowledge", "meta")
+        or not metadata
+    )
+
+    # Emit migration-status advisory notification (non-blocking)
+    if not is_knowledge:
+        status = classify_migration_status(metadata)
+        if status == "UNMIGRATED":
+            try:
+                add_notification(
+                    notification_type="warning",
+                    message=(
+                        f"Skill '/{candidate}' appears to be legacy and not yet migrated to the execution-contract model. "
+                        f"Hint: run '/migrate-skill-ct {candidate}' to audit or generate a migration plan. "
+                        f"Contract-era skills should use the -ct suffix naming standard."
+                    ),
+                    source=f"skill_metadata_advisory:{candidate}",
+                    priority=1,
+                    session_id=_get_session_id(context),
+                )
+            except Exception:
+                pass
+        elif status == "PARTIALLY_MIGRATED":
+            try:
+                add_notification(
+                    notification_type="info",
+                    message=(
+                        f"Skill '/{candidate}' has some contract metadata but appears incomplete for its contract type. "
+                        f"Hint: run '/migrate-skill-ct {candidate}' to inspect missing fields and generate a patch plan."
+                    ),
+                    source=f"skill_metadata_advisory:{candidate}",
+                    priority=1,
+                    session_id=_get_session_id(context),
+                )
+            except Exception:
+                pass
+    # MIGRATED and knowledge skills: silent, no migration notification
+
     reasons = _enhancement_reasons(metadata)
     if not reasons:
-        try:
-            clear_by_type(
-                "warning",
-                source=f"skill_metadata_advisory:{candidate}",
-                session_id=_get_session_id(context),
-            )
-        except Exception:
-            pass
         return None
 
     warning = _build_warning(candidate, metadata, reasons)
@@ -237,7 +268,7 @@ def skill_metadata_advisory(context: Any) -> str | None:
         add_notification(
             notification_type="warning",
             message=notification,
-            source=f"skill_metadata_advisory:{candidate}",
+            source=f"skill_metadata_advisory:enhancement:{candidate}",
             priority=2,
             session_id=_get_session_id(context),
         )

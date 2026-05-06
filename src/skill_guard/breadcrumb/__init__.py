@@ -2,6 +2,11 @@
 Breadcrumb Trail Verification System
 =================================
 
+DEPRECATED FOR CONTRACT ENFORCEMENT — telemetry only.
+execution-state.json + execution-events.jsonl are the SOLE authority for
+explicit /skill-name runs. Breadcrumbs are retained for non-contract workflows
+(manual exploration, ad-hoc sessions) where no explicit skill is invoked.
+
 Workflow step verification system for skill execution.
 
 This module provides the breadcrumb trail pattern for enforcing skill

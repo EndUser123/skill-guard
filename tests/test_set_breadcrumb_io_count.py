@@ -135,11 +135,13 @@ class TestSetBreadcrumbIOCount:
                 total_io = log_append_calls + cache_update_calls + file_open_count + fsync_count
                 print(f"\nI/O counts: log={log_append_calls}, cache={cache_update_calls}, open={file_open_count}, fsync={fsync_count}")
 
-                assert total_io == 2, f"Expected exactly 2 I/O operations (log + cache) after PERF-003 optimization, got {total_io}"
+                # With immediate-write-on-step-complete fix:
+                # Log append (1) + cache update (1) + JSON file open+write+fsync (1+1) = 4
+                assert total_io == 4, f"Expected 4 I/O operations (log + cache + JSON write + fsync), got {total_io}"
                 assert log_append_calls == 1, "Log append should be called once"
                 assert cache_update_calls == 1, "Cache update should be called once"
-                assert file_open_count == 0, "JSON file write should be debounced (PERF-003), got {file_open_count}"
-                assert fsync_count == 0, "fsync should be debounced (PERF-003), got {fsync_count}"
+                assert file_open_count == 1, f"JSON file open should fire once, got {file_open_count}"
+                assert fsync_count == 1, f"fsync should fire once, got {fsync_count}"
             finally:
                 # Restore
                 tracker._cache.update_state = original_cache_update
@@ -226,10 +228,12 @@ class TestSetBreadcrumbIOCount:
                 with patch("skill_guard.breadcrumb.tracker.os.fsync", track_fsync):
                     tracker.set_breadcrumb("test_skill", "step1")
 
-            # PERF-003: JSON file write is debounced (every N calls)
-            # First call should NOT trigger file write since counter starts at 0
-            assert file_open_count == 0, f"JSON file write should be debounced on single call, got {file_open_count}"
-            assert fsync_count == 0, f"fsync should be debounced on single call, got {fsync_count}"
+            # With immediate-write-on-step-complete fix:
+            # JSON file is written immediately when a new step completes
+            # (not debounced, because completed_steps must persist to JSON
+            # so cache-miss reloads see current state after cleanup_stale_breadcrumbs)
+            assert file_open_count == 1, f"JSON file write should fire immediately on step complete, got {file_open_count}"
+            assert fsync_count == 1, f"fsync should fire immediately on step complete, got {fsync_count}"
 
     def test_io_operations_are_not_batched(self, clean_tracker_state, mock_workflow_steps):
         """Characterization: I/O operations execute immediately, not batched."""
@@ -273,9 +277,10 @@ class TestSetBreadcrumbIOCount:
                     with patch("skill_guard.breadcrumb.tracker.os.fsync", track_fsync):
                         tracker.set_breadcrumb("test_skill", "step1")
 
-                # PERF-003: First call only has log + cache (2 I/O), no file write
-                assert file_open_count == 0, f"No file write on first call (debounced), got {file_open_count}"
-                assert fsync_count == 0, f"No fsync on first call (debounced), got {fsync_count}"
+                # With immediate-write-on-step-complete fix:
+                # First call has log + cache + immediate JSON write (3 I/O)
+                assert file_open_count == 1, f"Immediate write on step complete, got {file_open_count}"
+                assert fsync_count == 1, f"Immediate fsync on step complete, got {fsync_count}"
                 assert mock_log_instance.append.call_count == 1, f"Single log append expected, got {mock_log_instance.append.call_count}"
         finally:
             tracker.AppendOnlyBreadcrumbLog = original_log

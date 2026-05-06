@@ -4,6 +4,15 @@ user_prompt_submit_hook.py
 
 UserPromptSubmit handler for execution contract runtime.
 
+INVARIANT 2 (UPS creates the run):
+  UserPromptSubmit hook is the ONLY hook that creates execution-state.json.
+  It runs before any tool use, so the run state exists before PreToolUse checks.
+  No other hook (PreToolUse, Stop, PostToolUse) creates a run.
+
+INVARIANT 6 (contract type derived from SKILL.md):
+  contract_type and response_requirements are derived from skill frontmatter
+  via get_skill_config(). No hardcoded defaults — discovery from skill metadata.
+
 Responsibilities:
 1. Detect explicit /skill-name invocation from the prompt
 2. Ignore non-skill slash commands (discover, ask, etc.)

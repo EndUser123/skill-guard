@@ -97,10 +97,11 @@ class TestLoadWorkflowStepsStringFormat:
 
         # Patch Path constructor in tracker module
         with patch("skill_guard.breadcrumb.tracker.Path", side_effect=mock_path):
-            steps = _load_workflow_steps("test_skill")
+            result = _load_workflow_steps("test_skill")
 
-        # ASSERT: Should return list of dicts (not strings)
-        assert isinstance(steps, list), f"Should return a list, got {type(steps)}"
+        # ASSERT: Should return WorkflowStepsResult with steps list
+        assert isinstance(result, tuple), f"Should return WorkflowStepsResult, got {type(result)}"
+        steps = result.steps
         assert len(steps) == 3, f"Should have 3 steps, got {len(steps)}"
 
         # ASSERT: Each item should be a dict with required keys
@@ -145,9 +146,9 @@ class TestLoadWorkflowStepsStringFormat:
         )
 
         with patch("skill_guard.breadcrumb.tracker.Path", side_effect=mock_path):
-            steps = _load_workflow_steps("empty_skill")
+            result = _load_workflow_steps("empty_skill")
 
-        assert steps == [], "Empty workflow_steps should return empty list"
+        assert result.steps == [], "Empty workflow_steps should return empty list"
 
 
 class TestLoadWorkflowStepsDictFormat:
@@ -184,8 +185,9 @@ class TestLoadWorkflowStepsDictFormat:
         )
 
         with patch("skill_guard.breadcrumb.tracker.Path", side_effect=mock_path):
-            steps = _load_workflow_steps("dict_skill")
+            result = _load_workflow_steps("dict_skill")
 
+        steps = result.steps
         # ASSERT: Should return list of dicts
         assert isinstance(steps, list), "Should return a list"
         assert len(steps) == 3, "Should have 3 steps"
@@ -232,8 +234,9 @@ class TestLoadWorkflowStepsDictFormat:
         )
 
         with patch("skill_guard.breadcrumb.tracker.Path", side_effect=mock_path):
-            steps = _load_workflow_steps("default_skill")
+            result = _load_workflow_steps("default_skill")
 
+        steps = result.steps
         # ASSERT: Should return list of dicts
         assert len(steps) == 3
 
@@ -285,7 +288,9 @@ class TestLoadWorkflowStepsMixedFormat:
         )
 
         with patch("skill_guard.breadcrumb.tracker.Path", side_effect=mock_path):
-            steps = _load_workflow_steps("mixed_skill")
+            result = _load_workflow_steps("mixed_skill")
+
+        steps = result.steps
 
         # ASSERT: Should return list of dicts
         assert isinstance(steps, list), "Should return a list"
@@ -333,9 +338,9 @@ class TestLoadWorkflowStepsEdgeCases:
         _, mock_path = mock_skills_dir
 
         with patch("skill_guard.breadcrumb.tracker.Path", side_effect=mock_path):
-            steps = _load_workflow_steps("nonexistent_skill")
+            result = _load_workflow_steps("nonexistent_skill")
 
-        assert steps == [], "Missing skill should return empty list"
+        assert result.steps == [], "Missing skill should return empty list"
 
     def test_load_workflow_steps_invalid_yaml(self, mock_skills_dir):
         """
@@ -359,9 +364,9 @@ class TestLoadWorkflowStepsEdgeCases:
         )
 
         with patch("skill_guard.breadcrumb.tracker.Path", side_effect=mock_path):
-            steps = _load_workflow_steps("invalid_yaml")
+            result = _load_workflow_steps("invalid_yaml")
 
-        assert steps == [], "Invalid YAML should return empty list"
+        assert result.steps == [], "Invalid YAML should return empty list"
 
     def test_load_workflow_steps_dict_without_id(self, mock_skills_dir):
         """
@@ -389,8 +394,9 @@ class TestLoadWorkflowStepsEdgeCases:
         )
 
         with patch("skill_guard.breadcrumb.tracker.Path", side_effect=mock_path):
-            steps = _load_workflow_steps("no_id_skill")
+            result = _load_workflow_steps("no_id_skill")
 
+        steps = result.steps
         # ASSERT: Should handle gracefully - either skip or use default
         # Implementation choice: skip invalid entries or use string representation
         assert isinstance(steps, list), "Should return a list"
@@ -502,12 +508,14 @@ class TestInitializeBreadcrumbStepsDict:
         skills_dir, mock_path = mock_skills_dir
 
         # Create a test skill with dict format workflow_steps
-        skill_dir = skills_dir / "test_skill"
+        # Use "breadcrumb_steps_dict" to avoid conftest patch interception
+        skill_name = "breadcrumb_steps_dict"
+        skill_dir = skills_dir / skill_name
         skill_dir.mkdir()
         skill_file = skill_dir / "SKILL.md"
         skill_file.write_text(
             "---\n"
-            "name: test_skill\n"
+            "name: " + skill_name + "\n"
             "workflow_steps:\n"
             "  - id: step1\n"
             "    kind: execution\n"
@@ -533,10 +541,11 @@ class TestInitializeBreadcrumbStepsDict:
         with patch("skill_guard.breadcrumb.tracker.Path", side_effect=mock_path):
             with patch("skill_guard.breadcrumb.tracker._get_breadcrumb_dir", side_effect=mock_get_breadcrumb_dir):
                 with patch("skill_guard.breadcrumb.tracker.detect_terminal_id", side_effect=mock_terminal_id):
-                    initialize_breadcrumb_trail("test_skill")
+                    initialize_breadcrumb_trail(skill_name)
 
-        # Read breadcrumb file
-        breadcrumb_file = breadcrumb_dir / "breadcrumb_test_skill.json"
+        # Read breadcrumb file (lowercase with spaces/_ replaced)
+        skill_file_key = skill_name.lower().replace("/", "_").replace(" ", "_")
+        breadcrumb_file = breadcrumb_dir / f"breadcrumb_{skill_file_key}.json"
         trail = json.loads(breadcrumb_file.read_text())
 
         # ASSERT: steps field exists and is a dict
@@ -564,18 +573,21 @@ class TestInitializeBreadcrumbStepsDict:
         Test that string format workflow_steps are converted to steps dict with defaults.
 
         Given: Mock _load_workflow_steps() returns legacy string format (after TASK-001 normalization)
-        When: initialize_breadcrumb_trail("test_skill") is called
+        When: initialize_breadcrumb_trail("breadcrumb_string_test") is called
         Then: steps dict created from string steps with default kind="execution", optional=False
         """
         skills_dir, mock_path = mock_skills_dir
 
         # Create a test skill with string format workflow_steps
-        skill_dir = skills_dir / "test_skill"
+        # Use "breadcrumb_string_test" to avoid conftest patch interception
+        # The conftest only patches "test_skill" and specific TEST_SKILL_NAMES
+        skill_name = "breadcrumb_string_test"
+        skill_dir = skills_dir / skill_name
         skill_dir.mkdir()
         skill_file = skill_dir / "SKILL.md"
         skill_file.write_text(
             "---\n"
-            "name: test_skill\n"
+            "name: " + skill_name + "\n"
             "workflow_steps:\n"
             "  - step_one\n"
             "  - step_two\n"
@@ -598,10 +610,11 @@ class TestInitializeBreadcrumbStepsDict:
         with patch("skill_guard.breadcrumb.tracker.Path", side_effect=mock_path):
             with patch("skill_guard.breadcrumb.tracker._get_breadcrumb_dir", side_effect=mock_get_breadcrumb_dir):
                 with patch("skill_guard.breadcrumb.tracker.detect_terminal_id", side_effect=mock_terminal_id):
-                    initialize_breadcrumb_trail("test_skill")
+                    initialize_breadcrumb_trail(skill_name)
 
-        # Read breadcrumb file
-        breadcrumb_file = breadcrumb_dir / "breadcrumb_test_skill.json"
+        # Read breadcrumb file (lowercase with spaces/_ replaced)
+        skill_file_key = skill_name.lower().replace("/", "_").replace(" ", "_")
+        breadcrumb_file = breadcrumb_dir / f"breadcrumb_{skill_file_key}.json"
         trail = json.loads(breadcrumb_file.read_text())
 
         # ASSERT: steps field exists and is a dict
@@ -640,12 +653,14 @@ class TestInitializeBreadcrumbStepsDict:
         skills_dir, mock_path = mock_skills_dir
 
         # Create a test skill with empty workflow_steps
-        skill_dir = skills_dir / "test_skill"
+        # Use "breadcrumb_empty_test" to avoid conftest patch interception
+        skill_name = "breadcrumb_empty_test"
+        skill_dir = skills_dir / skill_name
         skill_dir.mkdir()
         skill_file = skill_dir / "SKILL.md"
         skill_file.write_text(
             "---\n"
-            "name: test_skill\n"
+            "name: " + skill_name + "\n"
             "workflow_steps: []\n"
             "---\n"
             "# Test Skill\n"
@@ -665,10 +680,11 @@ class TestInitializeBreadcrumbStepsDict:
         with patch("skill_guard.breadcrumb.tracker.Path", side_effect=mock_path):
             with patch("skill_guard.breadcrumb.tracker._get_breadcrumb_dir", side_effect=mock_get_breadcrumb_dir):
                 with patch("skill_guard.breadcrumb.tracker.detect_terminal_id", side_effect=mock_terminal_id):
-                    initialize_breadcrumb_trail("test_skill")
+                    initialize_breadcrumb_trail(skill_name)
 
-        # ASSERT: No breadcrumb file created
-        breadcrumb_file = breadcrumb_dir / "breadcrumb_test_skill.json"
+        # ASSERT: No breadcrumb file created (empty steps = early return)
+        skill_file_key = skill_name.lower().replace("/", "_").replace(" ", "_")
+        breadcrumb_file = breadcrumb_dir / f"breadcrumb_{skill_file_key}.json"
         assert not breadcrumb_file.exists(), "Breadcrumb file should not be created for empty workflow_steps"
 
 
@@ -723,6 +739,15 @@ class TestSetBreadcrumbEvidence:
                     initialize_breadcrumb_trail("test_skill")
 
         # Set breadcrumb with evidence
+        # NOTE: Must reset write counter to 4 so the 5th call triggers immediate write
+        # The mock_detect_terminal_id fixture causes files to be written to
+        # P:/.claude/state/breadcrumbs_pytest_isolated/ during init, but
+        # mock_get_breadcrumb_dir returns tmp_path/breadcrumbs for set_breadcrumb.
+        # Without resetting the counter, the debounced write (every 5 calls) doesn't
+        # fire and the test reads the stale init-time file.
+        import skill_guard.breadcrumb.tracker as tracker_module
+        tracker_module._json_write_counter = 4
+
         with patch("skill_guard.breadcrumb.tracker._get_breadcrumb_dir", side_effect=mock_get_breadcrumb_dir):
             with patch("skill_guard.breadcrumb.tracker.detect_terminal_id", side_effect=mock_terminal_id):
                 set_breadcrumb("test_skill", "step1", evidence={"test": "data"})
@@ -786,6 +811,10 @@ class TestSetBreadcrumbEvidence:
                     initialize_breadcrumb_trail("test_skill")
 
         # Set breadcrumb WITHOUT evidence (backward compatibility)
+        # Reset write counter for same reason as above
+        import skill_guard.breadcrumb.tracker as tracker_module
+        tracker_module._json_write_counter = 4
+
         with patch("skill_guard.breadcrumb.tracker._get_breadcrumb_dir", side_effect=mock_get_breadcrumb_dir):
             with patch("skill_guard.breadcrumb.tracker.detect_terminal_id", side_effect=mock_terminal_id):
                 set_breadcrumb("test_skill", "step1")
@@ -846,11 +875,16 @@ class TestSetBreadcrumbEvidence:
                     initialize_breadcrumb_trail("test_skill")
 
         # First call with evidence
+        # Reset write counter for same reason
+        import skill_guard.breadcrumb.tracker as tracker_module
+        tracker_module._json_write_counter = 4
+
         with patch("skill_guard.breadcrumb.tracker._get_breadcrumb_dir", side_effect=mock_get_breadcrumb_dir):
             with patch("skill_guard.breadcrumb.tracker.detect_terminal_id", side_effect=mock_terminal_id):
                 set_breadcrumb("test_skill", "step1", evidence={"first": "call"})
 
         # Second call with different evidence
+        # No need to reset - we're reading final state
         with patch("skill_guard.breadcrumb.tracker._get_breadcrumb_dir", side_effect=mock_get_breadcrumb_dir):
             with patch("skill_guard.breadcrumb.tracker.detect_terminal_id", side_effect=mock_terminal_id):
                 set_breadcrumb("test_skill", "step1", evidence={"second": "call"})

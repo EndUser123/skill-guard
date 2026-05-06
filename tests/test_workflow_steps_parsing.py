@@ -103,8 +103,8 @@ class TestWorkflowStepsParsing:
 
     def test_load_workflow_steps_from_nonexistent_skill(self):
         """Test loading workflow_steps from skill that doesn't exist."""
-        steps = _load_workflow_steps("nonexistent_skill")
-        assert steps == []  # Should return empty list for missing skill
+        result = _load_workflow_steps("nonexistent_skill")
+        assert result.steps == []  # Should return empty steps for missing skill
 
     def test_load_workflow_steps_from_malformed_frontmatter(self, tmp_path):
         """Test loading workflow_steps from skill with malformed frontmatter."""
@@ -120,6 +120,6 @@ class TestWorkflowStepsParsing:
             "# Test Skill\n"
         )
 
-        # This should not raise exception, should return empty list
-        steps = _load_workflow_steps("test_skill")
-        assert isinstance(steps, list)
+        # This should not raise exception, should return empty steps
+        result = _load_workflow_steps("test_skill")
+        assert isinstance(result.steps, list)

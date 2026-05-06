@@ -18,6 +18,8 @@ import pytest
 
 # Ensure package is importable
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+# posttooluse.skill_command_hook lives in P:\.claude\hooks\posttooluse
+sys.path.insert(0, "P:\\.claude\\hooks")
 
 from skill_guard.skill_auto_discovery import (
     _parse_skill_frontmatter,
@@ -121,12 +123,18 @@ class TestParseSkillFrontmatter:
         assert config["category"] == "development"
 
     def test_has_execution_true_for_development(self, minimal_skill_md: Path) -> None:
-        """Development category sets has_execution=True."""
+        """Development category sets has_execution=True but not Bash-first by default.
+
+        Without explicit workflow signals, a development skill defaults to analysis contract
+        with no forced first tool. The code at f3259e6 changed this from unconditional
+        Bash-first to conditional based on workflow_like signals.
+        """
         config = _parse_skill_frontmatter(minimal_skill_md)
         assert config is not None
         assert config["has_execution"] is True
-        assert config["allowed_first_tools"] == ["Bash"]
-        assert config["default_tools"] == ["Bash"]
+        # Without workflow signals, allowed_first_tools is empty (analysis contract)
+        assert config["allowed_first_tools"] == []
+        assert config["default_tools"] == []
 
     def test_has_execution_false_for_knowledge_category(self, skills_dir: Path) -> None:
         """Knowledge category sets has_execution=False."""

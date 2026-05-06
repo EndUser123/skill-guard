@@ -41,8 +41,12 @@ class TestCreateRunBlockingIO:
         store._atomic_write_json = blocking_write
         return store
 
-    def test_create_run_calls_save_run(self, mock_store):
-        """Characterization: create_run calls self.store.save_run() to persist run state."""
+    def test_create_run_calls_create_or_replace_run(self, mock_store):
+        """Characterization: create_run calls self.store.create_or_replace_run() to persist run state.
+
+        INVARIANT 1: create_run uses create_or_replace_run (which replaces any existing
+        active run for this terminal) rather than plain save_run.
+        """
         runtime = ExecutionRuntime(store=mock_store)
 
         run = runtime.create_run(
@@ -51,8 +55,8 @@ class TestCreateRunBlockingIO:
             session_id="sess-123",
         )
 
-        mock_store.save_run.assert_called_once()
-        call_args = mock_store.save_run.call_args[0]
+        mock_store.create_or_replace_run.assert_called_once()
+        call_args = mock_store.create_or_replace_run.call_args[0]
         assert isinstance(call_args[0], ExecutionRun)
         assert call_args[0].skill_name == "test-skill"
 

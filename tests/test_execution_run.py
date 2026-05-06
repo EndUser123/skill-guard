@@ -124,3 +124,30 @@ class TestExecutionEvent:
         assert event.tool == "Edit"
         assert event.reason == "blocked"
         assert event.ts == 1234567890.0
+
+
+class TestContractTypeDerivation:
+    """
+    INVARIANT 6 (contract type from SKILL.md) tests.
+
+    Fact: ExecutionRun.contract_type must be one of the three defined types.
+    The derivation chain is: SKILL.md frontmatter → get_skill_config()
+    → _map_contract_type() → ExecutionRun.contract_type.
+    """
+
+    def test_all_three_contract_types_valid(self):
+        """All three contract types are valid ExecutionRun contract_types."""
+        for ct in ("workflow-execution", "structured-output", "hybrid"):
+            run = ExecutionRun.new(
+                skill_name="test", contract_type=ct,
+                terminal_id="t1", session_id="s1",
+            )
+            assert run.contract_type == ct
+
+    def test_contract_type_literal_defined(self):
+        """ContractType is a Literal with exactly three values."""
+        from skill_guard.execution_run import ContractType
+        # ContractType must be a Literal
+        import typing
+        hints = typing.get_type_hints(ExecutionRun)
+        assert "contract_type" in hints

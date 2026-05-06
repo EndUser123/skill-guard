@@ -29,6 +29,28 @@ try:
 except ImportError:
     yaml = None  # pyyaml declared as optional dependency
 
+# Import pure frontmatter parsing from dedicated module
+from skill_guard._skill_frontmatter_loader import (
+    _normalize_string_list as _shared_normalize,
+    _infer_contract_type,
+    _load_skill_frontmatter as _shared_load,
+    _validate_skill_frontmatter as _shared_validate,
+)
+
+# Re-export so existing callers continue to work
+_normalize_string_list = _shared_normalize
+
+# Import phase constants from dedicated module
+from skill_guard.phases import (
+    _PHASE_PENDING,
+    _PHASE_LOADED,
+    _PHASE_EXECUTING,
+    _PHASE_COMPLETE,
+    _PHASE_STALE,
+    VALID_TRANSITIONS,
+    DEFAULT_STALE_TIMEOUT,
+)
+
 # =============================================================================
 # CONFIGURATION
 # =============================================================================
@@ -36,83 +58,18 @@ except ImportError:
 STATE_DIR = Path("P:/.claude/.state")
 HOOKS_LIB_DIR = Path("P:/.claude/hooks/__lib")
 
-# Phase machine states (for workflow_completion_tracker compatibility)
-_PHASE_PENDING = "pending"
-_PHASE_LOADED = "loaded"
-_PHASE_EXECUTING = "executing"
-_PHASE_COMPLETE = "complete"
-_PHASE_STALE = "stale"
-
-# Valid phase transitions: from_state -> [allowed_to_states]
-VALID_TRANSITIONS: dict[str, list[str]] = {
-    _PHASE_PENDING: [_PHASE_LOADED],
-    _PHASE_LOADED: [_PHASE_EXECUTING, _PHASE_STALE],
-    _PHASE_EXECUTING: [_PHASE_COMPLETE, _PHASE_STALE],
-    _PHASE_COMPLETE: [],  # Terminal state
-    _PHASE_STALE: [],  # Terminal state
-}
-
-# Default stale timeout in seconds
-DEFAULT_STALE_TIMEOUT = 300
-
+# _normalize_string_list, _infer_contract_type now delegated to _skill_frontmatter_loader
 _VALID_CONTRACT_TYPES = {"workflow", "output", "hybrid", "analysis"}
 
-# =============================================================================
-# LEGACY EXECUTION METADATA CACHE
-# =============================================================================
-# Kept as a compatibility hook for tests and callers that still import it.
+# _get_legacy_skill_metadata_cache is used by tests - keep as compatibility shim
 _LEGACY_SKILL_METADATA_CACHE = None
 
 
 def _get_legacy_skill_metadata_cache():
-    """Return the legacy execution metadata cache.
-
-    This remains only for compatibility with older tests and callers.
-    New code should rely on skill frontmatter and auto-discovery instead.
-    """
     global _LEGACY_SKILL_METADATA_CACHE
     if _LEGACY_SKILL_METADATA_CACHE is None:
         _LEGACY_SKILL_METADATA_CACHE = {}
     return _LEGACY_SKILL_METADATA_CACHE
-
-
-def _normalize_string_list(value: object) -> list[str]:
-    if isinstance(value, list):
-        return [str(item).strip() for item in value if str(item).strip()]
-    if isinstance(value, str) and value.strip():
-        return [value.strip()]
-    return []
-
-
-def _infer_contract_type(frontmatter: dict[str, Any]) -> str:
-    explicit = str(frontmatter.get("contract_type", "") or "").strip().lower()
-    if explicit in _VALID_CONTRACT_TYPES:
-        return explicit
-
-    workflow_signals = bool(
-        _normalize_string_list(frontmatter.get("workflow_steps", []))
-        or _normalize_string_list(frontmatter.get("required_phase_artifacts", []))
-        or str(frontmatter.get("workflow_binding", "") or "").strip().lower()
-        in {"exclusive", "hard"}
-        or str(frontmatter.get("workflow_enforcement", "") or "").strip().lower()
-        in {"hard", "strict"}
-    )
-    output_signals = bool(
-        bool(frontmatter.get("layer1_enforcement"))
-        or _normalize_string_list(frontmatter.get("required_markers", []))
-        or _normalize_string_list(frontmatter.get("required_sections", []))
-        or str(frontmatter.get("final_output_schema", "") or "").strip()
-        or str(frontmatter.get("output_enforcement", "") or "").strip().lower()
-        in {"hard", "strict", "warn", "advisory"}
-    )
-
-    if workflow_signals and output_signals:
-        return "hybrid"
-    if workflow_signals:
-        return "workflow"
-    if output_signals:
-        return "output"
-    return "analysis"
 
 
 # =============================================================================
@@ -240,247 +197,17 @@ def _clear_pending_state_file(terminal_id: str) -> None:
         pass
 
 
-def _load_skill_frontmatter(skill_name: str) -> dict[str, Any]:
-    """Load execution metadata from a skill's SKILL.md frontmatter.
+# _load_skill_frontmatter now delegated to _skill_frontmatter_loader
+def _load_skill_frontmatter(skill_name: str) -> dict[str, Any] | None:
+    """Wrapper that delegates to _skill_frontmatter_loader.
 
-    Reads the skill's YAML frontmatter and extracts execution-related
-    metadata fields used by the skill guard.
-
-    Args:
-        skill_name: Skill name (without slash)
-
-    Returns:
-        Dict with frontmatter fields used by execution/governance tracking.
+    Returns None when skill file doesn't exist or can't be parsed.
     """
-    result: dict[str, Any] = {
-        "contract_type": "analysis",
-        "allowed_first_tools": [],
-        "required_first_command_patterns": [],
-        "required_first_command_hint": "",
-        "enforcement": "",
-        "enforcement_tier": "",
-        "workflow_steps": [],
-        "completion_criteria": [],
-        "required_phase_artifacts": [],
-        "workflow_binding": "",
-        "workflow_enforcement": "",
-        "phase_recovery_mode": "",
-        "user_override": "",
-        "layer1_enforcement": False,
-        "usage_markers": [],
-        "output_enforcement": "",
-        "final_output_schema": "",
-        "required_markers": [],
-        "required_sections": [],
-    }
-    skill_dir = Path("P:/.claude/skills") / skill_name
-    skill_file = skill_dir / "SKILL.md"
-    if not skill_file.exists():
-        return result
-
-    if yaml is None:
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.warning(
-            "yaml is not installed - cannot load frontmatter for skill %s. "
-            "Install pyyaml or declare allowed_first_tools inline.",
-            skill_name,
-        )
-        return result
-
-    try:
-        content = skill_file.read_text(encoding="utf-8", errors="replace")
-        parts = content.split("---")
-        if len(parts) < 3:
-            return result
-        fm_data = yaml.safe_load(parts[1])
-        if not isinstance(fm_data, dict):
-            return result
-        result["contract_type"] = _infer_contract_type(fm_data)
-        aft = fm_data.get("allowed_first_tools", [])
-        if isinstance(aft, list):
-            result["allowed_first_tools"] = [str(t) for t in aft]
-        elif isinstance(aft, str) and aft.strip():
-            result["allowed_first_tools"] = [aft.strip()]
-        rfcp = fm_data.get("required_first_command_patterns", [])
-        if isinstance(rfcp, list):
-            result["required_first_command_patterns"] = [
-                str(pattern) for pattern in rfcp if str(pattern).strip()
-            ]
-        elif isinstance(rfcp, str) and rfcp.strip():
-            result["required_first_command_patterns"] = [rfcp.strip()]
-        rfch = fm_data.get("required_first_command_hint", "")
-        if isinstance(rfch, str):
-            result["required_first_command_hint"] = rfch.strip()
-        enforcement = fm_data.get("enforcement", "")
-        if isinstance(enforcement, str):
-            result["enforcement"] = enforcement.strip()
-        output_enforcement = fm_data.get("output_enforcement", "")
-        if isinstance(output_enforcement, str):
-            result["output_enforcement"] = output_enforcement.strip()
-        enforcement_tier = fm_data.get("enforcement_tier", "")
-        if isinstance(enforcement_tier, str):
-            result["enforcement_tier"] = enforcement_tier.strip()
-        completion_criteria = fm_data.get("completion_criteria", [])
-        if isinstance(completion_criteria, list):
-            result["completion_criteria"] = completion_criteria
-        final_output_schema = fm_data.get("final_output_schema", "")
-        if isinstance(final_output_schema, str):
-            result["final_output_schema"] = final_output_schema.strip()
-        rpa = fm_data.get("required_phase_artifacts", [])
-        if isinstance(rpa, list):
-            result["required_phase_artifacts"] = [
-                str(artifact) for artifact in rpa if str(artifact).strip()
-            ]
-        elif isinstance(rpa, str) and rpa.strip():
-            result["required_phase_artifacts"] = [rpa.strip()]
-        wf_steps = fm_data.get("workflow_steps", [])
-        if isinstance(wf_steps, list):
-            normalized_steps: list[str] = []
-            for step in wf_steps:
-                if isinstance(step, str):
-                    text = step.strip()
-                    if text:
-                        normalized_steps.append(text)
-                elif isinstance(step, dict):
-                    for key, value in step.items():
-                        key_text = str(key).strip()
-                        value_text = str(value).strip() if value is not None else ""
-                        if key_text and value_text:
-                            normalized_steps.append(f"{key_text}: {value_text}")
-                        elif key_text:
-                            normalized_steps.append(key_text)
-                        elif value_text:
-                            normalized_steps.append(value_text)
-                elif step is not None:
-                    text = str(step).strip()
-                    if text:
-                        normalized_steps.append(text)
-            result["workflow_steps"] = normalized_steps
-        elif isinstance(wf_steps, str) and wf_steps.strip():
-            result["workflow_steps"] = [wf_steps.strip()]
-        workflow_binding = fm_data.get("workflow_binding", "")
-        if isinstance(workflow_binding, str):
-            result["workflow_binding"] = workflow_binding.strip()
-        workflow_enforcement = fm_data.get("workflow_enforcement", "")
-        if isinstance(workflow_enforcement, str):
-            result["workflow_enforcement"] = workflow_enforcement.strip()
-        phase_recovery_mode = fm_data.get("phase_recovery_mode", "")
-        if isinstance(phase_recovery_mode, str):
-            result["phase_recovery_mode"] = phase_recovery_mode.strip()
-        user_override = fm_data.get("user_override", "")
-        if isinstance(user_override, str):
-            result["user_override"] = user_override.strip()
-        usage_markers = fm_data.get("usage_markers", [])
-        if isinstance(usage_markers, list):
-            result["usage_markers"] = [
-                str(marker) for marker in usage_markers if str(marker).strip()
-            ]
-        elif isinstance(usage_markers, str) and usage_markers.strip():
-            result["usage_markers"] = [usage_markers.strip()]
-        result["layer1_enforcement"] = bool(fm_data.get("layer1_enforcement"))
-        result["required_markers"] = _normalize_string_list(fm_data.get("required_markers", []))
-        result["required_sections"] = _normalize_string_list(
-            fm_data.get("required_sections", [])
-        )
-    except (yaml.YAMLError, ImportError) as e:
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.warning("Failed to parse frontmatter for skill %s: %s", skill_name, e)
-        return None
-    return result
+    return _shared_load(skill_name)
 
 
-# Valid enforcement tier values
-_VALID_ENFORCEMENT_VALUES = {"strict", "advisory", "none"}
-
-
-def _validate_skill_frontmatter(skill_name: str) -> list[str]:
-    """Validate skill SKILL.md frontmatter for required fields.
-
-    Checks that required fields are present and that enforcement value
-    is one of the valid tiers (strict, advisory, none).
-
-    Args:
-        skill_name: Name of the skill to validate.
-
-    Returns:
-        List of warning strings for missing or invalid fields.
-        Empty list if skill doesn't exist or has no issues.
-    """
-    warnings: list[str] = []
-    skill_dir = Path("P:/.claude/skills") / skill_name
-    skill_file = skill_dir / "SKILL.md"
-
-    # Return empty list for nonexistent skills (not an error condition)
-    if not skill_file.exists():
-        return warnings
-
-    if yaml is None:
-        return warnings
-
-    try:
-        content = skill_file.read_text(encoding="utf-8", errors="replace")
-        parts = content.split("---")
-        if len(parts) < 3:
-            return warnings
-        fm_data = yaml.safe_load(parts[1])
-        if not isinstance(fm_data, dict):
-            return warnings
-
-        # Check required fields
-        required_fields = ["name", "description", "version", "enforcement"]
-        for field in required_fields:
-            if field not in fm_data or not str(fm_data.get(field) or "").strip():
-                warnings.append(f"Missing required frontmatter field: {field}")
-
-        # Validate enforcement value
-        enforcement = fm_data.get("enforcement", "")
-        if enforcement and enforcement not in _VALID_ENFORCEMENT_VALUES:
-            warnings.append(
-                f"Invalid enforcement value '{enforcement}'; "
-                f"must be one of: {', '.join(sorted(_VALID_ENFORCEMENT_VALUES))}"
-            )
-
-        workflow_steps = fm_data.get("workflow_steps", [])
-        normalized_workflow_steps: list[str] = []
-        if isinstance(workflow_steps, list):
-            for step in workflow_steps:
-                if isinstance(step, str):
-                    text = step.strip()
-                    if text:
-                        normalized_workflow_steps.append(text)
-                elif isinstance(step, dict):
-                    for key, value in step.items():
-                        key_text = str(key).strip()
-                        value_text = str(value).strip() if value is not None else ""
-                        if key_text and value_text:
-                            normalized_workflow_steps.append(f"{key_text}: {value_text}")
-                        elif key_text:
-                            normalized_workflow_steps.append(key_text)
-                        elif value_text:
-                            normalized_workflow_steps.append(value_text)
-                elif step is not None:
-                    text = str(step).strip()
-                    if text:
-                        normalized_workflow_steps.append(text)
-        required_first_command_patterns = fm_data.get(
-            "required_first_command_patterns", []
-        )
-        workflow_binding = str(fm_data.get("workflow_binding", "") or "").strip().lower()
-        required_phase_artifacts = fm_data.get("required_phase_artifacts", [])
-        if normalized_workflow_steps and not required_first_command_patterns:
-            if required_phase_artifacts or workflow_binding in {"exclusive", "hard"}:
-                return warnings
-            warnings.append(
-                "Missing required_first_command_patterns for a workflow skill; "
-                "the first backend command will not be enforced."
-            )
-
-    except Exception:
-        pass
-
-    return warnings
+# _validate_skill_frontmatter now delegated to _skill_frontmatter_loader
+_validate_skill_frontmatter = _shared_validate
 
 
 def _get_active_turn_scope() -> tuple[str, str]:
@@ -557,7 +284,7 @@ def set_skill_loaded(
 
     # Load frontmatter metadata for ALL skills, including knowledge skills.
     # This enables first-tool coherence and first-command enforcement.
-    frontmatter = _load_skill_frontmatter(skill_lower)
+    frontmatter = _load_skill_frontmatter(skill_lower) or {}
     allowed_first_tools = frontmatter.get("allowed_first_tools", [])
     required_first_command_patterns = frontmatter.get("required_first_command_patterns", [])
     required_first_command_hint = frontmatter.get("required_first_command_hint", "")

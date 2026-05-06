@@ -6,6 +6,13 @@ ExecutionStore interface + ArtifactsExecutionStore implementation.
 
 Sole authority path: P:/.claude/.artifacts/console_{terminal_id}/execution-state.json
 Append-only log: P:/.claude/.artifacts/console_{terminal_id}/execution-events.jsonl
+
+INVARIANT 1 (one active run per terminal):
+  execution-state.json is the SOLE authority for active contract runs.
+  At most one ACTIVE run exists per terminal_id at any time.
+  When a new run is created for a terminal with an existing ACTIVE run,
+  the prior run is silently ended and replaced — the new run takes ownership.
+  This prevents contract fragmentation across multiple simultaneous runs.
 """
 
 from __future__ import annotations
@@ -50,6 +57,17 @@ class ExecutionStore(ABC):
     @abstractmethod
     def console_dir(self) -> Path:
         """Return the console-specific artifact directory."""
+
+    @abstractmethod
+    def create_or_replace_run(self, run: ExecutionRun) -> None:
+        """
+        Atomically create or replace the active run for this terminal.
+
+        INVARIANT 1 (one active run per terminal):
+          If a run already exists for this terminal, it is silently ended
+          (run_ended emitted with status=replaced) and the new run takes over.
+          Only one ACTIVE run exists per terminal at any time.
+        """
         ...
 
 
@@ -71,6 +89,9 @@ class ArtifactsExecutionStore(ExecutionStore):
 
     def console_dir(self) -> Path:
         safe = self._terminal_id.replace("/", "-").replace("\\", "-").replace(":", "-")
+        # Avoid double-prefix when terminal_id already has console_ prefix
+        if safe.startswith("console_"):
+            return self.ARTIFACTS_ROOT / safe
         return self.ARTIFACTS_ROOT / f"console_{safe}"
 
     def _state_path(self) -> Path:
@@ -138,3 +159,9 @@ class ArtifactsExecutionStore(ExecutionStore):
         except OSError:
             pass
         return events
+
+    def create_or_replace_run(self, run: ExecutionRun) -> None:
+        prev = self.load_active_run()
+        if prev is not None:
+            self.end_run(prev, "replaced")
+        self.save_run(run)

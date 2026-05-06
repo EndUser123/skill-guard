@@ -7,9 +7,70 @@ directory management, and test isolation utilities.
 
 from __future__ import annotations
 
+import sys
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
+
+# Ensure skill_guard src and skills packages are importable
+hooks_path = str(Path("P:/.claude/hooks").resolve())
+skill_guard_root = str(Path(__file__).parent.parent.resolve())
+for _p in (hooks_path, skill_guard_root):
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
+
+# Verify skills is importable (for migrate-skill-ct tests)
+import os
+
+os.makedirs(skill_guard_root, exist_ok=True)
+
+# Import posttooluse (hooks version) and register skill_command_hook in sys.modules.
+# _clear_shadowed_hook_packages() removes posttooluse from sys.modules during
+# test_PreToolUse_skill_pattern_gate.py collection. By importing SkillCommandHook
+# here and registering it, we survive the clearing.
+import posttooluse  # noqa: F401
+from posttooluse.skill_command_hook import SkillCommandHook
+
+# Register the actual module (not the class) so "from posttooluse.skill_command_hook import X"
+# works via normal Python import resolution. Storing just the class causes Python to
+# interpret the import as "from SkillCommandHook import SkillCommandHook".
+import posttooluse.skill_command_hook as skill_command_hook_module
+sys.modules["posttooluse.skill_command_hook"] = skill_command_hook_module
+
+
+def pytest_collection_modifyitems(items):
+    """Re-register posttooluse.skill_command_hook after collection.
+
+    _clear_shadowed_hook_packages() in PreToolUse_skill_pattern_gate.py clears
+    posttooluse AND its submodules from sys.modules during test file collection.
+    This runs AFTER collection (before fixtures), giving us a clean slate to
+    re-register before any fixtures run.
+
+    Must handle ModuleNotFoundError gracefully — if posttooluse itself can't
+    be imported (e.g., missing optional dependencies in __init__.py), catch
+    and skip rather than crashing the collection hook.
+    """
+    hooks_path_str = str(Path("P:/.claude/hooks").resolve())
+    # Ensure hooks path is at front (highest priority)
+    if hooks_path_str in sys.path:
+        sys.path.remove(hooks_path_str)
+    sys.path.insert(0, hooks_path_str)
+
+    # Ensure posttooluse package is importable
+    if "posttooluse" not in sys.modules:
+        try:
+            import posttooluse  # noqa: F401
+        except (ModuleNotFoundError, ImportError):
+            pass  # posttooluse not available, skip registration
+
+    # Register skill_command_hook submodule
+    if "posttooluse.skill_command_hook" not in sys.modules:
+        try:
+            import posttooluse.skill_command_hook as skill_command_hook_module
+            sys.modules["posttooluse.skill_command_hook"] = skill_command_hook_module
+        except (ModuleNotFoundError, ImportError):
+            pass  # submodule not available, skip registration
 
 # Skills that tests use without real SKILL.md files
 # This includes ALL test skill names used across all test files to ensure
@@ -17,6 +78,8 @@ import pytest
 # initialize_breadcrumb_trail creates actual trail files.
 TEST_SKILL_NAMES = frozenset(
     {
+        # test_breadcrumb.py
+        "research",
         # Isolation tests
         "test_isolation_check",
         "test_wrong_terminal",
@@ -58,18 +121,57 @@ TEST_SKILL_NAMES = frozenset(
         "test_verify",
         "test_e2e",
         "test_clear",
+        # test_breadcrumb_extended.py
+        "test_skill",
+        "test_workflow_skill",
     }
 )
 
 # Dummy workflow steps for test skills (no real SKILL.md needed)
+# Default for generic test skills
 DUMMY_WORKFLOW_STEPS = [
     {"id": "step1", "kind": "execution", "optional": False},
     {"id": "step2", "kind": "execution", "optional": False},
-    {"id": "test_step", "kind": "execution", "optional": False},
-    {"id": "step_1", "kind": "execution", "optional": False},
-    {"id": "step_2", "kind": "execution", "optional": False},
-    {"id": "verify", "kind": "verification", "optional": False},
 ]
+
+# Per-skill workflow steps for tests that need specific steps
+DUMMY_WORKFLOW_STEPS_PER_SKILL = {
+    # test_breadcrumb.py expects 7 steps for "research" skill
+    "research": [
+        {"id": "analyze_query_intent", "kind": "execution", "optional": False},
+        {"id": "select_search_mode", "kind": "execution", "optional": False},
+        {"id": "choose_providers", "kind": "execution", "optional": False},
+        {"id": "execute_search", "kind": "execution", "optional": False},
+        {"id": "synthesize_results", "kind": "execution", "optional": False},
+        {"id": "fetch_urls", "kind": "execution", "optional": False},
+        {"id": "format_output", "kind": "verification", "optional": False},
+    ],
+    "gto": [{"id": "execute_gto_analysis", "kind": "execution", "optional": False}],
+    # test_breadcrumb_extended.py TestSetBreadcrumbEvidence
+    "test_skill": [
+        {"id": "step1", "kind": "execution", "optional": False},
+        {"id": "step2", "kind": "verification", "optional": True},
+    ],
+    # test_breadcrumb_extended.py TestLoadWorkflowStepsStringFormat
+    "test_workflow_skill": [
+        {"id": "step_a", "kind": "execution", "optional": False},
+        {"id": "step_b", "kind": "execution", "optional": False},
+    ],
+    # test_breadcrumb_isolation.py test_concurrent_terminals_dont_interfere
+    "skill_terminal_a": [
+        {"id": "step1", "kind": "execution", "optional": False},
+        {"id": "step2", "kind": "execution", "optional": False},
+    ],
+    "skill_terminal_b": [
+        {"id": "step1", "kind": "execution", "optional": False},
+        {"id": "step2", "kind": "execution", "optional": False},
+    ],
+    # test_breadcrumb_isolation.py test_cleanup_stale_breadcrumbs_preserves_current_terminal
+    "test_stale_cleanup": [
+        {"id": "step1", "kind": "execution", "optional": False},
+        {"id": "step2", "kind": "execution", "optional": False},
+    ],
+}
 
 
 @pytest.fixture(autouse=True)
@@ -79,15 +181,17 @@ def mock_detect_terminal_id(request):
     Prevents pytest from touching real P:/.claude/state/breadcrumbs_*/
     files when detect_terminal_id() returns the actual Claude Code terminal ID.
 
-    Patches at the correct namespace: skill_guard.breadcrumb.tracker.detect_terminal_id
-    (tracker.py uses 'from skill_guard.utils.terminal_detection import detect_terminal_id',
-    creating a local binding — patching the source module does NOT affect this local binding).
+    CRITICAL: Must patch at the SOURCE module (terminal_detection), not at the
+    import binding in tracker.py. Both tracker.py AND cache.py import from
+    terminal_detection and create their own local bindings. Patching one binding
+    does NOT affect the other, and patching the source is the only way to affect
+    all importers simultaneously.
 
     Skips:
     - test_no_import_error_warnings: uses inspect.getsourcefile on real detect_terminal_id
     - test_breadcrumb_isolation tests: specifically test terminal ID differences
     """
-    import skill_guard.breadcrumb.tracker as tracker_module
+    from skill_guard.utils import terminal_detection as td_module
 
     node_name = request.node.name
     # Skip tests that inspect the real detect_terminal_id or test terminal isolation
@@ -95,11 +199,12 @@ def mock_detect_terminal_id(request):
         "test_no_import_error_warnings",
         "test_different_terminals_create_separate_dirs",
         "test_breadcrumb_files_are_terminal_scoped",
+        "test_terminal_scoped_paths",
     ):
         yield
         return
 
-    with patch.object(tracker_module, "detect_terminal_id", return_value="pytest_isolated"):
+    with patch.object(td_module, "detect_terminal_id", return_value="pytest_isolated"):
         yield
 
 
@@ -117,8 +222,13 @@ def patch_workflow_steps_for_test_skills():
     def patched_load(skill_name: str):
         # skill_name may be uppercase or lowercase depending on caller
         # Check both cases for robustness
-        if skill_name in TEST_SKILL_NAMES or skill_name.lower() in TEST_SKILL_NAMES:
-            return DUMMY_WORKFLOW_STEPS
+        from skill_guard.breadcrumb.tracker import WorkflowStepsResult
+
+        skill_lower = skill_name.lower()
+        if skill_lower in DUMMY_WORKFLOW_STEPS_PER_SKILL:
+            return WorkflowStepsResult(steps=DUMMY_WORKFLOW_STEPS_PER_SKILL[skill_lower], parse_error=None)
+        if skill_name in TEST_SKILL_NAMES or skill_lower in TEST_SKILL_NAMES:
+            return WorkflowStepsResult(steps=DUMMY_WORKFLOW_STEPS, parse_error=None)
         return original_load(skill_name)
 
     with patch.object(tracker, "_load_workflow_steps", patched_load):
@@ -187,11 +297,14 @@ def clear_breadcrumb_cache():
     The _cache module-level global can retain stale state between tests.
     """
     from skill_guard.breadcrumb import tracker
+    from skill_guard.breadcrumb.inference import _RUNTIME_MAPPINGS
 
     tracker._cache._cache.clear()
     tracker._cache._access_times.clear()
+    _RUNTIME_MAPPINGS.clear()
 
     yield
 
     tracker._cache._cache.clear()
     tracker._cache._access_times.clear()
+    _RUNTIME_MAPPINGS.clear()

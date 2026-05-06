@@ -4,6 +4,17 @@ execution_hooks.py
 
 PreToolUse and Stop hook handlers using ExecutionRuntime + ArtifactsExecutionStore.
 
+INVARIANT 3 (PreToolUse hard gate):
+  PreToolUse is a fail-closed contract gate. Any tool NOT in allowed_tools_now
+  AND NOT in blocked_tools is BLOCKED. Only investigation tools (Read, Grep, Glob,
+  etc.) pass through regardless of run state. This is the ONLY hook that emits
+  tool_allowed / tool_blocked events to execution-events.jsonl.
+
+INVARIANT 4 (Stop is pure):
+  Stop reads execution-state.json, applies contract rules, emits run_ended,
+  returns allow/fail. No recursion, no LLM calls, no breadcrumb reads.
+  Stop does not own tool events — PreToolUse does.
+
 PreToolUse (hard blocker):
   - load_active_run(tid) → check tool against allowed_tools_now / blocked_tools
   - record_tool_use(run, tool_name, allowed) → emits event, transitions phase, sets FAILED
@@ -85,6 +96,34 @@ _HOOKS_LIB_DIR = Path("P:/.claude/hooks/__lib")
 _STOP_HOOK: dict[str, Any] = {}  # Populated by Stop hook registration
 
 
+# PRETOOL PROBE BEGIN — correlate with legacy gate log
+import time as _probe_time
+import json as _probe_json
+from pathlib import Path as _probe_path
+
+_PROBE_LOG = _probe_path("P:/.claude/tmp/PRETOOL_GATE_PROBE.jsonl")
+_PROBE_LOG.parent.mkdir(parents=True, exist_ok=True)
+
+
+def _probe_log(gate_name: str, decision: str, tool_name: str, terminal_id: str, run_id: str, skill_name: str, reason: str = "") -> None:
+    entry = {
+        "ts": _probe_time.time(),
+        "gate": gate_name,
+        "tool": tool_name,
+        "terminal_id": terminal_id,
+        "run_id": run_id,
+        "skill": skill_name,
+        "decision": decision,
+        "reason": reason[:200] if reason else "",
+    }
+    try:
+        with _probe_log.open("a", encoding="utf-8") as _f:
+            _f.write(_probe_json.dumps(entry) + "\n")
+    except Exception:
+        pass
+# PRETOOL PROBE END
+
+
 def handle_pre_tool_use(data: dict, runtime: ExecutionRuntime | None = None) -> dict[str, Any]:
     """
     PreToolUse handler for execution contract enforcement.
@@ -104,6 +143,7 @@ def handle_pre_tool_use(data: dict, runtime: ExecutionRuntime | None = None) -> 
 
     # Always allow investigation tools
     if tool_name in _INVESTIGATION_TOOLS:
+        _probe_log("runtime", "allow_investigation", tool_name, terminal_id, "", "", reason="investigation_tool")
         return {"continue": True}
 
     if runtime is None:
@@ -111,6 +151,7 @@ def handle_pre_tool_use(data: dict, runtime: ExecutionRuntime | None = None) -> 
     run = runtime.load_active_run()
 
     if run is None:
+        _probe_log("runtime", "no_run", tool_name, terminal_id, "", "", reason="no_active_run")
         return {"continue": True}
 
     # Check tool permission
@@ -120,6 +161,7 @@ def handle_pre_tool_use(data: dict, runtime: ExecutionRuntime | None = None) -> 
 
     if blocked:
         runtime.record_tool_use(run, tool_name=tool_name, allowed=False, reason="not_in_allowed")
+        _probe_log("runtime", "block", tool_name, terminal_id, run.run_id, run.skill_name, reason="not_in_allowed")
         return {
             "continue": False,
             "reason": (
@@ -134,6 +176,7 @@ def handle_pre_tool_use(data: dict, runtime: ExecutionRuntime | None = None) -> 
 
     # Allowed: record and pass through
     runtime.record_tool_use(run, tool_name=tool_name, allowed=True)
+    _probe_log("runtime", "allow", tool_name, terminal_id, run.run_id, run.skill_name)
     return {"continue": True}
 
 

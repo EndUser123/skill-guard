@@ -506,6 +506,19 @@ def set_breadcrumb(skill_name: str, step_name: str, evidence: dict[str, Any] | N
     # HYBRID LOGGING: Update cache (in-memory, fast)
     _cache.update_state(skill_lower, trail)
 
+    # Immediately persist completed_steps to JSON file when it changes.
+    # This ensures cache-miss reloads (get_breadcrumb_trail on cold cache)
+    # always read current state, not stale JSON left behind by the debounced
+    # write below. Without this, cleanup_stale_breadcrumbs() would reload the
+    # stale JSON (written by initialize_breadcrumb_trail with completed_steps=[])
+    # and return an empty completed_steps list.
+    if not step_was_already_complete:
+        breadcrumb_file = _get_breadcrumb_file(skill_lower)
+        with open(breadcrumb_file, "w", encoding="utf-8") as f:
+            json.dump(trail, f, indent=2)
+            f.flush()
+            os.fsync(f.fileno())
+
     # PERF-003: Debounce JSON file writes (every N calls)
     # JSON file is for backward compatibility only; JSONL log is the source of truth
     global _json_write_counter

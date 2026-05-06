@@ -38,17 +38,17 @@ def normalize_terminal_id(raw_id: str, source: str = SOURCE_ENV) -> str:
     Returns:
         Normalized terminal ID in {source}_{id} format
     """
-    # Idempotent: don't add duplicate prefix
+    # Idempotent: don't add duplicate prefix, but still sanitize
     if raw_id.startswith(_KNOWN_PREFIXES):
-        return raw_id
-
-    # Legacy format: ConsoleHost_XXXX -> console source
-    if raw_id.startswith("ConsoleHost_"):
-        return f"{SOURCE_CONSOLE}_{raw_id[12:]}"
-
-    # Legacy format: session_XXXX -> env source (from SessionStart)
-    if raw_id.startswith("session_"):
-        return f"{SOURCE_ENV}_{raw_id[8:]}"
-
-    # Default: use provided source
-    return f"{source}_{raw_id}"
+        # Already normalized — still apply filename-safe filter
+        result = raw_id
+    elif raw_id.startswith("ConsoleHost_"):
+        result = f"{SOURCE_CONSOLE}_{raw_id[12:]}"
+    elif raw_id.startswith("session_"):
+        result = f"{SOURCE_ENV}_{raw_id[8:]}"
+    else:
+        result = f"{source}_{raw_id}"
+    # Ensure filename-safe: filter chars invalid on Windows (all platforms)
+    for ch in (":", "<", ">", "|", '"', "*", "?"):
+        result = result.replace(ch, "-")
+    return result

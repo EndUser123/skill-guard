@@ -23,6 +23,7 @@ from skill_guard.breadcrumb.tracker import (
     get_breadcrumb_trail,
     initialize_breadcrumb_trail,
     set_breadcrumb,
+    WorkflowStepsResult,
 )
 
 
@@ -99,7 +100,7 @@ class TestStopHookVerificationReminder:
         Then: Reminder should be returned but allow=True
         """
         # Import the function from StopHook
-        from StopHook_skill_execution_gate import check_verification_reminder
+        from skill_guard.StopHook_skill_execution_gate import check_verification_reminder
 
         # Create steps dict with incomplete verification steps
         steps = {
@@ -139,7 +140,7 @@ class TestStopHookVerificationReminder:
         When: Stop hook checks verification reminder
         Then: No reminder should be returned
         """
-        from StopHook_skill_execution_gate import check_verification_reminder
+        from skill_guard.StopHook_skill_execution_gate import check_verification_reminder
 
         # All verification steps complete
         steps = {
@@ -176,7 +177,7 @@ class TestStopHookVerificationReminder:
         When: Stop hook checks verification reminder
         Then: Should return allow=True without error
         """
-        from StopHook_skill_execution_gate import check_verification_reminder
+        from skill_guard.StopHook_skill_execution_gate import check_verification_reminder
 
         # Test None steps
         result = check_verification_reminder(None)
@@ -218,6 +219,8 @@ class TestPostToolUseEvidenceTracking:
             "timestamp": "2026-03-13T12:00:00"
         }
 
+        from skill_guard.breadcrumb.tracker import WorkflowStepsResult
+
         # Mock _load_workflow_steps to return test steps
         mock_workflow_steps = [
             {"id": "analyze_query_intent", "kind": "execution", "optional": False},
@@ -225,7 +228,7 @@ class TestPostToolUseEvidenceTracking:
         ]
 
         with patch('skill_guard.breadcrumb.tracker._load_workflow_steps') as mock_load:
-            mock_load.return_value = mock_workflow_steps
+            mock_load.return_value = WorkflowStepsResult(steps=mock_workflow_steps, parse_error=None)
 
             # Initialize trail
             initialize_breadcrumb_trail(skill_name)
@@ -261,7 +264,7 @@ class TestPostToolUseEvidenceTracking:
         ]
 
         with patch('skill_guard.breadcrumb.tracker._load_workflow_steps') as mock_load:
-            mock_load.return_value = mock_workflow_steps
+            mock_load.return_value = WorkflowStepsResult(steps=mock_workflow_steps, parse_error=None)
 
             # Initialize and set with evidence
             initialize_breadcrumb_trail(skill_name)
@@ -297,7 +300,7 @@ class TestPostToolUseEvidenceTracking:
         ]
 
         with patch('skill_guard.breadcrumb.tracker._load_workflow_steps') as mock_load:
-            mock_load.return_value = mock_workflow_steps
+            mock_load.return_value = WorkflowStepsResult(steps=mock_workflow_steps, parse_error=None)
 
             # Initialize and set initial evidence
             initialize_breadcrumb_trail(skill_name)
@@ -335,7 +338,7 @@ class TestEndToEndIntegration:
         """
         from unittest.mock import patch
 
-        from StopHook_skill_execution_gate import check_verification_reminder
+        from skill_guard.StopHook_skill_execution_gate import check_verification_reminder
 
         skill_name = "test_skill"
 
@@ -347,7 +350,7 @@ class TestEndToEndIntegration:
         ]
 
         with patch('skill_guard.breadcrumb.tracker._load_workflow_steps') as mock_load:
-            mock_load.return_value = mock_workflow_steps
+            mock_load.return_value = WorkflowStepsResult(steps=mock_workflow_steps, parse_error=None)
 
             # Initialize breadcrumb trail
             initialize_breadcrumb_trail(skill_name)

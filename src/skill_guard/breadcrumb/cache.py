@@ -155,10 +155,12 @@ class BreadcrumbStateCache:
                 return None
 
             # Reconstruct state from log entries
-            # Start with first entry (usually initialization)
-            state = entries[0].copy()
+            # First entry is trail_initialized - copy its base fields
+            state = entries[0].copy() if entries else {}
+            # Initialize completed_steps (trail_initialized doesn't have this field)
+            state["completed_steps"] = []
 
-            # Apply subsequent entries
+            # Apply subsequent entries (step_complete events)
             for entry in entries[1:]:
                 if entry.get("event") == "step_complete":
                     step = entry.get("step")

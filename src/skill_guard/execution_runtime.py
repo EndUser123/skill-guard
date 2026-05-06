@@ -112,7 +112,7 @@ class ExecutionRuntime:
             blocked_tools=blocked_tools or [],
             response_requirements=response_requirements or {},
         )
-        self.store.save_run(run)
+        self.store.create_or_replace_run(run)
         self.store.append_event(ExecutionEvent(event_type="run_created", skill=skill_name))
         return run
 
@@ -137,7 +137,7 @@ class ExecutionRuntime:
             blocked_tools=blocked_tools or [],
             response_requirements=response_requirements or {},
         )
-        await asyncio.to_thread(self.store.save_run, run)
+        await asyncio.to_thread(self.store.create_or_replace_run, run)
         await asyncio.to_thread(self.store.append_event, ExecutionEvent(event_type="run_created", skill=skill_name))
         return run
 

@@ -72,9 +72,10 @@ if _SKILL_GUARD_SRC.exists():
 
 
 def _clear_shadowed_hook_packages() -> None:
-    """Drop cached __lib modules so the hooks-root package can import cleanly."""
+    """Drop cached __lib and posttooluse modules so the hooks-root package can import cleanly."""
     for module_name in list(sys.modules):
-        if module_name != "__lib" and not module_name.startswith("__lib."):
+        if module_name != "__lib" and not module_name.startswith("__lib.") and \
+           module_name != "posttooluse" and not module_name.startswith("posttooluse."):
             continue
         del sys.modules[module_name]
 
@@ -933,6 +934,34 @@ def _check_execution_pattern(
 # =============================================================================
 
 
+# PRETOOL PROBE BEGIN — correlate with runtime gate log
+import time as _probe_time
+import json as _probe_json
+from pathlib import Path as _probe_path
+
+_LEGACY_PROBE_LOG = _probe_path("P:/.claude/tmp/PRETOOL_GATE_PROBE.jsonl")
+_LEGACY_PROBE_LOG.parent.mkdir(parents=True, exist_ok=True)
+
+
+def _probe_log_legacy(gate_name: str, decision: str, tool_name: str, terminal_id: str, skill: str = "", reason: str = "") -> None:
+    entry = {
+        "ts": _probe_time.time(),
+        "gate": gate_name,
+        "tool": tool_name,
+        "terminal_id": terminal_id,
+        "run_id": "legacy",
+        "skill": skill,
+        "decision": decision,
+        "reason": reason[:200] if reason else "",
+    }
+    try:
+        with _LEGACY_PROBE_LOG.open("a", encoding="utf-8") as _f:
+            _f.write(_probe_json.dumps(entry) + "\n")
+    except Exception:
+        pass
+# PRETOOL PROBE END
+
+
 def handle_pre_tool_use(data: dict) -> dict:
     """Main PreToolUse handler for skill pattern validation.
 
@@ -952,6 +981,8 @@ def handle_pre_tool_use(data: dict) -> dict:
     # Extract tool information
     tool_name = data.get("tool_name", "")
     tool_input = data.get("input", {})
+    # Probe: log entry for this gate
+    _probe_log_legacy("legacy", "entered", tool_name, os.environ.get("CLAUDE_TERMINAL_ID", "unknown"))
 
     # =========================================================================
     # LAYER 0: WORKFLOW STEPS ENFORCEMENT (STATELESS SKILL-FIRST GATE)
@@ -970,6 +1001,7 @@ def handle_pre_tool_use(data: dict) -> dict:
     # Stateless skill-first check
     workflow_result = _check_workflow_steps(tool_name, tool_input, slash_command)
     if workflow_result.get("block"):
+        _probe_log_legacy("legacy", "block", tool_name, os.environ.get("CLAUDE_TERMINAL_ID", "unknown"), skill=slash_command, reason="workflow_steps_blocked")
         return workflow_result
 
     # =========================================================================
@@ -979,6 +1011,7 @@ def handle_pre_tool_use(data: dict) -> dict:
     # Always allow investigation tools before any state-file gating.
     # These tools are used to understand the problem, not execute the skill.
     if tool_name in INVESTIGATION_TOOLS:
+        _probe_log_legacy("legacy", "allow_investigation", tool_name, os.environ.get("CLAUDE_TERMINAL_ID", "unknown"), reason="investigation_tool")
         return {}
 
     # =========================================================================
@@ -986,6 +1019,7 @@ def handle_pre_tool_use(data: dict) -> dict:
     # =========================================================================
     state_file_result = _check_state_file_intent(tool_name)
     if state_file_result.get("block"):
+        _probe_log_legacy("legacy", "block", tool_name, os.environ.get("CLAUDE_TERMINAL_ID", "unknown"), reason="state_file_intent_blocked")
         return state_file_result
 
     # =========================================================================
@@ -996,15 +1030,18 @@ def handle_pre_tool_use(data: dict) -> dict:
 
     if not state:
         # No skill loaded, allow all tools
+        _probe_log_legacy("legacy", "allow", tool_name, os.environ.get("CLAUDE_TERMINAL_ID", "unknown"), reason="no_state")
         return {}
 
     skill = state.get("skill", "")
     if not skill:
+        _probe_log_legacy("legacy", "allow", tool_name, os.environ.get("CLAUDE_TERMINAL_ID", "unknown"), reason="no_skill_in_state")
         return {}
 
     # Topic drift prevention check
     topic_drift_result = _check_topic_drift(tool_name, tool_input, user_message, state)
     if topic_drift_result.get("block"):
+        _probe_log_legacy("legacy", "block", tool_name, os.environ.get("CLAUDE_TERMINAL_ID", "unknown"), skill=skill, reason="topic_drift")
         return topic_drift_result
 
     # =========================================================================
@@ -1012,10 +1049,12 @@ def handle_pre_tool_use(data: dict) -> dict:
     # =========================================================================
     coherence_result = _check_first_tool_coherence(tool_name, state)
     if coherence_result.get("block"):
+        _probe_log_legacy("legacy", "block", tool_name, os.environ.get("CLAUDE_TERMINAL_ID", "unknown"), skill=skill, reason="first_tool_coherence")
         return coherence_result
 
     first_command_result = _check_first_command_pattern(tool_name, tool_input, state)
     if first_command_result.get("block"):
+        _probe_log_legacy("legacy", "block", tool_name, os.environ.get("CLAUDE_TERMINAL_ID", "unknown"), skill=skill, reason="first_command_pattern")
         return first_command_result
 
     # =========================================================================
@@ -1023,6 +1062,7 @@ def handle_pre_tool_use(data: dict) -> dict:
     # =========================================================================
     knowledge_result = _check_knowledge_skill(skill, state)
     if knowledge_result.get("block"):
+        _probe_log_legacy("legacy", "block", tool_name, os.environ.get("CLAUDE_TERMINAL_ID", "unknown"), skill=skill, reason="knowledge_skill")
         return knowledge_result
 
     # =========================================================================
@@ -1030,8 +1070,10 @@ def handle_pre_tool_use(data: dict) -> dict:
     # =========================================================================
     execution_result = _check_execution_pattern(tool_name, tool_input, skill, state)
     if execution_result.get("block"):
+        _probe_log_legacy("legacy", "block", tool_name, os.environ.get("CLAUDE_TERMINAL_ID", "unknown"), skill=skill, reason="execution_pattern")
         return execution_result
 
+    _probe_log_legacy("legacy", "allow", tool_name, os.environ.get("CLAUDE_TERMINAL_ID", "unknown"), skill=skill, reason="all_checks_passed")
     return {}
 
 

@@ -56,7 +56,7 @@ Repository = "https://github.com/yourusername/skill-guard"
 Issues = "https://github.com/yourusername/skill-guard/issues"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/skill_guard"]
+packages = ["src/skill_guard", "skills"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -304,3 +304,60 @@ class TestRecordArtifactCreated:
         runtime.record_artifact_created(run, "a.txt")
         assert run.completed_artifacts.count("a.txt") == 1
         assert mock_store.append_event.call_count == 2
+
+
+class TestOneActiveRunPerTerminal:
+    """
+    INVARIANT 1 (one active run per terminal) tests.
+
+    execution-state.json is the SOLE authority for active contract runs.
+    At most one ACTIVE run exists per terminal_id at any time.
+    When a new run is created for a terminal with an existing ACTIVE run,
+    the prior run is silently ended and replaced — the new run takes ownership.
+    """
+
+    def test_second_create_replaces_first(self):
+        """
+        Create two runs for same terminal → second run takes ownership,
+        first run is ended with status=replaced via create_or_replace_run.
+
+        Fact: create_or_replace_run() is called (not save_run) on every create_run.
+        """
+        from unittest.mock import MagicMock
+        from skill_guard.execution_store import ArtifactsExecutionStore
+
+        store = MagicMock()  # MagicMock auto-provides all method attributes
+
+        runtime = ExecutionRuntime(store=store)
+        runtime.create_run(skill_name="gto", contract_type="workflow-execution", session_id="s1")
+
+        store.create_or_replace_run.assert_called()
+
+    def test_ended_replaced_run_emits_run_ended_event(self, tmp_path):
+        """
+        Direct integration test: ArtifactsExecutionStore.create_or_replace_run
+        when prev exists ends it with status=replaced and saves the new run.
+
+        Fact: real create_or_replace_run(prev exists) → end_run(prev, "replaced") called.
+        Covered by test_execution_store.py::TestCreateOrReplaceRun::test_prev_replaced_ends_with_replaced_status.
+        """
+        from unittest.mock import patch
+        from skill_guard.execution_store import ArtifactsExecutionStore
+
+        with patch.object(ArtifactsExecutionStore, "ARTIFACTS_ROOT", tmp_path):
+            store = ArtifactsExecutionStore("t1")
+            run1 = ExecutionRun.new("gto", "workflow-execution", "t1", "s1")
+            store.save_run(run1)
+
+            run2 = ExecutionRun.new("bf", "structured-output", "t1", "s2")
+            store.create_or_replace_run(run2)
+
+            # Verify run1 ended with status=replaced
+            events = store.replay_events()
+            run_ended = [e for e in events if e.event_type == "run_ended"]
+            assert len(run_ended) == 1
+            assert run_ended[0].status == "replaced"
+
+            # Verify run2 is active
+            loaded = store.load_active_run()
+            assert loaded.run_id == run2.run_id

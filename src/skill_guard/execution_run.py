@@ -4,6 +4,12 @@ execution_run.py
 
 Data model for the skill-guard execution contract runtime.
 
+INVARIANT 6 (contract type and response_requirements from SKILL.md):
+  contract_type and response_requirements are derived from skill frontmatter
+  via get_skill_config(), not hardcoded or guessed. The derivation chain:
+  SKILL.md frontmatter → get_skill_config() → _map_contract_type() → ExecutionRun.contract_type.
+  No contract is created without skill metadata discovery.
+
 Defines:
 - ContractType: Literal["workflow-execution", "structured-output", "hybrid"]
 - RunStatus: ACTIVE | COMPLETE | FAILED

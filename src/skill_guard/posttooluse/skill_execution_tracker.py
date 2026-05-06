@@ -21,8 +21,6 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from posttooluse.base import PostToolUseHook
-
 # Add parent hooks directory for imports.
 # Keep both the symlink-local hooks root and the resolved package root so the
 # module works whether it is launched through P:/.claude/hooks or imported
@@ -38,20 +36,26 @@ for _hooks_root in (
         sys.path.insert(0, _hooks_root_str)
 
 
-class SkillExecutionTracker(PostToolUseHook):
-    # Only relevant when Skill tool fires or subsequent tools during skill execution
-    tool_matcher = {"Skill", "Bash", "Write", "Edit", "MultiEdit", "Task"}
-    """
-    Tracks skill loads and tool usage for execution validation.
-    
+class SkillExecutionTracker:
+    """Tracks skill loads and tool usage for execution validation.
+
     Non-blocking - just tracks state for the Stop hook to validate.
+    Base class is injected in __init__ to avoid circular import issues.
     """
+
+    tool_matcher = {"Skill", "Bash", "Write", "Edit", "MultiEdit", "Task"}
 
     env_var = "SKILL_EXECUTION_GATE_ENABLED"
     default_enabled = True
 
     def __init__(self):
-        super().__init__()
+        # Import PostToolUseHook here (not at module level) to avoid sys.path
+        # conflicts when skill_guard.posttooluse and P:/‎.claude/hooks/posttooluse
+        # are both in the module graph during pytest runs.
+        from posttooluse.base import PostToolUseHook
+        # Dynamically inject base class to avoid circular import at class definition time
+        self.__class__.__bases__ = (PostToolUseHook,)
+        PostToolUseHook.__init__(self)
         self._import_functions()
 
     def _import_functions(self):

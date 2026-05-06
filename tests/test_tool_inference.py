@@ -143,15 +143,15 @@ class TestToolInference:
         # Verify it's a list
         assert isinstance(supported, list)
 
-        # Verify it contains expected tools
+        # Verify it contains expected tools (from DEFAULT_TOOL_MAPPINGS only)
         assert "WebSearch" in supported
         assert "Read" in supported
         assert "Edit" in supported
         assert "Bash" in supported
 
-        # Verify all tools have mappings
+        # Verify all tools have mappings in DEFAULT_TOOL_MAPPINGS (static, not runtime)
         for tool in supported:
-            assert tool in DEFAULT_TOOL_MAPPINGS
+            assert tool in DEFAULT_TOOL_MAPPINGS, f"Tool {tool} not in DEFAULT_TOOL_MAPPINGS"
 
     def test_tool_input_ignored_for_basic_tools(self):
         """Test that tool_input doesn't affect inference for basic tools."""
