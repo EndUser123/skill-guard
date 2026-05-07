@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""
+r"""
 Performance Benchmarking Suite for Hybrid Logging System
 =========================================================
 
@@ -180,7 +180,7 @@ class TestHybridSystemPerformance:
         skill = "benchmark_hybrid_e2e"
 
         # Create SKILL.md with workflow_steps for this test skill
-        skill_dir = Path("P:/.claude/skills") / skill.lower()
+        skill_dir = Path(r"P:\\\\.claude/skills") / skill.lower()
         skill_dir.mkdir(parents=True, exist_ok=True)
         skill_file = skill_dir / "SKILL.md"
 
@@ -193,7 +193,7 @@ workflow_steps:
 # Benchmark Test Skill
 
 This is a test skill for benchmarking.
-""")
+r""")
 
         try:
             # Clear existing
@@ -245,7 +245,7 @@ This is a test skill for benchmarking.
         skill = "benchmark_hybrid_memory"
 
         # Create SKILL.md with workflow_steps for this test skill
-        skill_dir = Path("P:/.claude/skills") / skill.lower()
+        skill_dir = Path(r"P:\\\\.claude/skills") / skill.lower()
         skill_dir.mkdir(parents=True, exist_ok=True)
         skill_file = skill_dir / "SKILL.md"
 

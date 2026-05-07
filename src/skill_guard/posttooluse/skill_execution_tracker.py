@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-"""
+r"""
 Skill Execution Tracker
 =======================
 
@@ -23,11 +23,11 @@ from typing import Any
 
 # Add parent hooks directory for imports.
 # Keep both the symlink-local hooks root and the resolved package root so the
-# module works whether it is launched through P:/.claude/hooks or imported
+# module works whether it is launched through P:\\\\.claude/hooks or imported
 # directly from the package source tree.
 _script_path = Path(__file__)
 for _hooks_root in (
-    Path(r"P:\.claude\hooks"),
+    Path(r"$CLAUDE_ROOT/hooks"),
     _script_path.parent.parent,
     _script_path.resolve().parent.parent,
 ):
@@ -41,7 +41,7 @@ class SkillExecutionTracker:
 
     Non-blocking - just tracks state for the Stop hook to validate.
     Base class is injected in __init__ to avoid circular import issues.
-    """
+    r"""
 
     tool_matcher = {"Skill", "Bash", "Write", "Edit", "MultiEdit", "Task"}
 
@@ -50,7 +50,7 @@ class SkillExecutionTracker:
 
     def __init__(self):
         # Import PostToolUseHook here (not at module level) to avoid sys.path
-        # conflicts when skill_guard.posttooluse and P:/‎.claude/hooks/posttooluse
+        # conflicts when skill_guard.posttooluse and P:\\\\‎.claude/hooks/posttooluse
         # are both in the module graph during pytest runs.
         from posttooluse.base import PostToolUseHook
         # Dynamically inject base class to avoid circular import at class definition time

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""
+r"""
 RED phase tests for T-001: Add workflow_steps to critical skills.
 
 These tests MUST FAIL until workflow_steps are added to skill frontmatter.
@@ -10,7 +10,7 @@ import pytest
 from skill_guard.breadcrumb.tracker import _load_workflow_steps
 
 pytest.skip(
-    "T001 tests require /code and /arch skills installed at P:/.claude/skills/ "
+    r"T001 tests require /code and /arch skills installed at P:\\\\.claude/skills/ "
     "which are not present in the test environment. The code logic is verified "
     "by other tests; these are integration tests that need the real skills.",
     allow_module_level=True,

@@ -27,7 +27,7 @@ def __getattr__(name: str):
 
     if name == "skill_command_hook":
         hooks_paths = (
-            Path(r"P:\.claude\hooks"),
+            Path(r"$CLAUDE_ROOT/hooks"),
             Path(__file__).parent.parent.parent / ".claude" / "hooks",
         )
         for hooks_root in hooks_paths:

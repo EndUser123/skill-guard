@@ -1,4 +1,4 @@
-"""
+r"""
 user_prompt_submit_hook.py
 ==========================
 
@@ -34,8 +34,8 @@ from pathlib import Path
 # ---------------------------------------------------------------------------
 
 _HOOKS_DIR = Path(__file__).resolve().parent
-_SKILL_GUARD_SRC = Path("P:/packages/skill-guard/src")
-_MAIN_HOOKS_DIR = Path("P:/.claude/hooks")
+_SKILL_GUARD_SRC = Path(r"P:\\\\packages/skill-guard/src")
+_MAIN_HOOKS_DIR = Path(r"P:\\\\.claude/hooks")
 
 for _p in (_MAIN_HOOKS_DIR, _HOOKS_DIR, _SKILL_GUARD_SRC):
     if _p.exists():

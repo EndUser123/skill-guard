@@ -1,4 +1,4 @@
-"""PreToolUse hook for one-question-max enforcement.
+r"""PreToolUse hook for one-question-max enforcement.
 
 Tracks question-marking turns between skill invocation and execution.
 Blocks if more than one question is emitted before the skill executes.
@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Any
 
 # Add hooks dir to path for __lib imports (hardcoded — __file__ resolves to plugin dir)
-_HOOKS_DIR = r"P:/.claude/hooks"
+_HOOKS_DIR = r"P:\\\\.claude/hooks"
 if _HOOKS_DIR not in sys.path:
     sys.path.insert(0, _HOOKS_DIR)
 

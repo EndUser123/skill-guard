@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""
+r"""
 Skill Execution State Management
 =================================
 
@@ -55,8 +55,8 @@ from skill_guard.phases import (
 # CONFIGURATION
 # =============================================================================
 
-STATE_DIR = Path("P:/.claude/.state")
-HOOKS_LIB_DIR = Path("P:/.claude/hooks/__lib")
+STATE_DIR = Path(r"P:\\\\.claude/.state")
+HOOKS_LIB_DIR = Path(r"P:\\\\.claude/hooks/__lib")
 
 # _normalize_string_list, _infer_contract_type now delegated to _skill_frontmatter_loader
 _VALID_CONTRACT_TYPES = {"workflow", "output", "hybrid", "analysis"}
@@ -81,7 +81,7 @@ def detect_terminal_id() -> str:
     """Detect terminal ID for state isolation.
 
     Uses terminal_detection.py from utils for consistent ID detection.
-    """
+    r"""
     try:
         # Import shared terminal detection from utils
         from skill_guard.utils.terminal_detection import detect_terminal_id as shared_detect
@@ -120,7 +120,7 @@ def _atomic_write_json(path: Path, data: dict) -> None:
             temp.write_text(json.dumps(data, indent=2))
             os.replace(str(temp), str(path))
         except OSError:
-            # Final fallback: direct write (not atomic, but won't orphan temp)
+            # Final fallback: direct write (not atomic, but wonr't orphan temp)
             path.write_text(json.dumps(data, indent=2))
 
 
@@ -201,7 +201,7 @@ def _clear_pending_state_file(terminal_id: str) -> None:
 def _load_skill_frontmatter(skill_name: str) -> dict[str, Any] | None:
     """Wrapper that delegates to _skill_frontmatter_loader.
 
-    Returns None when skill file doesn't exist or can't be parsed.
+    Returns None when skill file doesn't exist or canr't be parsed.
     """
     return _shared_load(skill_name)
 
@@ -217,7 +217,7 @@ def _get_active_turn_scope() -> tuple[str, str]:
         return "", ""
     try:
         # Add hooks directory to path for evidence_store import
-        hooks_dir = Path("P:/.claude/hooks")
+        hooks_dir = Path(r"P:\\\\.claude/hooks")
         if hooks_dir.exists() and str(hooks_dir) not in sys.path:
             sys.path.insert(0, str(hooks_dir))
         from evidence_store import get_active_turn
@@ -246,7 +246,7 @@ def _get_ledger_module():
     Note:
     Follows the same lazy-import pattern as the legacy metadata cache.
         Uses the same path manipulation as breadcrumb/tracker.py.
-    """
+    r"""
     global _HOOKS_LEDGER_MODULE
     if _HOOKS_LEDGER_MODULE is not None:
         return _HOOKS_LEDGER_MODULE
@@ -327,7 +327,7 @@ def set_skill_loaded(
         # No execution requirements and no first-tool coherence.
         # Skip tracking for pure knowledge skills (no metadata at all).
         # We use frontmatter as the signal: if _load_skill_frontmatter returned
-        # an empty dict (no file exists at P:/.claude/skills/), skip state.
+        # an empty dict (no file exists at P:\\\\.claude/skills/), skip state.
         # This avoids redundant file I/O — we already loaded frontmatter above.
         # R3: frontmatter_warnings non-empty always wins — warnings must be recorded.
         if not frontmatter_warnings and not frontmatter:
@@ -424,7 +424,7 @@ def record_tool_use(tool_name: str, tool_input: dict[str, Any]) -> None:
     Args:
         tool_name: Name of the tool being used
         tool_input: Input parameters passed to the tool
-    """
+    r"""
     terminal_id, turn_id = _get_active_turn_scope()
     if not terminal_id or not turn_id:
         return
@@ -569,7 +569,7 @@ def mark_first_command_validated() -> None:
     """Mark that the first command-level workflow check passed.
 
     Called by PreToolUse_skill_pattern_gate after validating the first
-    substantive command matches the skill's declared first-command pattern.
+    substantive command matches the skillr's declared first-command pattern.
     Subsequent command calls skip the first-command check.
     """
     terminal_id, turn_id = _get_active_turn_scope()
@@ -720,7 +720,7 @@ def migrate_legacy_state() -> None:
 def cleanup_stale_state_files(stale_timeout: int | None = None) -> int:
     """Remove state directories for terminals that no longer exist.
 
-    Scans P:/.claude/.state/skill_execution_* directories and removes
+    Scans P:\\\\\.claude/.state/skill_execution_* directories and removes
     those belonging to terminals that are no longer active.
 
     Args:

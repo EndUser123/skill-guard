@@ -1,4 +1,4 @@
-"""Slash command observability for skill-guard.
+r"""Slash command observability for skill-guard.
 
 This module classifies slash-command prompts, discovers local command and skill
 targets, and emits best-effort telemetry into the shared hook evidence store
@@ -44,7 +44,7 @@ def _skills_dir() -> Path:
 
 SLASH_COMMAND_RE = re.compile(r"^/([a-z0-9_-]+)(?:\s+(.*))?$", re.IGNORECASE)
 NAMESPACED_SLASH_COMMAND_RE = re.compile(r"^/([a-z0-9_-]+):([a-z0-9_-]+)(?:\s+(.*))?$", re.IGNORECASE)
-LEADING_PROMPT_GLYPHS_RE = re.compile(r"^\s*(?:[❯›»>$#]+\s*)+")
+LEADING_PROMPT_GLYPHS_RE = re.compile(r"^\s*(?:[❯›»>$#]+\s*)+r")
 BACKING_SKILL_RE = re.compile(r'Skill\(\s*["\']([A-Za-z0-9_-]+)["\']\s*\)')
 
 

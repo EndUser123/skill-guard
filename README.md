@@ -48,7 +48,7 @@ from skill_guard import discover_all_skills, get_skill_config
 skill-guard is a Python library dependency used by hooks. Install once:
 
 ```bash
-cd P:/packages/skill-guard
+cd P:\\\\packages/skill-guard
 pip install -e .
 ```
 
@@ -93,7 +93,7 @@ print(f"Expected pattern: {config.get('pattern')}")    # e.g., call Skill first
 
 ```powershell
 # Navigate to package
-cd P:/packages/skill-guard
+cd P:\\\\packages/skill-guard
 
 # Install as editable Python package
 pip install -e .

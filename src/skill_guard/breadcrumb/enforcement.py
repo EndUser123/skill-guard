@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""
+r"""
 Breadcrumb Enforcement Level System
 
 Defines three-tier enforcement levels for breadcrumb verification:
@@ -93,7 +93,7 @@ def get_enforcement_level(skill_name: str) -> EnforcementLevel:
             pass  # Invalid value, fall through to next check
 
     # 2. Check SKILL.md frontmatter
-    skill_dir = Path("P:/.claude/skills") / skill_name.lower()
+    skill_dir = Path(r"P:\\\\.claude/skills") / skill_name.lower()
     skill_file = skill_dir / "SKILL.md"
 
     if skill_file.exists() and yaml is not None:

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""
+r"""
 probe_hook_payload_logger.py — Instrumented hook to log Stop payload keys.
 
 Purpose: Empirical investigation — log the top-level keys present in the
@@ -7,7 +7,7 @@ subprocess stdin JSON received from Stop_router.run_hook_subprocess().
 
 Run by: User manually in a Claude Code session (see manual test instructions).
 
-Output: P:/.claude/tmp/HOOK_PAYLOADS/probe_<timestamp>.jsonl
+Output: P:\\\\.claude/tmp/HOOK_PAYLOADS/probe_<timestamp>.jsonl
   Each line: {"ts": ..., "keys": [...], "terminal_id": "...", "hook": "probe_hook_payload_logger.py"}
 """
 from __future__ import annotations
@@ -18,7 +18,7 @@ from pathlib import Path
 from datetime import datetime
 
 # Safe log directory — write to .claude/tmp/, not hooks/
-_LOG_DIR = Path("P:/.claude/tmp/HOOK_PAYLOADS")
+_LOG_DIR = Path(r"P:\\\\.claude/tmp/HOOK_PAYLOADS")
 _HOOK_NAME = "probe_hook_payload_logger.py"
 
 

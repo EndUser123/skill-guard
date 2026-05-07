@@ -1,4 +1,4 @@
-"""
+r"""
 Characterization tests for skill_execution_state god object (ARCH-003).
 
 These tests track progress on splitting skill_execution_state.py (~1057 lines)
@@ -19,11 +19,11 @@ class TestSkillExecutionStateRefactorProgress:
     @pytest.fixture
     def source_file(self):
         """Path to the skill_execution_state.py file."""
-        return Path("P:/packages/skill-guard/src/skill_guard/skill_execution_state.py")
+        return Path(r"P:\\\\packages/skill-guard/src/skill_guard/skill_execution_state.py")
 
     @pytest.fixture
     def source_code(self, source_file):
-        """Full source code of the file."""
+        """Full source code of the file.r"""
         return source_file.read_text(encoding="utf-8")
 
     def test_file_should_have_under_500_lines(self, source_file):
@@ -74,7 +74,7 @@ class TestSkillExecutionStateRefactorProgress:
         """Goal: State I/O operations should be in state_io.py module.
 
         Status: PENDING — _atomic_write_json, _get_state_file, etc. still in main file.
-        """
+        r"""
         atomic_write = re.search(r'def _atomic_write_json\(', source_code)
         assert atomic_write is None, (
             "_atomic_write_json still in skill_execution_state.py. "
@@ -85,7 +85,7 @@ class TestSkillExecutionStateRefactorProgress:
         """Goal: Ledger integration should be in a separate module.
 
         Status: PENDING — _get_ledger_module still in main file.
-        """
+        r"""
         ledger_func = re.search(r'def _get_ledger_module\(', source_code)
         assert ledger_func is None, (
             "_get_ledger_module still in skill_execution_state.py. "
@@ -96,7 +96,7 @@ class TestSkillExecutionStateRefactorProgress:
         """Goal: Migration helpers should be in migration.py module.
 
         Status: PENDING — migrate_legacy_state and cleanup_stale_state_files still in main file.
-        """
+        r"""
         migrate = re.search(r'def migrate_legacy_state\(', source_code)
         assert migrate is None, (
             "migrate_legacy_state still in skill_execution_state.py. "
@@ -121,8 +121,8 @@ class TestSkillExecutionStateRefactorProgress:
         pass
 
     def test_phases_module_exists(self):
-        """Goal: phases.py module should exist for phase constants."""
-        base = Path("P:/packages/skill-guard/src/skill_guard")
+        """Goal: phases.py module should exist for phase constants.r"""
+        base = Path(r"P:\\\\packages/skill-guard/src/skill_guard")
         phases = base / "phases.py"
         assert phases.exists(), (
             "phases.py should exist at src/skill_guard/phases.py. "
@@ -130,8 +130,8 @@ class TestSkillExecutionStateRefactorProgress:
         )
 
     def test_frontmatter_loader_module_exists(self):
-        """Goal: _skill_frontmatter_loader.py module should exist."""
-        base = Path("P:/packages/skill-guard/src/skill_guard")
+        """Goal: _skill_frontmatter_loader.py module should exist.r"""
+        base = Path(r"P:\\\\packages/skill-guard/src/skill_guard")
         loader = base / "_skill_frontmatter_loader.py"
         assert loader.exists(), (
             "_skill_frontmatter_loader.py should exist at src/skill_guard/_skill_frontmatter_loader.py. "

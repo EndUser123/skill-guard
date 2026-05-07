@@ -17,7 +17,7 @@ from skill_guard.skill_auto_discovery import KNOWLEDGE_SKILLS
 
 _script_path = Path(__file__)
 for _hooks_root in (
-    Path(r"P:\.claude\hooks"),
+    Path(r"$CLAUDE_ROOT/hooks"),
     _script_path.parent.parent,
     _script_path.resolve().parent.parent,
 ):

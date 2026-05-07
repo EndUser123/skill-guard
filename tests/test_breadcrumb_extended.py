@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""
+r"""
 Test suite for extended breadcrumb trail system.
 
 TASK-001: Tests for _load_workflow_steps() returning list[dict] format.
@@ -58,7 +58,7 @@ def mock_skills_dir(tmp_path):
 
     def mock_path_impl(path_str):
         """Mock Path implementation that redirects skills directory."""
-        if isinstance(path_str, str) and "P:/.claude/skills" in path_str:
+        if isinstance(path_str, str) and r"P:\\\\.claude/skills" in path_str:
             return skills_dir
         return original_path(path_str)
 
@@ -68,7 +68,7 @@ def mock_skills_dir(tmp_path):
 
 
 class TestLoadWorkflowStepsStringFormat:
-    """Test backward compatibility with string format."""
+    """Test backward compatibility with string format.r"""
 
     def test_load_workflow_steps_string_format(self, mock_skills_dir):
         """
@@ -625,7 +625,7 @@ class TestInitializeBreadcrumbStepsDict:
 
         # ASSERT: All string steps converted with defaults
         assert "step_one" in steps
-        assert steps["step_one"]["kind"] == "execution", "String steps should default to kind='execution'"
+        assert steps["step_one"]["kind"] == "execution", "String steps should default to kind='executionr'"
         assert steps["step_one"]["optional"] is False, "String steps should default to optional=False"
         assert steps["step_one"]["status"] == "pending"
         assert steps["step_one"]["evidence"] == {}
@@ -741,7 +741,7 @@ class TestSetBreadcrumbEvidence:
         # Set breadcrumb with evidence
         # NOTE: Must reset write counter to 4 so the 5th call triggers immediate write
         # The mock_detect_terminal_id fixture causes files to be written to
-        # P:/.claude/state/breadcrumbs_pytest_isolated/ during init, but
+        # P:\\\\.claude/state/breadcrumbs_pytest_isolated/ during init, but
         # mock_get_breadcrumb_dir returns tmp_path/breadcrumbs for set_breadcrumb.
         # Without resetting the counter, the debounced write (every 5 calls) doesn't
         # fire and the test reads the stale init-time file.
@@ -884,7 +884,7 @@ class TestSetBreadcrumbEvidence:
                 set_breadcrumb("test_skill", "step1", evidence={"first": "call"})
 
         # Second call with different evidence
-        # No need to reset - we're reading final state
+        # No need to reset - wer're reading final state
         with patch("skill_guard.breadcrumb.tracker._get_breadcrumb_dir", side_effect=mock_get_breadcrumb_dir):
             with patch("skill_guard.breadcrumb.tracker.detect_terminal_id", side_effect=mock_terminal_id):
                 set_breadcrumb("test_skill", "step1", evidence={"second": "call"})
@@ -967,9 +967,9 @@ class TestSetBreadcrumbEvidence:
             f"Expected completed_steps to remain {initial_completed}, got {updated_trail['completed_steps']}"
 
         # ASSERT: No changes to steps dict
-        assert updated_trail["steps"] == initial_trail["steps"], \
+        assert updated_trail["steps"] == initial_trail["stepsr"], \
             "Expected steps dict to remain unchanged"
 
         # ASSERT: Invalid step not in steps
-        assert "invalid_step" not in updated_trail["steps"], \
+        assert "invalid_step" not in updated_trail["stepsr"], \
             "Invalid step should not be added to steps dict"

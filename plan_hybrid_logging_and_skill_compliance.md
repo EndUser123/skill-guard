@@ -17,7 +17,7 @@ Implement a hybrid logging system for skill-guard's breadcrumb tracking and make
 ### Current Breadcrumb System (skill-guard)
 
 **What exists today**:
-- **File location**: `P:/.claude/state/breadcrumbs_{terminal_id}/breadcrumb_{skill_name}.json`
+- **File location**: `P:\\\\.claude/state/breadcrumbs_{terminal_id}/breadcrumb_{skill_name}.json`
 - **Storage pattern**: Single JSON file per skill, rewritten on each breadcrumb update
 - **Write pattern**: Read entire JSON → modify in memory → write entire JSON back
 - **Problems**:
@@ -165,7 +165,7 @@ triggers:
 
 **Directory structure** (same as current system):
 ```
-P:/.claude/state/
+P:\\\\.claude/state/
 ├── breadcrumbs_term_abc123/
 │   ├── breadcrumb_code.log
 │   ├── breadcrumb_code.json
@@ -1870,7 +1870,7 @@ def sanitize_path(path: Path) -> str:
     """Remove sensitive information from file paths in logs."""
     path_str = str(path)
     # Replace user-specific and system paths
-    for base in [str(Path.home()), 'P:/', 'C:/Users/']:
+    for base in [str(Path.home()), 'P:\\\\', 'C:/Users/']:
         if path_str.startswith(base):
             return f"[STATE_DIR]/{path_str[len(base):]}"
     return path_str
@@ -2232,7 +2232,7 @@ def test_write_performance_hybrid_vs_old():
 def test_end_to_end_skill_breadcrumb_tracking():
     """Verify breadcrumb tracking with real /code skill."""
     # Verify code/SKILL.md has workflow_steps
-    code_skill = Path("P:/.claude/skills/code/SKILL.md")
+    code_skill = Path("P:\\\\.claude/skills/code/SKILL.md")
     assert code_skill.exists(), "/code skill should exist"
 
     # Parse workflow_steps from frontmatter

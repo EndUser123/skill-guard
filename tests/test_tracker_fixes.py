@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""
+r"""
 Tests for skill-guard security and anti-pattern fixes.
 
 Tests for 5 issues identified by NotebookLM:
@@ -187,13 +187,13 @@ def test_no_file_operations_on_import():
 def test_migration_still_works_explicitly():
     """Test that legacy migration still works when explicitly called."""
     pytest.skip(
-        "Test uses P:/.claude/state/ but code uses P:/.claude/.state/ — pre-existing path mismatch. "
+        r"Test uses P:\\\\.claude/state/ but code uses P:\\\\.claude/.state/ — pre-existing path mismatch. "
         "The test was created with wrong path; migration logic is verified by other tests."
     )
     from skill_guard import skill_execution_state
 
     # Create fake legacy state file
-    legacy_state = Path("P:/.claude/state/skill_execution_pending.json")
+    legacy_state = Path(r"P:\\\\.claude/state/skill_execution_pending.json")
 
     # Create test legacy state
     legacy_state.parent.mkdir(parents=True, exist_ok=True)

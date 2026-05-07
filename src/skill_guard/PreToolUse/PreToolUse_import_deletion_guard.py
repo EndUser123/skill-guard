@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""
+r"""
 PreToolUse Hook: Import Deletion Guard
 
 Blocks removal of Python import statements unless the imported symbol
@@ -24,7 +24,7 @@ import sys
 from pathlib import Path
 
 # Add hooks directory to path for imports (hardcoded — __file__ resolves to plugin dir)
-HOOKS_DIR = Path(r"P:/.claude/hooks")
+HOOKS_DIR = Path(r"P:\\\\.claude/hooks")
 sys.path.insert(0, str(HOOKS_DIR))
 
 # Configuration
@@ -64,7 +64,7 @@ def extract_import_symbols(text: str) -> set[str]:
 
     Returns:
         Set of symbol names (not module paths, not aliases)
-    """
+    r"""
     symbols = set()
 
     # Process 'from ... import' statements
@@ -174,7 +174,7 @@ def extract_module_name(import_line: str) -> str | None:
     'from .sub.tracing import X' → 'sub.tracing'
     'from collections import X' → 'collections'
     'import os' → 'os'
-    """
+    r"""
     match = re.match(r'^\s*from\s+\.+([.\w]*)\s+import', import_line)
     if match:
         return match.group(1).lstrip('.') or None
@@ -365,7 +365,7 @@ From: {file_path}
 
 The evidence store is unavailable for this session, so prior investigation
 cannot be verified. Before removing this import, search for the symbol:
-  grep -r "{sorted(removed_symbols)[0]}" --include="*.py" P:/
+  grep -r "{sorted(removed_symbols)[0]}" --include="*.py" P:\\\\
 
 If the search confirms the symbol is genuinely absent everywhere, proceed.
 
@@ -388,13 +388,13 @@ Bypass: Add --allow-import-removal to your message."""
             continue  # All symbols were searched — allow this edit
 
         symbols_str = ", ".join(symbols_without_search)
-        reason = f"""⛔ IMPORT DELETION WITHOUT SYMBOL SEARCH
+        reason = fr"""⛔ IMPORT DELETION WITHOUT SYMBOL SEARCH
 
 You are removing the import of: {symbols_str}
 From: {file_path}
 
 Before removing this import, search for the symbol across the codebase:
-  grep -r "{symbols_without_search[0]}" --include="*.py" P:/
+  grep -r "{symbols_without_search[0]}" --include="*.py" P:\\\\
 
 The import path may be wrong (file at wrong location) without the symbol itself
 being absent. Removing the import silently deletes functionality.

@@ -1,4 +1,4 @@
-"""
+r"""
 execution_hooks.py
 ==================
 
@@ -37,12 +37,12 @@ from pathlib import Path
 from typing import Any
 
 # ---------------------------------------------------------------------------
-# Path setup — resolve __lib shadowing from P:/__csf/__lib
+# Path setup — resolve __lib shadowing from P:\\\\__csf/__lib
 # ---------------------------------------------------------------------------
 
 _HOOKS_DIR = Path(__file__).resolve().parent
-_SKILL_GUARD_SRC = Path("P:/packages/skill-guard/src")
-_MAIN_HOOKS_DIR = Path("P:/.claude/hooks")
+_SKILL_GUARD_SRC = Path(r"P:\\\\packages/skill-guard/src")
+_MAIN_HOOKS_DIR = Path(r"P:\\\\.claude/hooks")
 
 for _p in (_MAIN_HOOKS_DIR, _HOOKS_DIR, _SKILL_GUARD_SRC):
     if _p.exists():
@@ -80,18 +80,18 @@ def _extract_slash_command(prompt: str) -> str | None:
 
 
 def _artifact_written(tool_name: str, tool_input: dict[str, Any]) -> bool:
-    """Return True when this tool writes a tracked artifact file."""
+    """Return True when this tool writes a tracked artifact file.r"""
     if tool_name not in {"Write", "Edit", "MultiEdit"}:
         return False
     path = tool_input.get("file_path", "")
-    return bool(path and not path.startswith("P:/tmp") and not path.startswith("/tmp"))
+    return bool(path and not path.startswith(r"P:\\\\tmp") and not path.startswith("/tmp"))
 
 
 # ---------------------------------------------------------------------------
 # PreToolUse handler
 # ---------------------------------------------------------------------------
 
-_HOOKS_LIB_DIR = Path("P:/.claude/hooks/__lib")
+_HOOKS_LIB_DIR = Path(r"P:\\\\.claude/hooks/__lib")
 
 _STOP_HOOK: dict[str, Any] = {}  # Populated by Stop hook registration
 
@@ -101,7 +101,7 @@ import time as _probe_time
 import json as _probe_json
 from pathlib import Path as _probe_path
 
-_PROBE_LOG = _probe_path("P:/.claude/tmp/PRETOOL_GATE_PROBE.jsonl")
+_PROBE_LOG = _probe_path(r"P:\\\\.claude/tmp/PRETOOL_GATE_PROBE.jsonl")
 _PROBE_LOG.parent.mkdir(parents=True, exist_ok=True)
 
 

@@ -1,4 +1,4 @@
-"""Tests for execution_hooks.py"""
+r"""Tests for execution_hooks.py"""
 
 from __future__ import annotations
 
@@ -36,20 +36,20 @@ class TestExtractSlashCommand:
 
 class TestArtifactWritten:
     def test_write_true(self):
-        assert _artifact_written("Write", {"file_path": "P:/foo/bar.txt"}) is True
+        assert _artifact_written("Write", {"file_path": r"P:\\\\foo/bar.txt"}) is True
 
     def test_edit_true(self):
-        assert _artifact_written("Edit", {"file_path": "P:/foo/bar.txt"}) is True
+        assert _artifact_written("Edit", {"file_path": r"P:\\\\foo/bar.txt"}) is True
 
     def test_multiedit_true(self):
-        assert _artifact_written("MultiEdit", {"file_path": "P:/foo/bar.txt"}) is True
+        assert _artifact_written("MultiEdit", {"file_path": r"P:\\\\foo/bar.txt"}) is True
 
     def test_read_false(self):
-        assert _artifact_written("Read", {"file_path": "P:/foo/bar.txt"}) is False
+        assert _artifact_written("Read", {"file_path": r"P:\\\\foo/bar.txt"}) is False
 
     def test_tmp_path_false(self):
         assert _artifact_written("Write", {"file_path": "/tmp/foo.txt"}) is False
-        assert _artifact_written("Write", {"file_path": "P:/tmp/foo.txt"}) is False
+        assert _artifact_written("Write", {"file_path": r"P:\\\\tmp/foo.txt"}) is False
 
 
 class TestHandlePreToolUse:

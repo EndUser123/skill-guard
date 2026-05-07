@@ -135,7 +135,7 @@ Fixed (Issue #4):
 **Failure Mode 2**: "Path validation breaks legitimate skill names"
 - Root cause: Skill named like `v2.0` or `package.json` blocked by `.` check
 - Preventive action: Review all existing skills for `.` in names
-- Test: Check P:/.claude/skills/ for dots in directory names
+- Test: Check P:\\\\.claude/skills/ for dots in directory names
 
 **Failure Mode 3**: "Registry import breaks hook functionality"
 - Root cause: SKILL_EXECUTION_REGISTRY required for enforcement

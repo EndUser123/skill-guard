@@ -13,7 +13,7 @@ from skill_guard.hook_compat import HookResult, register_hook
 
 _script_path = Path(__file__)
 for _hooks_root in (
-    Path(r"P:\.claude\hooks"),
+    Path(r"$CLAUDE_ROOT/hooks"),
     _script_path.parent.parent,
     _script_path.resolve().parent.parent,
 ):

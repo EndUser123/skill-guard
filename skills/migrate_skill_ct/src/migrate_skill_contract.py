@@ -1,4 +1,4 @@
-"""Migration orchestrator for migrate-skill-ct skill.
+r"""Migration orchestrator for migrate-skill-ct skill.
 
 Wraps existing skill-guard helpers to provide audit and patch modes
 for migrating target skills to the execution-contract frontmatter model.
@@ -23,7 +23,7 @@ from typing import Any
 
 _script_path = Path(__file__)
 for _hooks_root in (
-    Path(r"P:\.claude\hooks"),
+    Path(r"$CLAUDE_ROOT/hooks"),
     _script_path.parent.parent.parent,
     _script_path.resolve().parent.parent.parent,
 ):
@@ -38,11 +38,11 @@ from skill_guard._skill_frontmatter_loader import (
 
 # Primary skill directory — also used by _load_skill_frontmatter in skill_guard.
 # Override via SKILL_DIR env var or the --skills-dir argument.
-SKILL_DIR = Path(os.environ.get("SKILL_DIR", r"P:/packages/.claude-marketplace/plugins/cc-skills-thinking/skills"))
+SKILL_DIR = Path(os.environ.get("SKILL_DIR", r"P:\\\\packages/.claude-marketplace/plugins/cc-skills-thinking/skills"))
 
 
 def _load_target_frontmatter(skill_name: str, skills_dir: Path | None = None) -> dict[str, Any] | None:
-    """Load the frontmatter dict for a target skill."""
+    """Load the frontmatter dict for a target skill.r"""
     skill_file = (skills_dir or SKILL_DIR) / skill_name / "SKILL.md"
     if not skill_file.exists():
         return None
@@ -64,7 +64,7 @@ def _generate_patch(
     frontmatter: dict[str, Any] | None,
     result: dict[str, Any],
 ) -> dict[str, Any]:
-    """Generate a minimal patch plan from build_migration_result output."""
+    """Generate a minimal patch plan from build_migration_result output.r"""
     changes: list[dict[str, str]] = []
     status = result["status"]
     if status == "MIGRATED":
@@ -103,7 +103,7 @@ def _generate_patch(
         suggested = f"{skill_name}-ct"
         lines.append("")
         lines.append(f"# Naming recommendation: rename skill directory and 'name:' field to '{suggested}'")
-        lines.append(f"# See: P:/.claude/docs/claude-skill-v1.0.md § Naming conventions")
+        lines.append(fr"# See: P:\\\\.claude/docs/claude-skill-v1.0.md § Naming conventions")
         lines.append("# then run: /migrate-skill-ct <new-name> --mode patch --write true")
 
     lines.append("")
@@ -163,7 +163,7 @@ def _apply_patch(
 
     return {
         "files_modified": [str(skill_file)],
-        "fields_changed": [f"{c['field']}: {c['value']}" for c in changes],
+        "fields_changed": [f"{c['field']}: {c['valuer']}" for c in changes],
     }
 
 
@@ -573,7 +573,7 @@ def main() -> None:
     parser.add_argument(
         "--skills-dir",
         default=None,
-        help="Override the skills directory (default: P:/packages/.claude-marketplace/plugins/cc-skills-thinking/skills)",
+        help=r"Override the skills directory (default: P:\\\\packages/.claude-marketplace/plugins/cc-skills-thinking/skills)",
     )
     parser.add_argument(
         "--batch",

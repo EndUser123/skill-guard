@@ -131,13 +131,20 @@ class TestHandlePreToolUseKnowledgeSkillDetection:
     """Tests for dynamic knowledge skill detection (lines 851-863)."""
 
     def test_knowledge_skill_with_no_required_tools_returns_empty(self):
-        """Characterization: skill with empty required_tools is treated as knowledge skill."""
+        """Characterization: skill with empty required_tools is treated as knowledge skill.
+
+        This test patches get_skill_config to return an empty config so Layer 2
+        (execution pattern validation) doesn't intercept after Layer 1.5 allows.
+        Without this patch, the real config for 'ask' has tools=['Bash'] and
+        triggers the execution pattern check in Layer 2.
+        """
         state = {
             "skill": "ask",
             "required_tools": [],
         }
         with patch("skill_guard.PreToolUse.PreToolUse_skill_pattern_gate._read_pending_state", return_value=state), \
-             patch("skill_guard.PreToolUse.PreToolUse_skill_pattern_gate._read_pending_command_intent", return_value=None):
+             patch("skill_guard.PreToolUse.PreToolUse_skill_pattern_gate._read_pending_command_intent", return_value=None), \
+             patch("skill_guard.PreToolUse.PreToolUse_skill_pattern_gate.get_skill_config", return_value=None):
             result = handle_pre_tool_use({"tool_name": "Bash", "input": {"command": "ls"}})
         assert result == {}
 
@@ -162,7 +169,7 @@ class TestHandlePreToolUseExecutionPatternValidation:
         }
 
     def test_execution_pattern_valid_returns_empty(self):
-        """Characterization: valid execution pattern allows tool."""
+        """Characterization: valid execution pattern allows tool.r"""
         with patch("skill_guard.PreToolUse.PreToolUse_skill_pattern_gate._read_pending_state", return_value=self._execution_state()), \
              patch("skill_guard.PreToolUse.PreToolUse_skill_pattern_gate._read_pending_command_intent", return_value=None), \
              patch("skill_guard.PreToolUse.PreToolUse_skill_pattern_gate.get_skill_config", return_value={
@@ -178,7 +185,7 @@ class TestHandlePreToolUseExecutionPatternValidation:
         assert result == {}
 
     def test_execution_pattern_invalid_returns_block(self):
-        """Characterization: invalid execution pattern blocks tool with execution pattern mismatch."""
+        """Characterization: invalid execution pattern blocks tool with execution pattern mismatch.r"""
         with patch("skill_guard.PreToolUse.PreToolUse_skill_pattern_gate._read_pending_state", return_value=self._execution_state()), \
              patch("skill_guard.PreToolUse.PreToolUse_skill_pattern_gate._read_pending_command_intent", return_value=None), \
              patch("skill_guard.PreToolUse.PreToolUse_skill_pattern_gate.get_skill_config", return_value={
@@ -200,7 +207,7 @@ class TestHandlePreToolUseNoSkillConfig:
     """Tests for when no skill config is found (fail-open behavior)."""
 
     def test_no_skill_config_returns_empty(self):
-        """Characterization: no valid skill config means fail-open (allow tool)."""
+        """Characterization: no valid skill config means fail-open (allow tool).r"""
         state = {
             "skill": "unknown-skill",
             "required_tools": ["Bash"],
@@ -217,8 +224,8 @@ class TestHandlePreToolUseNoSkillConfig:
             "skill": "test-skill",
             "required_tools": ["Bash"],
         }
-        with patch("skill_guard.PreToolUse.PreToolUse_skill_pattern_gate._read_pending_state", return_value=state), \
-             patch("skill_guard.PreToolUse.PreToolUse_skill_pattern_gate._read_pending_command_intent", return_value=None), \
+        with patch("skill_guard.PreToolUse.PreToolUse_skill_pattern_gate._read_pending_stater", return_value=state), \
+             patch("skill_guard.PreToolUse.PreToolUse_skill_pattern_gate._read_pending_command_intentr", return_value=None), \
              patch("skill_guard.PreToolUse.PreToolUse_skill_pattern_gate.get_skill_config", return_value={}):
             result = handle_pre_tool_use({"tool_name": "Bash", "input": {"command": "ls"}})
         assert result == {}

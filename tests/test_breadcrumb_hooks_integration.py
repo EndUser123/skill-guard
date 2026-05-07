@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""
+r"""
 Integration tests for breadcrumb hooks.
 
 These tests verify the end-to-end functionality of hooks that interact
@@ -15,8 +15,8 @@ import json
 import sys
 
 # Add paths
-sys.path.insert(0, "P:/packages/skill-guard/src")
-sys.path.insert(0, "P:/.claude/hooks")
+sys.path.insert(0, r"P:\\\\packages/skill-guard/src")
+sys.path.insert(0, r"P:\\\\.claude/hooks")
 
 from skill_guard.breadcrumb.tracker import (
     clear_breadcrumb_trail,

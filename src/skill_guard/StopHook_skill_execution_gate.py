@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""
+r"""
 StopHook_skill_execution_gate.py
 =================================
 
@@ -50,9 +50,9 @@ if TYPE_CHECKING:
     pass
 
 HOOKS_DIR = Path(__file__).resolve().parent
-SKILL_GUARD_SRC = Path("P:/packages/skill-guard/src")
-MAIN_HOOKS_DIR = Path("P:/.claude/hooks")
-# Must insert MAIN_HOOKS_DIR at position 0 — P:\__csf\__lib shadows __lib
+SKILL_GUARD_SRC = Path(r"P:\\\\packages/skill-guard/src")
+MAIN_HOOKS_DIR = Path(r"P:\\\\.claude/hooks")
+# Must insert MAIN_HOOKS_DIR at position 0 — $__CSF_ROOT/__lib shadows __lib
 for _p in (MAIN_HOOKS_DIR, HOOKS_DIR, SKILL_GUARD_SRC):
     if _p.exists():
         s = str(_p)
@@ -88,7 +88,7 @@ except Exception:  # pragma: no cover - observability must fail open
 
 ENABLED = os.environ.get("SKILL_EXECUTION_GATE_ENABLED", "true").lower() == "true"
 
-STATE_DIR = Path("P:/.claude/.state")
+STATE_DIR = Path(r"P:\\\\.claude/.state")
 
 # Per-terminal log files (multi-terminal safe - no shared state)
 _log_tid = ""
@@ -99,8 +99,8 @@ try:
 except Exception:
     pass
 _tid_suffix = f"_{_log_tid}" if _log_tid else ""
-LOG_FILE = Path(f"P:/.claude/logs/skill_execution_gate{_tid_suffix}.jsonl")
-DEBUG_LOG_FILE = Path(f"P:/.claude/logs/skill_execution_gate{_tid_suffix}_debug.log")
+LOG_FILE = Path(fr"P:\\\\.claude/logs/skill_execution_gate{_tid_suffix}.jsonl")
+DEBUG_LOG_FILE = Path(fr"P:\\\\.claude/logs/skill_execution_gate{_tid_suffix}_debug.log")
 
 # Stale timeout (prevents blocking indefinitely)
 STALE_TIMEOUT = 300  # 5 minutes
@@ -145,7 +145,7 @@ _SNAPSHOT_CACHE_KEY = "__skill_exec_transcript_snapshot"
 
 
 def _extract_text_content(message_content: object) -> str:
-    """Extract text blocks from Claude transcript message content."""
+    """Extract text blocks from Claude transcript message content.r"""
     if isinstance(message_content, list):
         return " ".join(
             block.get("text", "")
@@ -281,7 +281,7 @@ def _extract_slash_command(prompt: str) -> str | None:
     """Extract slash command name from prompt.
 
     Returns the command name (e.g., 'debugRCA') or None if not a slash command.
-    """
+    r"""
     match = re.match(r"^/([a-zA-Z][\w-]*)", prompt.strip())
     if match:
         return match.group(1)
@@ -328,7 +328,7 @@ def log_event(event: str, data: dict) -> None:
 
 
 def _get_governance_state_file() -> Path:
-    """Get governance state file path for this terminal."""
+    """Get governance state file path for this terminal.r"""
     terminal_id = ""
     try:
         from __lib.terminal_detection import detect_terminal_id
@@ -825,7 +825,7 @@ def validate_execution(state: dict, tool_history: list) -> dict:
 
 
 def run(input_data: dict) -> dict | None:
-    """In-process validator protocol for Stop_router."""
+    """In-process validator protocol for Stop_router.r"""
     if not ENABLED:
         return None
 
@@ -875,7 +875,7 @@ def run(input_data: dict) -> dict | None:
                                 f"\n⚠️ SKILL FRONTMATTER ADVISORY: /{_skill_name}\n"
                                 f"  {_warn_lines}\n"
                                 f"Fix: Add missing fields to "
-                                f"P:/.claude/skills/{_skill_name}/SKILL.md\n"
+                                fr"P:\\\\.claude/skills/{_skill_name}/SKILL.md\n"
                             ),
                         }
                     break  # Found the event for this turn, no need to check older events
@@ -886,7 +886,7 @@ def run(input_data: dict) -> dict | None:
     # After frontmatter_warnings advisory, check if the skill declares required first
     # command patterns and validate the actual first Bash command matches.
     if slash_cmd and slash_cmd not in BUILTIN_SLASH_COMMANDS and slash_cmd not in LIGHTWEIGHT_SLASH_COMMANDS and slash_cmd not in KNOWLEDGE_SKILLS:
-        _skill_md_path = Path(f"P:/.claude/skills/{slash_cmd}/SKILL.md")
+        _skill_md_path = Path(fr"P:\\\\.claude/skills/{slash_cmd}/SKILL.md")
         if _skill_md_path.exists():
             try:
                 with _skill_md_path.open("r", encoding="utf-8") as _f:
@@ -959,7 +959,7 @@ def run(input_data: dict) -> dict | None:
         }
 
     def _is_help_only_request(prompt: str) -> bool:
-        """True when the user's args are exclusively help flags — prose is the correct response."""
+        """True when the user's args are exclusively help flags — prose is the correct response.r"""
         import re as _re
 
         m = _re.match(r"^/[a-z0-9_-]+\s+(.*)", (prompt or "").strip(), _re.IGNORECASE)
@@ -972,7 +972,7 @@ def run(input_data: dict) -> dict | None:
         outcome: str,
         reason: str = "",
     ) -> None:
-        """Best-effort outcome logging for slash-command observability."""
+        """Best-effort outcome logging for slash-command observability.r"""
         if not slash_cmd:
             return
         try:

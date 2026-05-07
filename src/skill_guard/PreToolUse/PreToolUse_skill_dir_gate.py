@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""PreToolUse gate: block Glob/Grep if not scoped to the expected skill directory.
+r"""PreToolUse gate: block Glob/Grep if not scoped to the expected skill directory.
 
 Phase 2 of the skill-dir correlation system:
   - Writer (skill_context_writer.py): detects slash-skill-name in user prompt and
@@ -28,7 +28,7 @@ import re
 import sys
 from pathlib import Path
 
-HOOKS_DIR = Path(r"P:/.claude/hooks")
+HOOKS_DIR = Path(r"P:\\\\.claude/hooks")
 sys.path.insert(0, str(HOOKS_DIR))
 
 _STATE_DIR = HOOKS_DIR / "state" / "skill_context"

@@ -1,4 +1,4 @@
-"""PreToolUse hook for skill context-sufficiency classification.
+r"""PreToolUse hook for skill context-sufficiency classification.
 
 Checks if a skill invocation has sufficient deterministic context to execute immediately
 (PRE_AUTHORIZED tier) or needs one question (AMBIGUOUS tier).
@@ -14,7 +14,7 @@ import sys
 from typing import Any
 
 # Add skills __lib to path for registry import (hardcoded — __file__ resolves to plugin dir)
-_SKILLS_LIB = r"P:/.claude/hooks/skills/__lib"
+_SKILLS_LIB = r"P:\\\\.claude/hooks/skills/__lib"
 if _SKILLS_LIB not in sys.path:
     sys.path.insert(0, _SKILLS_LIB)
 

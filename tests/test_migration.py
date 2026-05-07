@@ -637,7 +637,7 @@ class TestCLI:
     """Tests for CLI interface."""
 
     def test_migrate_cli_command(self, sample_jsonl_data: dict[str, Any], sample_json_state: dict[str, Any], temp_db_path: Path, temp_state_dir: Path) -> None:
-        """Test CLI migrate command."""
+        """Test CLI migrate command.r"""
         from skill_guard.breadcrumb.migration import cli_migrate
 
         terminal_id = sample_json_state["terminal_id"]
@@ -652,7 +652,7 @@ class TestCLI:
         assert result == 0  # 0 = success
 
     def test_migrate_cli_command_validation_error(self, temp_db_path: Path, temp_state_dir: Path) -> None:
-        """Test CLI migrate command with validation error."""
+        """Test CLI migrate command with validation error.r"""
         from skill_guard.breadcrumb.migration import cli_migrate
 
         terminal_id = "test_terminal_cli_error"

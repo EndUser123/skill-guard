@@ -1,4 +1,4 @@
-"""
+r"""
 Integration tests for SkillCommandHook and discover_hooks() functionality.
 
 Tests cover:
@@ -18,8 +18,8 @@ import pytest
 
 # Ensure package is importable
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
-# posttooluse.skill_command_hook lives in P:\.claude\hooks\posttooluse
-sys.path.insert(0, "P:\\.claude\\hooks")
+# posttooluse.skill_command_hook lives in $CLAUDE_ROOT/hooks\posttooluse
+sys.path.insert(0, r"P:\\\\\.claude\\hooks")
 
 from skill_guard.skill_auto_discovery import (
     _parse_skill_frontmatter,

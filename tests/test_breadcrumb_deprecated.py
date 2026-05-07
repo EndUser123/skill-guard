@@ -1,4 +1,4 @@
-"""Tests for INVARIANT 5: breadcrumbs are NOT contract authority."""
+r"""Tests for INVARIANT 5: breadcrumbs are NOT contract authority."""
 
 from __future__ import annotations
 
@@ -19,7 +19,7 @@ class TestBreadcrumbDeprecation:
         import ast
         from pathlib import Path
 
-        hooks_path = Path("P:/packages/skill-guard/src/skill_guard/execution_hooks.py")
+        hooks_path = Path(r"P:\\\\packages/skill-guard/src/skill_guard/execution_hooks.py")
         source = hooks_path.read_text(encoding="utf-8")
         tree = ast.parse(source)
 

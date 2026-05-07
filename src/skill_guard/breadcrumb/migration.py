@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""
+r"""
 Breadcrumb Migration Module
 ===========================
 
@@ -30,7 +30,7 @@ from skill_guard.utils.terminal_detection import detect_terminal_id
 # CONFIGURATION
 # =============================================================================
 
-STATE_DIR = Path("P:/.claude/state")
+STATE_DIR = Path(r"P:\\\\.claude/state")
 
 # =============================================================================
 # VALIDATION
@@ -551,7 +551,7 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="Migrate breadcrumb trails to SQLite database")
-    parser.add_argument("--db-path", default="P:/.claude/diagnostics.db", help="Path to SQLite database")
+    parser.add_argument("--db-path", default=r"P:\\\\.claude/diagnostics.db", help="Path to SQLite database")
     parser.add_argument("--terminal", help="Terminal ID (default: auto-detect)")
     parser.add_argument("--all", action="store_true", help="Migrate all terminals")
     parser.add_argument("--rollback", action="store_true", help="Rollback migration")

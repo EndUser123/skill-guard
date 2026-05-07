@@ -48,7 +48,7 @@ class TestLogRotation:
 
         # Second append (will exceed threshold)
         # Note: Rotation check happens BEFORE write, so this append
-        # won't trigger rotation yet (file is still below threshold when checked)
+        # wonr't trigger rotation yet (file is still below threshold when checked)
         log.append({"event": "test2", "data": large_data})
 
         # Third append (WILL trigger rotation because file is now > threshold)

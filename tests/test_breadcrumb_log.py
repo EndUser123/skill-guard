@@ -163,7 +163,7 @@ class TestAppendOnlyBreadcrumbLog:
         """Test that path traversal characters are blocked."""
         malicious_names = [
             "../../etc/passwd",
-            "..\\..\\windows\\system32",
+            r"..\\..\\windows\\system32",
             "test.file",
             "test..file",
         ]

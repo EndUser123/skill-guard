@@ -11,7 +11,7 @@ import pytest
 
 # Ensure skill_guard src and skills packages are importable
 skill_guard_root = str(Path(__file__).parent.parent.resolve())
-hooks_path = str(Path(r"P:\.claude\hooks").resolve())
+hooks_path = str(Path(r"$CLAUDE_ROOT/hooks").resolve())
 for _p in (hooks_path, skill_guard_root):
     if _p not in sys.path:
         sys.path.insert(0, _p)

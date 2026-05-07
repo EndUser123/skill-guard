@@ -1,4 +1,4 @@
-"""Pytest configuration for skill-guard test suite.
+r"""Pytest configuration for skill-guard test suite.
 
 This module configures pytest fixtures and hooks used across all
 skill-guard test modules, including database setup/teardown, temporary
@@ -14,7 +14,7 @@ from unittest.mock import patch
 import pytest
 
 # Ensure skill_guard src and skills packages are importable
-hooks_path = str(Path("P:/.claude/hooks").resolve())
+hooks_path = str(Path(r"P:\\\\.claude/hooks").resolve())
 skill_guard_root = str(Path(__file__).parent.parent.resolve())
 for _p in (hooks_path, skill_guard_root):
     if _p not in sys.path:
@@ -50,8 +50,8 @@ def pytest_collection_modifyitems(items):
     Must handle ModuleNotFoundError gracefully — if posttooluse itself can't
     be imported (e.g., missing optional dependencies in __init__.py), catch
     and skip rather than crashing the collection hook.
-    """
-    hooks_path_str = str(Path("P:/.claude/hooks").resolve())
+    r"""
+    hooks_path_str = str(Path(r"P:\\\\.claude/hooks").resolve())
     # Ensure hooks path is at front (highest priority)
     if hooks_path_str in sys.path:
         sys.path.remove(hooks_path_str)
@@ -176,9 +176,9 @@ DUMMY_WORKFLOW_STEPS_PER_SKILL = {
 
 @pytest.fixture(autouse=True)
 def mock_detect_terminal_id(request):
-    """Mock detect_terminal_id to return a test-only terminal ID.
+    r"""Mock detect_terminal_id to return a test-only terminal ID.
 
-    Prevents pytest from touching real P:/.claude/state/breadcrumbs_*/
+    Prevents pytest from touching real P:\\\\.claude/state/breadcrumbs_*/
     files when detect_terminal_id() returns the actual Claude Code terminal ID.
 
     CRITICAL: Must patch at the SOURCE module (terminal_detection), not at the
@@ -190,7 +190,7 @@ def mock_detect_terminal_id(request):
     Skips:
     - test_no_import_error_warnings: uses inspect.getsourcefile on real detect_terminal_id
     - test_breadcrumb_isolation tests: specifically test terminal ID differences
-    """
+    r"""
     from skill_guard.utils import terminal_detection as td_module
 
     node_name = request.node.name
@@ -210,10 +210,10 @@ def mock_detect_terminal_id(request):
 
 @pytest.fixture(autouse=True)
 def patch_workflow_steps_for_test_skills():
-    """Patch _load_workflow_steps to return dummy steps for test skill names.
+    r"""Patch _load_workflow_steps to return dummy steps for test skill names.
 
     This allows isolation tests to create breadcrumb trails without needing
-    real SKILL.md files in P:/.claude/skills/.
+    real SKILL.md files in P:\\\\.claude/skills/.
     """
     from skill_guard.breadcrumb import tracker
 
@@ -237,10 +237,10 @@ def patch_workflow_steps_for_test_skills():
 
 @pytest.fixture(autouse=True)
 def clean_breadcrumb_state_and_logs():
-    """Clean up breadcrumb state (.json) and log (.jsonl) files before each test.
+    r"""Clean up breadcrumb state (.json) and log (.jsonl) files before each test.
 
     The AppendOnlyBreadcrumbLog stores entries in persistent files under
-    P:/.claude/state/. Without cleanup, entries accumulate across test runs.
+    P:\\\\.claude/state/. Without cleanup, entries accumulate across test runs.
     Cleans ALL breadcrumb files (not just TEST_SKILL_NAMES) since any
     test could create entries for any skill name.
 

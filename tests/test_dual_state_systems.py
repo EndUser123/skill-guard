@@ -1,10 +1,10 @@
-"""
+r"""
 Characterization tests for ARCH-005: Dual state management systems.
 
 These tests CAPTURE CURRENT BEHAVIOR before refactoring.
 They document that two separate state hierarchies exist:
-  1. execution-state.json under P:/.claude/.artifacts/console_{terminal_id}/
-  2. skill_execution_pending.json under P:/.claude/.state/skill_execution_{terminal_id}/
+  1. execution-state.json under P:\\\\.claude/.artifacts/console_{terminal_id}/
+  2. skill_execution_pending.json under P:\\\\.claude/.state/skill_execution_{terminal_id}/
 
 Run with: pytest tests/test_dual_state_systems.py -v
 """
@@ -18,7 +18,7 @@ from unittest.mock import patch, MagicMock
 
 
 class TestDualStateSystemPaths:
-    """Tests that document the two separate state hierarchies."""
+    r"""Tests that document the two separate state hierarchies."""
 
     @pytest.fixture
     def temp_root(self):
@@ -140,19 +140,19 @@ class TestDualStateNotUnified:
 
     def test_different_root_constants(self):
         """Characterization: The two systems define different root constants."""
-        # execution_store.ArtifactsExecutionStore.ARTIFACTS_ROOT = Path("P:/.claude/.artifacts")
-        # skill_execution_state.STATE_DIR = Path("P:/.claude/.state")
+        # execution_store.ArtifactsExecutionStore.ARTIFACTS_ROOT = Path(r"P:\\\\.claude/.artifacts")
+        # skill_execution_state.STATE_DIR = Path(r"P:\\\\.claude/.state")
 
-        artifacts_root_value = "P:/.claude/.artifacts"
-        state_dir_value = "P:/.claude/.state"
+        artifacts_root_value = r"P:\\\\.claude/.artifacts"
+        state_dir_value = r"P:\\\\.claude/.state"
 
         assert artifacts_root_value != state_dir_value
 
     def test_no_common_base_path(self):
         """Characterization: There is no common base between these two hierarchies."""
         # After expansion, the paths share .claude but diverge at .artifacts vs .state
-        artifacts_path = "P:/.claude/.artifacts/console_test/execution-state.json"
-        state_path = "P:/.claude/.state/skill_execution_test/skill_execution_pending.json"
+        artifacts_path = r"P:\\\\.claude/.artifacts/console_test/execution-state.json"
+        state_path = r"P:\\\\.claude/.state/skill_execution_test/skill_execution_pending.json"
 
         # They don't share a common suffix structure
         assert ".artifacts/" in artifacts_path

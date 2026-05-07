@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""
+r"""
 Test suite for T-003: Breadcrumb verification in global hooks
 
 Acceptance Criteria:
@@ -21,12 +21,12 @@ class TestT003BreadcrumbVerifier:
 
     def test_hook_file_exists(self):
         """Test that PreToolUse_breadcrumb_verifier.py exists."""
-        hook_file = Path("P:/.claude/hooks/PreToolUse_breadcrumb_verifier.py")
+        hook_file = Path(r"P:\\\\.claude/hooks/PreToolUse_breadcrumb_verifier.py")
         assert hook_file.exists(), "PreToolUse_breadcrumb_verifier.py not found"
 
     def test_hook_executes_successfully(self):
-        """Test that the hook executes without errors."""
-        hook_file = Path("P:/.claude/hooks/PreToolUse_breadcrumb_verifier.py")
+        """Test that the hook executes without errors.r"""
+        hook_file = Path(r"P:\\\\.claude/hooks/PreToolUse_breadcrumb_verifier.py")
 
         # Test with no active trails
         hook_input = {"tool_name": "Read", "tool_input": {"file_path": "test.py"}}
@@ -51,13 +51,13 @@ class TestT003BreadcrumbVerifier:
         The hook runs in a subprocess with its own terminal_id, so it cannot
         see breadcrumb trails created in the parent test process. This is
         expected behavior for multi-terminal safety.
-        """
+        r"""
         from skill_guard.breadcrumb.tracker import (
             clear_breadcrumb_trail,
             initialize_breadcrumb_trail,
         )
 
-        hook_file = Path("P:/.claude/hooks/PreToolUse_breadcrumb_verifier.py")
+        hook_file = Path(r"P:\\\\.claude/hooks/PreToolUse_breadcrumb_verifier.py")
 
         # Setup: Create incomplete breadcrumb trail
         clear_breadcrumb_trail("test_skill")
@@ -104,13 +104,13 @@ class TestT003BreadcrumbVerifier:
         The hook runs in a subprocess with its own terminal_id, so it cannot
         see breadcrumb trails created in the parent test process. This is
         expected behavior for multi-terminal safety.
-        """
+        r"""
         from skill_guard.breadcrumb.tracker import (
             clear_breadcrumb_trail,
             initialize_breadcrumb_trail,
         )
 
-        hook_file = Path("P:/.claude/hooks/PreToolUse_breadcrumb_verifier.py")
+        hook_file = Path(r"P:\\\\.claude/hooks/PreToolUse_breadcrumb_verifier.py")
 
         # Setup: Create incomplete breadcrumb trail
         # Also clear "tdd" trail since subprocess has different terminal_id
@@ -157,7 +157,7 @@ class TestT003BreadcrumbVerifier:
             clear_breadcrumb_trail("test_block_skill")
 
     def test_complete_trail_allows_execution(self):
-        """Test that complete breadcrumb trail allows execution."""
+        """Test that complete breadcrumb trail allows execution.r"""
         from skill_guard.breadcrumb.tracker import (
             clear_breadcrumb_trail,
             get_breadcrumb_trail,
@@ -165,7 +165,7 @@ class TestT003BreadcrumbVerifier:
             set_breadcrumb,
         )
 
-        hook_file = Path("P:/.claude/hooks/PreToolUse_breadcrumb_verifier.py")
+        hook_file = Path(r"P:\\\\.claude/hooks/PreToolUse_breadcrumb_verifier.py")
 
         # Setup: Create complete breadcrumb trail
         # Also clear "tdd" trail since subprocess has different terminal_id
@@ -208,13 +208,13 @@ class TestT003BreadcrumbVerifier:
             clear_breadcrumb_trail("test_complete_skill")
 
     def test_non_completion_tools_skipped(self):
-        """Test that non-completion tools are skipped (no verification)."""
+        """Test that non-completion tools are skipped (no verification).r"""
         from skill_guard.breadcrumb.tracker import (
             clear_breadcrumb_trail,
             initialize_breadcrumb_trail,
         )
 
-        hook_file = Path("P:/.claude/hooks/PreToolUse_breadcrumb_verifier.py")
+        hook_file = Path(r"P:\\\\.claude/hooks/PreToolUse_breadcrumb_verifier.py")
 
         # Setup: Create incomplete breadcrumb trail
         clear_breadcrumb_trail("test_skip_skill")
@@ -245,7 +245,7 @@ class TestT003BreadcrumbVerifier:
 
     def test_disabled_hook_allows_all(self):
         """Test that disabled hook allows all tool execution."""
-        hook_file = Path("P:/.claude/hooks/PreToolUse_breadcrumb_verifier.py")
+        hook_file = Path(r"P:\\\\.claude/hooks/PreToolUse_breadcrumb_verifier.py")
 
         # Test with hook disabled
         hook_input = {"tool_name": "Bash", "tool_input": {"command": "test"}}

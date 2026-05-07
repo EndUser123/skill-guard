@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""
+r"""
 PreToolUse_skill_pattern_gate.py
 ================================
 
@@ -55,7 +55,7 @@ if TYPE_CHECKING:
 
 _script_path = Path(__file__)
 for _hooks_root in (
-    Path(r"P:\.claude\hooks"),
+    Path(r"$CLAUDE_ROOT/hooks"),
     _script_path.parent.parent,
     _script_path.resolve().parent.parent,
 ):
@@ -64,7 +64,7 @@ for _hooks_root in (
         sys.path.insert(0, _hooks_root_str)
 
 
-_SKILL_GUARD_SRC = Path(r"P:\packages\skill-guard\src").resolve()
+_SKILL_GUARD_SRC = Path(r"$CLAUDE_PLUGIN_ROOT/src").resolve()
 if _SKILL_GUARD_SRC.exists():
     _skill_guard_src_str = str(_SKILL_GUARD_SRC)
     if _skill_guard_src_str not in sys.path:
@@ -72,7 +72,7 @@ if _SKILL_GUARD_SRC.exists():
 
 
 def _clear_shadowed_hook_packages() -> None:
-    """Drop cached __lib and posttooluse modules so the hooks-root package can import cleanly."""
+    """Drop cached __lib and posttooluse modules so the hooks-root package can import cleanly.r"""
     for module_name in list(sys.modules):
         if module_name != "__lib" and not module_name.startswith("__lib.") and \
            module_name != "posttooluse" and not module_name.startswith("posttooluse."):
@@ -105,9 +105,9 @@ FIRST_TOOL_COHERENCE_ENABLED = (
     os.environ.get("FIRST_TOOL_COHERENCE_ENABLED", "true").lower() == "true"
 )
 
-STATE_DIR = Path("P:/.claude/.state")
-DISAGREEMENT_LOG = Path("P:/.claude/logs/skill_execution_gate.jsonl")
-COHERENCE_LOG = Path("P:/.claude/logs/first_tool_coherence.jsonl")
+STATE_DIR = Path(r"P:\\\\.claude/.state")
+DISAGREEMENT_LOG = Path(r"P:\\\\.claude/logs/skill_execution_gate.jsonl")
+COHERENCE_LOG = Path(r"P:\\\\.claude/logs/first_tool_coherence.jsonl")
 
 # Investigation tools - ALWAYS allowed (for understanding the problem)
 INVESTIGATION_TOOLS = {
@@ -223,7 +223,7 @@ def _extract_command(tool_name: str, tool_input: dict) -> str:
 
     Returns:
         Cleaned command string (lowercase, stripped) or empty string
-    """
+    r"""
     if tool_name == "Bash":
         # Bash command is in "command" field
         cmd = tool_input.get("command", "")
@@ -267,14 +267,14 @@ def _check_daemon_intent(command: str, skill: str, timeout: float = 2.5) -> bool
 
     Returns:
         True if daemon confirms intent match, False on error/no match
-    """
+    r"""
     if not DAEMON_ENABLED:
         return False
 
     try:
         # Import here to avoid issues if daemon_client unavailable
         # Guard against sys.path accumulation (memory leak)
-        _csf_src = str(Path("P:/__csf/src"))
+        _csf_src = str(Path(r"P:\\\\__csf/src"))
         if _csf_src not in sys.path:
             sys.path.insert(0, _csf_src)
         from daemons.daemon_client import DaemonClient
@@ -303,7 +303,7 @@ def _read_pending_state() -> dict | None:
 
     Returns:
         State dict or None if no skill loaded
-    """
+    r"""
     try:
         # Import shared state management
         sys.path.insert(0, str(Path(__file__).absolute().parent.parent))
@@ -336,7 +336,7 @@ def _read_pending_command_intent() -> dict | None:
 
     Returns:
         State dict from pending_command_intent.json or None if:
-        - File doesn't exist
+        - File doesnr't exist
         - Entry is stale (older than TTL)
         - Fingerprint matches current prompt (already handled this turn)
         - Terminal ID cannot be determined
@@ -348,7 +348,7 @@ def _read_pending_command_intent() -> dict | None:
     try:
         from __lib.hook_base import get_terminal_id
     except Exception:
-        _hooks_root = Path(r"P:\.claude\hooks")
+        _hooks_root = Path(r"$CLAUDE_ROOT/hooks")
         _hook_base_path = _hooks_root / "__lib" / "hook_base.py"
         _hook_base_spec = importlib.util.spec_from_file_location(
             "_hooks_hook_base",
@@ -379,7 +379,7 @@ def _read_pending_command_intent() -> dict | None:
     state = None
     for candidate_terminal_id in dict.fromkeys(candidate_terminal_ids):
         state_file = (
-            Path("P:/.claude/hooks/.state/terminals")
+            Path(r"P:\\\\.claude/hooks/.state/terminals")
             / candidate_terminal_id
             / "pending_command_intent.json"
         )
@@ -427,7 +427,7 @@ def _log_disagreement(
         regex_result: True/False from regex check
         daemon_result: True/False/None from daemon (None = error)
         decision: Final decision made ("allow" or "block")
-    """
+    r"""
     try:
         DISAGREEMENT_LOG.parent.mkdir(parents=True, exist_ok=True)
         entry = {
@@ -612,7 +612,7 @@ def _load_frontmatter_execution_config(skill_name: str) -> dict:
     Returns:
         Dict with tools/pattern/hint keys, or empty dict if not declared.
     """
-    skill_file = Path("P:/.claude/skills") / skill_name / "SKILL.md"
+    skill_file = Path(r"P:\\\\.claude/skills") / skill_name / "SKILL.md"
     if not skill_file.exists():
         return {}
     try:
@@ -662,7 +662,7 @@ def _check_workflow_steps(tool_name: str, tool_input: dict, slash_command: str) 
 
     Returns:
         Empty dict to allow, or {"block": True, "reason": "..."} to block
-    """
+    r"""
     if slash_command:
         # User typed a slash command - check if Skill tool is being used
         if tool_name == "Skill":
@@ -939,7 +939,7 @@ import time as _probe_time
 import json as _probe_json
 from pathlib import Path as _probe_path
 
-_LEGACY_PROBE_LOG = _probe_path("P:/.claude/tmp/PRETOOL_GATE_PROBE.jsonl")
+_LEGACY_PROBE_LOG = _probe_path(r"P:\\\\.claude/tmp/PRETOOL_GATE_PROBE.jsonl")
 _LEGACY_PROBE_LOG.parent.mkdir(parents=True, exist_ok=True)
 
 
@@ -1213,7 +1213,7 @@ def main():
         # Log error to diagnostics only, not stderr
         try:
             from pathlib import Path
-            log_path = Path("P:/.claude/hooks/logs/diagnostics/skill_pattern_gate_errors.log")
+            log_path = Path(r"P:\\\\.claude/hooks/logs/diagnostics/skill_pattern_gate_errors.log")
             log_path.parent.mkdir(parents=True, exist_ok=True)
             with open(log_path, "a", encoding="utf-8") as f:
                 from datetime import datetime

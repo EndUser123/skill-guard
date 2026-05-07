@@ -9,7 +9,7 @@ This guide helps you migrate breadcrumb trails from the old file-based storage (
 ### Before (File-Based)
 
 ```
-P:/.claude/state/
+P:\\\\.claude/state/
 ├── breadcrumb_logs_terminal-123/
 │   ├── code.jsonl          # Skill execution logs
 │   └── refactor.jsonl
@@ -27,7 +27,7 @@ P:/.claude/state/
 ### After (SQLite)
 
 ```
-P:/.claude/hooks/logs/diagnostics/
+P:\\\\.claude/hooks/logs/diagnostics/
 └── diagnostics.db         # Unified SQLite database
     ├── breadcrumb_trails    # Trail state table
     └── breadcrumb_events    # Audit log table
@@ -47,22 +47,22 @@ P:/.claude/hooks/logs/diagnostics/
 
 ```bash
 # Check for JSONL logs
-ls P:/.claude/state/breadcrumb_logs_*
+ls P:\\\\.claude/state/breadcrumb_logs_*
 
 # Check for JSON state files
-ls P:/.claude/state/breadcrumbs_*
+ls P:\\\\.claude/state/breadcrumbs_*
 ```
 
 **Expected output** (if you have data):
 ```
-P:/.claude/state/breadcrumb_logs_terminal-123/
-P:/.claude/state/breadcrumbs_terminal-123/
+P:\\\\.claude/state/breadcrumb_logs_terminal-123/
+P:\\\\.claude/state/breadcrumbs_terminal-123/
 ```
 
 ### 2. Install Updated skill-guard
 
 ```bash
-cd P:/packages/skill-guard
+cd P:\\\\packages/skill-guard
 pip install -e .
 ```
 
@@ -70,23 +70,23 @@ pip install -e .
 
 ```bash
 # Check default database location
-ls P:/.claude/hooks/logs/diagnostics/diagnostics.db
+ls P:\\\\.claude/hooks/logs/diagnostics/diagnostics.db
 ```
 
 If the directory doesn't exist, create it:
 ```bash
-mkdir -p P:/.claude/hooks/logs/diagnostics
+mkdir -p P:\\\\.claude/hooks/logs/diagnostics
 ```
 
 ### 4. Backup Existing Data (Optional but Recommended)
 
 ```bash
 # Create backup directory
-mkdir -p P:/.claude/state/backup_$(date +%Y%m%d)
+mkdir -p P:\\\\.claude/state/backup_$(date +%Y%m%d)
 
 # Copy all breadcrumb data
-cp -r P:/.claude/state/breadcrumb_logs_* P:/.claude/state/backup_$(date +%Y%m%d)/
-cp -r P:/.claude/state/breadcrumbs_* P:/.claude/state/backup_$(date +%Y%m%d)/
+cp -r P:\\\\.claude/state/breadcrumb_logs_* P:\\\\.claude/state/backup_$(date +%Y%m%d)/
+cp -r P:\\\\.claude/state/breadcrumbs_* P:\\\\.claude/state/backup_$(date +%Y%m%d)/
 ```
 
 ## Migration Process
@@ -110,12 +110,12 @@ If you want to migrate all terminals at once:
 
 ```bash
 # Navigate to skill-guard package
-cd P:/packages/skill-guard
+cd P:\\\\packages/skill-guard
 
 # Migrate all terminals
 python -m skill_guard.breadcrumb.migration \
     --all \
-    --db-path P:/.claude/hooks/logs/diagnostics/diagnostics.db
+    --db-path P:\\\\.claude/hooks/logs/diagnostics/diagnostics.db
 ```
 
 **Expected output**:
@@ -131,12 +131,12 @@ If you want to migrate a specific terminal:
 ```bash
 # Migrate current terminal (auto-detected)
 python -m skill_guard.breadcrumb.migration \
-    --db-path P:/.claude/hooks/logs/diagnostics/diagnostics.db
+    --db-path P:\\\\.claude/hooks/logs/diagnostics/diagnostics.db
 
 # Migrate specific terminal
 python -m skill_guard.breadcrumb.migration \
     --terminal terminal-123 \
-    --db-path P:/.claude/hooks/logs/diagnostics/diagnostics.db
+    --db-path P:\\\\.claude/hooks/logs/diagnostics/diagnostics.db
 ```
 
 ## Validation
@@ -147,7 +147,7 @@ python -m skill_guard.breadcrumb.migration \
 
 ```bash
 # Open database
-sqlite3 P:/.claude/hooks/logs/diagnostics/diagnostics.db
+sqlite3 P:\\\\.claude/hooks/logs/diagnostics/diagnostics.db
 
 # Check trails table
 SELECT COUNT(*) FROM breadcrumb_trails;
@@ -182,7 +182,7 @@ terminal-456|code|10
 python -c "
 from skill_guard.breadcrumb.sqlite_backend import get_active_trails
 from pathlib import Path
-trails = get_active_trails(Path('P:/.claude/hooks/logs/diagnostics/diagnostics.db'), 'terminal-123')
+trails = get_active_trails(Path('P:\\\\.claude/hooks/logs/diagnostics/diagnostics.db'), 'terminal-123')
 print(f'Found {len(trails)} trails for terminal-123')
 for trail in trails:
     print(f'  - {trail[\"skill\"]}: {trail[\"run_id\"][:8]}... ({len(trail[\"completed_steps\"])} steps completed)')
@@ -206,13 +206,13 @@ If you need to rollback the migration:
 python -m skill_guard.breadcrumb.migration \
     --rollback \
     --terminal terminal-123 \
-    --db-path P:/.claude/hooks/logs/diagnostics/diagnostics.db
+    --db-path P:\\\\.claude/hooks/logs/diagnostics/diagnostics.db
 
 # Rollback all terminals (not recommended - use selective rollback)
 python -m skill_guard.breadcrumb.migration \
     --rollback \
     --all \
-    --db-path P:/.claude/hooks/logs/diagnostics/diagnostics.db
+    --db-path P:\\\\.claude/hooks/logs/diagnostics/diagnostics.db
 ```
 
 **What rollback does**:
@@ -236,13 +236,13 @@ python -m skill_guard.breadcrumb.migration \
 
 ```bash
 # Remove JSONL logs (after 30 days)
-rm -rf P:/.claude/state/breadcrumb_logs_*
+rm -rf P:\\\\.claude/state/breadcrumb_logs_*
 
 # Remove JSON state files (after 30 days)
-rm -rf P:/.claude/state/breadcrumbs_*
+rm -rf P:\\\\.claude/state/breadcrumbs_*
 
 # Keep backups
-# P:/.claude/state/backup_YYYYMMDD/
+# P:\\\\.claude/state/backup_YYYYMMDD/
 ```
 
 ### Verify No Data Loss
@@ -251,11 +251,11 @@ rm -rf P:/.claude/state/breadcrumbs_*
 
 ```bash
 # Count trails in database
-sqlite3 P:/.claude/hooks/logs/diagnostics/diagnostics.db \
+sqlite3 P:\\\\.claude/hooks/logs/diagnostics/diagnostics.db \
     "SELECT COUNT(*) FROM breadcrumb_trails;"
 
 # Count old JSON files
-find P:/.claude/state/breadcrumbs_* -name "breadcrumb_*.json" | wc -l
+find P:\\\\.claude/state/breadcrumbs_* -name "breadcrumb_*.json" | wc -l
 ```
 
 **Expected**: Database count ≥ JSON file count
@@ -302,7 +302,7 @@ if not json_valid:
 **Diagnosis**:
 ```bash
 # Check for active connections
-sqlite3 P:/.claude/hooks/logs/diagnostics/diagnostics.db \
+sqlite3 P:\\\\.claude/hooks/logs/diagnostics/diagnostics.db \
     "PRAGMA database_list;"
 ```
 
@@ -318,13 +318,13 @@ sqlite3 P:/.claude/hooks/logs/diagnostics/diagnostics.db \
 **Diagnosis**:
 ```bash
 # Check database permissions
-ls -la P:/.claude/hooks/logs/diagnostics/diagnostics.db
+ls -la P:\\\\.claude/hooks/logs/diagnostics/diagnostics.db
 ```
 
 **Solution**:
 ```bash
 # Fix permissions
-chmod 644 P:/.claude/hooks/logs/diagnostics/diagnostics.db
+chmod 644 P:\\\\.claude/hooks/logs/diagnostics/diagnostics.db
 ```
 
 ### Issue: Corrupted Database
@@ -334,7 +334,7 @@ chmod 644 P:/.claude/hooks/logs/diagnostics/diagnostics.db
 **Diagnosis**:
 ```bash
 # Check database integrity
-sqlite3 P:/.claude/hooks/logs/diagnostics/diagnostics.db \
+sqlite3 P:\\\\.claude/hooks/logs/diagnostics/diagnostics.db \
     "PRAGMA integrity_check;"
 ```
 
@@ -344,7 +344,7 @@ sqlite3 P:/.claude/hooks/logs/diagnostics/diagnostics.db \
 python -m skill_guard.breadcrumb.migration --rollback
 
 # Delete corrupted database
-rm P:/.claude/hooks/logs/diagnostics/diagnostics.db
+rm P:\\\\.claude/hooks/logs/diagnostics/diagnostics.db
 
 # Re-run migration
 python -m skill_guard.breadcrumb.migration --all
@@ -356,7 +356,7 @@ python -m skill_guard.breadcrumb.migration --all
 
 ```bash
 # Test query performance (file-based)
-time ls P:/.claude/state/breadcrumbs_terminal-123/
+time ls P:\\\\.claude/state/breadcrumbs_terminal-123/
 # Real: 0.005s (5ms)
 ```
 
@@ -364,7 +364,7 @@ time ls P:/.claude/state/breadcrumbs_terminal-123/
 
 ```bash
 # Test query performance (SQLite)
-time sqlite3 P:/.claude/hooks/logs/diagnostics/diagnostics.db \
+time sqlite3 P:\\\\.claude/hooks/logs/diagnostics/diagnostics.db \
     "SELECT * FROM breadcrumb_trails WHERE terminal_id = 'terminal-123';"
 # Real: 0.001s (1ms) - 5x faster
 ```
@@ -429,7 +429,7 @@ If you encounter issues not covered in this guide:
 
 1. Check the [troubleshooting guide](troubleshooting.md)
 2. Review [architecture documentation](architecture.md)
-3. Check logs: `P:/.claude/hooks/logs/`
+3. Check logs: `P:\\\\.claude/hooks/logs/`
 4. Open an issue on GitHub
 
 ## Checklist

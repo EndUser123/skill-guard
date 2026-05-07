@@ -88,7 +88,7 @@ For issues or questions:
 
 1. Check the [Troubleshooting Guide](troubleshooting.md)
 2. Review the [FAQ](migration-guide.md#faq)
-3. Check logs: `P:/.claude/hooks/logs/`
+3. Check logs: `P:\\\\.claude/hooks/logs/`
 4. Open an issue on GitHub
 
 ## Documentation Structure
@@ -108,7 +108,7 @@ docs/
 
 ```bash
 # Check database health
-sqlite3 P:/.claude/hooks/logs/diagnostics/diagnostics.db "PRAGMA integrity_check;"
+sqlite3 P:\\\\.claude/hooks/logs/diagnostics/diagnostics.db "PRAGMA integrity_check;"
 
 # Migrate to SQLite
 python -m skill_guard.breadcrumb.migration --all
@@ -117,14 +117,14 @@ python -m skill_guard.breadcrumb.migration --all
 python -m skill_guard.breadcrumb.migration --rollback
 
 # Check database size
-du -sh P:/.claude/hooks/logs/diagnostics/diagnostics.db
+du -sh P:\\\\.claude/hooks/logs/diagnostics/diagnostics.db
 ```
 
 ### Key Files
 
-- **Database**: `P:/.claude/hooks/logs/diagnostics/diagnostics.db`
-- **Logs**: `P:/.claude/hooks/logs/`
-- **State**: `P:/.claude/state/`
+- **Database**: `P:\\\\.claude/hooks/logs/diagnostics/diagnostics.db`
+- **Logs**: `P:\\\\.claude/hooks/logs/`
+- **State**: `P:\\\\.claude/state/`
 
 ### Performance Targets
 

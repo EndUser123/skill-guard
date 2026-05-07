@@ -30,7 +30,7 @@ def _base_skill_state() -> dict:
 
 
 def test_handle_pre_tool_use_allows_required_first_command():
-    """First Bash command that matches the skill contract should be allowed."""
+    """First Bash command that matches the skill contract should be allowed.r"""
     with patch(
         "skill_guard.PreToolUse.PreToolUse_skill_pattern_gate._read_pending_state",
         return_value=_base_skill_state(),

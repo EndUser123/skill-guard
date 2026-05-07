@@ -166,7 +166,7 @@ class TestBreadcrumbIsolation:
         clear_breadcrumb_trail(skill2)
 
     def test_path_traversal_blocked_in_file_operations(self):
-        """Test that path traversal attempts are blocked."""
+        """Test that path traversal attempts are blocked.r"""
         malicious_names = [
             "../../etc/passwd",
             "..\\..\\windows\\system32",
