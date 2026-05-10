@@ -31,7 +31,7 @@ from skill_guard.utils.terminal_detection import detect_terminal_id
 # CONFIGURATION
 # =============================================================================
 
-STATE_DIR = Path(r"P:\\\\.claude/state")
+STATE_DIR = Path(r"P:\\\\\\.claude/state")
 
 # Maximum log file size before rotation (1 MB)
 MAX_LOG_SIZE_BYTES = 1024 * 1024

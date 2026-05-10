@@ -4,7 +4,7 @@ Characterization tests for add_tool_mapping() mutable state bug.
 These tests CAPTURE CURRENT BEHAVIOR before refactoring.
 The bug: add_tool_mapping() mutates DEFAULT_TOOL_MAPPINGS at runtime with no locking.
 
-Run with: pytest P:\\\\packages/skill-guard/tests/test_inference_mutable_state.py -v
+Run with: pytest P:\\\\\\packages/skill-guard/tests/test_inference_mutable_state.py -v
 """
 
 import pytest

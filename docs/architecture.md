@@ -57,7 +57,7 @@ graph TB
 
 **Configuration**:
 ```python
-DEFAULT_DB_PATH = "P:\\\\.claude/hooks/logs/diagnostics/diagnostics.db"
+DEFAULT_DB_PATH = "P:\\\\\\.claude/hooks/logs/diagnostics/diagnostics.db"
 BUSY_TIMEOUT_MS = 5000  # 5 seconds
 JOURNAL_MODE = "wal"     # Write-Ahead Logging
 ```
@@ -107,13 +107,13 @@ JOURNAL_MODE = "wal"     # Write-Ahead Logging
 **CLI Interface**:
 ```bash
 # Migrate current terminal
-python -m skill_guard.breadcrumb.migration --db-path P:\\\\.claude/hooks/logs/diagnostics/diagnostics.db
+python -m skill_guard.breadcrumb.migration --db-path P:\\\\\\.claude/hooks/logs/diagnostics/diagnostics.db
 
 # Migrate all terminals
-python -m skill_guard.breadcrumb.migration --all --db-path P:\\\\.claude/hooks/logs/diagnostics/diagnostics.db
+python -m skill_guard.breadcrumb.migration --all --db-path P:\\\\\\.claude/hooks/logs/diagnostics/diagnostics.db
 
 # Rollback migration
-python -m skill_guard.breadcrumb.migration --rollback --db-path P:\\\\.claude/hooks/logs/diagnostics/diagnostics.db
+python -m skill_guard.breadcrumb.migration --rollback --db-path P:\\\\\\.claude/hooks/logs/diagnostics/diagnostics.db
 ```
 
 ### 4. Cache Layer (`cache.py`)
@@ -366,7 +366,7 @@ During transition period:
 
 ### Database Location
 
-- **Path**: `P:\\\\.claude/hooks/logs/diagnostics/diagnostics.db`
+- **Path**: `P:\\\\\\.claude/hooks/logs/diagnostics/diagnostics.db`
 - **Permissions**: Restricted to Claude Code hooks
 - **Access**: Direct SQLite file access (no network)
 

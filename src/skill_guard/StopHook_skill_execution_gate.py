@@ -50,8 +50,8 @@ if TYPE_CHECKING:
     pass
 
 HOOKS_DIR = Path(__file__).resolve().parent
-SKILL_GUARD_SRC = Path(r"P:\\\\packages/skill-guard/src")
-MAIN_HOOKS_DIR = Path(r"P:\\\\.claude/hooks")
+SKILL_GUARD_SRC = Path(r"P:\\\\\\packages/skill-guard/src")
+MAIN_HOOKS_DIR = Path(r"P:\\\\\\.claude/hooks")
 # Must insert MAIN_HOOKS_DIR at position 0 — $__CSF_ROOT/__lib shadows __lib
 for _p in (MAIN_HOOKS_DIR, HOOKS_DIR, SKILL_GUARD_SRC):
     if _p.exists():
@@ -88,7 +88,7 @@ except Exception:  # pragma: no cover - observability must fail open
 
 ENABLED = os.environ.get("SKILL_EXECUTION_GATE_ENABLED", "true").lower() == "true"
 
-STATE_DIR = Path(r"P:\\\\.claude/.state")
+STATE_DIR = Path(r"P:\\\\\\.claude/.state")
 
 # Per-terminal log files (multi-terminal safe - no shared state)
 _log_tid = ""
@@ -99,8 +99,8 @@ try:
 except Exception:
     pass
 _tid_suffix = f"_{_log_tid}" if _log_tid else ""
-LOG_FILE = Path(fr"P:\\\\.claude/logs/skill_execution_gate{_tid_suffix}.jsonl")
-DEBUG_LOG_FILE = Path(fr"P:\\\\.claude/logs/skill_execution_gate{_tid_suffix}_debug.log")
+LOG_FILE = Path(fr"P:\\\\\\.claude/logs/skill_execution_gate{_tid_suffix}.jsonl")
+DEBUG_LOG_FILE = Path(fr"P:\\\\\\.claude/logs/skill_execution_gate{_tid_suffix}_debug.log")
 
 # Stale timeout (prevents blocking indefinitely)
 STALE_TIMEOUT = 300  # 5 minutes
@@ -875,7 +875,7 @@ def run(input_data: dict) -> dict | None:
                                 f"\n⚠️ SKILL FRONTMATTER ADVISORY: /{_skill_name}\n"
                                 f"  {_warn_lines}\n"
                                 f"Fix: Add missing fields to "
-                                fr"P:\\\\.claude/skills/{_skill_name}/SKILL.md\n"
+                                fr"P:\\\\\\.claude/skills/{_skill_name}/SKILL.md\n"
                             ),
                         }
                     break  # Found the event for this turn, no need to check older events
@@ -886,7 +886,7 @@ def run(input_data: dict) -> dict | None:
     # After frontmatter_warnings advisory, check if the skill declares required first
     # command patterns and validate the actual first Bash command matches.
     if slash_cmd and slash_cmd not in BUILTIN_SLASH_COMMANDS and slash_cmd not in LIGHTWEIGHT_SLASH_COMMANDS and slash_cmd not in KNOWLEDGE_SKILLS:
-        _skill_md_path = Path(fr"P:\\\\.claude/skills/{slash_cmd}/SKILL.md")
+        _skill_md_path = Path(fr"P:\\\\\\.claude/skills/{slash_cmd}/SKILL.md")
         if _skill_md_path.exists():
             try:
                 with _skill_md_path.open("r", encoding="utf-8") as _f:

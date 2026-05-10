@@ -50,7 +50,7 @@ Extract `skill_name` from the prompt (required). Parse optional flags:
 
 ### Step 2: Load target skill frontmatter
 
-Read the target skill's SKILL.md from `P:\\\\.claude-marketplace/plugins/<skill_name>/SKILL.md` (default). Override via `--skills-dir` argument or `SKILL_DIR` env var.
+Read the target skill's SKILL.md from `P:\\\\\\.claude-marketplace/plugins/<skill_name>/SKILL.md` (default). Override via `--skills-dir` argument or `SKILL_DIR` env var.
 
 If the file does not exist, return an error immediately.
 
@@ -59,7 +59,7 @@ If the file does not exist, return an error immediately.
 Run the migration script:
 
 ```bash
-cd "P:\\\\packages/skill-guard" && python skills/migrate_skill_ct/src/migrate_skill_contract.py --skill <skill-name> --mode <audit|patch> [--write true] [--skills-dir P:\\\\.claude-marketplace/plugins]
+cd "P:\\\\\\packages/skill-guard" && python skills/migrate_skill_ct/src/migrate_skill_contract.py --skill <skill-name> --mode <audit|patch> [--write true] [--skills-dir P:\\\\\\.claude-marketplace/plugins]
 ```
 
 The script wraps `classify_migration_status()` and `build_migration_result()` from `skill_guard._skill_frontmatter_loader`.

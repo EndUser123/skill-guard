@@ -108,7 +108,7 @@ def _load_skill_frontmatter(skill_name: str) -> dict[str, Any] | None:
         "required_markers": [],
         "required_sections": [],
     }
-    skill_dir = Path(r"P:\\\\.claude/skills") / skill_name
+    skill_dir = Path(r"P:\\\\\\.claude/skills") / skill_name
     skill_file = skill_dir / "SKILL.md"
     if not skill_file.exists():
         return None
@@ -233,7 +233,7 @@ def _validate_skill_frontmatter(skill_name: str) -> list[str]:
         Empty list if skill doesn't exist or has no issues.
     r"""
     warnings: list[str] = []
-    skill_dir = Path(r"P:\\\\.claude/skills") / skill_name
+    skill_dir = Path(r"P:\\\\\\.claude/skills") / skill_name
     skill_file = skill_dir / "SKILL.md"
 
     if not skill_file.exists():

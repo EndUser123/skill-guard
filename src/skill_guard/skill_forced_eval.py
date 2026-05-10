@@ -24,7 +24,7 @@ from pathlib import Path
 # Add hooks directory to path for imports from UserPromptSubmit_modules
 # This module lives in packages/skill-guard but needs to import from .claude/hooks
 # Must insert at position 0 — $__CSF_ROOT/__lib shadows __lib namespace
-_hooks_dir = Path(r"P:\\\\.claude/hooks")
+_hooks_dir = Path(r"P:\\\\\\.claude/hooks")
 if _hooks_dir.exists():
     s = str(_hooks_dir)
     if s in sys.path:
@@ -43,7 +43,7 @@ from UserPromptSubmit_modules.registry import register_hook
 # Paths to skills directories (home, plugins, project)
 SKILLS_DIRS = [
     Path.home() / ".claude" / "skills",  # ~/.claude/skills
-    Path(r"P:\\\\.claude/skills"),  # project-level skills
+    Path(r"P:\\\\\\.claude/skills"),  # project-level skills
 ]
 
 # Pattern to detect slash commands - must be at word boundary with /

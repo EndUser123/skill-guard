@@ -22,30 +22,30 @@ from pathlib import Path
 import pytest
 
 
-@pytest.mark.skip(reason=r"/tdd skill hooks do not exist at P:\\\\.claude/skills/tdd/hooks/ - pre-existing gap")
+@pytest.mark.skip(reason=r"/tdd skill hooks do not exist at P:\\\\\\.claude/skills/tdd/hooks/ - pre-existing gap")
 class TestBreadcrumbIntegration:
     """Test breadcrumb tracking integration with skill hooks.r"""
 
     def test_sessionstart_hooks_exist(self):
         """Test that SessionStart hooks exist for /code and /tdd skills."""
-        code_hook = Path(r"P:\\\\.claude/skills/code/hooks/SessionStart_breadcrumb_init.py")
-        tdd_hook = Path(r"P:\\\\.claude/skills/tdd/hooks/SessionStart_breadcrumb_init.py")
+        code_hook = Path(r"P:\\\\\\.claude/skills/code/hooks/SessionStart_breadcrumb_init.py")
+        tdd_hook = Path(r"P:\\\\\\.claude/skills/tdd/hooks/SessionStart_breadcrumb_init.py")
 
         assert code_hook.exists(), "/code SessionStart hook not found"
         assert tdd_hook.exists(), "/tdd SessionStart hook not found"
 
     def test_posttooluse_hooks_exist(self):
         """Test that PostToolUse hooks exist for breadcrumb tracking.r"""
-        code_hook = Path(r"P:\\\\.claude/skills/code/hooks/PostToolUse_breadcrumb_tracker.py")
-        tdd_hook = Path(r"P:\\\\.claude/skills/tdd/hooks/PostToolUse_tdd_state.py")
+        code_hook = Path(r"P:\\\\\\.claude/skills/code/hooks/PostToolUse_breadcrumb_tracker.py")
+        tdd_hook = Path(r"P:\\\\\\.claude/skills/tdd/hooks/PostToolUse_tdd_state.py")
 
         assert code_hook.exists(), "/code PostToolUse hook not found"
         assert tdd_hook.exists(), "/tdd PostToolUse hook not found"
 
     def test_sessionstart_hook_executes_successfully(self):
         """Test that SessionStart hooks execute without errors.r"""
-        code_hook = Path(r"P:\\\\.claude/skills/code/hooks/SessionStart_breadcrumb_init.py")
-        tdd_hook = Path(r"P:\\\\.claude/skills/tdd/hooks/SessionStart_breadcrumb_init.py")
+        code_hook = Path(r"P:\\\\\\.claude/skills/code/hooks/SessionStart_breadcrumb_init.py")
+        tdd_hook = Path(r"P:\\\\\\.claude/skills/tdd/hooks/SessionStart_breadcrumb_init.py")
 
         # Test /code hook
         result = subprocess.run(
@@ -63,7 +63,7 @@ class TestBreadcrumbIntegration:
 
     def test_posttooluse_hook_executes_successfully(self):
         """Test that PostToolUse hooks execute without errors.r"""
-        code_hook = Path(r"P:\\\\.claude/skills/code/hooks/PostToolUse_breadcrumb_tracker.py")
+        code_hook = Path(r"P:\\\\\\.claude/skills/code/hooks/PostToolUse_breadcrumb_tracker.py")
 
         # Test with Read tool
         hook_input = {"tool_name": "Read", "tool_input": {"file_path": "test.py"}}
@@ -80,7 +80,7 @@ class TestBreadcrumbIntegration:
 
     def test_breadcrumb_imports_in_tdd_hook(self):
         """Test that TDD PostToolUse hook has breadcrumb imports.r"""
-        tdd_hook_path = Path(r"P:\\\\.claude/skills/tdd/hooks/PostToolUse_tdd_state.py")
+        tdd_hook_path = Path(r"P:\\\\\\.claude/skills/tdd/hooks/PostToolUse_tdd_state.py")
         content = tdd_hook_path.read_text()
 
         # Check for skill_guard path
@@ -97,7 +97,7 @@ class TestBreadcrumbIntegration:
 
     def test_breadcrumb_calls_in_tdd_hook(self):
         """Test that TDD PostToolUse hook has breadcrumb calls at key transitions.r"""
-        tdd_hook_path = Path(r"P:\\\\.claude/skills/tdd/hooks/PostToolUse_tdd_state.py")
+        tdd_hook_path = Path(r"P:\\\\\\.claude/skills/tdd/hooks/PostToolUse_tdd_state.py")
         content = tdd_hook_path.read_text()
 
         # Check for breadcrumb calls at key transitions

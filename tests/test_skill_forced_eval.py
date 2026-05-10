@@ -249,14 +249,14 @@ class TestSymlinkIntegrity:
     def test_skill_execution_state_symlink_valid(self) -> None:
         """QA-008: Verify skill_execution_state symlink points to expected location."""
         # Check if the symlink exists and points to expected location
-        skill_state_link = Path(r"P:\\\\.claude/hooks/skill_execution_state.py")
+        skill_state_link = Path(r"P:\\\\\\.claude/hooks/skill_execution_state.py")
 
         # Should be a symlink
         assert skill_state_link.is_symlink()
 
         # Resolve and verify target
         target = skill_state_link.resolve()
-        expected_parent = Path(r"P:\\\\packages/skill-guard/src/skill_guard/")
+        expected_parent = Path(r"P:\\\\\\packages/skill-guard/src/skill_guard/")
 
         assert target.parent == expected_parent
         assert target.name == "skill_execution_state.py"
@@ -288,7 +288,7 @@ class TestImportChain:
         module_path = "skill_guard.skill_forced_eval"
 
         # Add hooks to sys.path first (like registry.py context does)
-        hooks_dir = Path(r"P:\\\\.claude/hooks")
+        hooks_dir = Path(r"P:\\\\\\.claude/hooks")
         if str(hooks_dir) not in sys.path:
             sys.path.insert(0, str(hooks_dir))
 
@@ -394,7 +394,7 @@ class TestSysPathShadowing:
 
     def test_exact_string_check_prevents_duplicate_insert(self) -> None:
         """Verify exact string match check prevents duplicate inserts."""
-        hooks_dir = r"P:\\\\.claude/hooks"
+        hooks_dir = r"P:\\\\\\.claude/hooks"
 
         # Save original sys.path
         original_path = sys.path.copy()

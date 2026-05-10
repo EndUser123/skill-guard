@@ -58,7 +58,7 @@ def mock_skills_dir(tmp_path):
 
     def mock_path_impl(path_str):
         """Mock Path implementation that redirects skills directory."""
-        if isinstance(path_str, str) and r"P:\\\\.claude/skills" in path_str:
+        if isinstance(path_str, str) and r"P:\\\\\\.claude/skills" in path_str:
             return skills_dir
         return original_path(path_str)
 
@@ -741,7 +741,7 @@ class TestSetBreadcrumbEvidence:
         # Set breadcrumb with evidence
         # NOTE: Must reset write counter to 4 so the 5th call triggers immediate write
         # The mock_detect_terminal_id fixture causes files to be written to
-        # P:\\\\.claude/state/breadcrumbs_pytest_isolated/ during init, but
+        # P:\\\\\\.claude/state/breadcrumbs_pytest_isolated/ during init, but
         # mock_get_breadcrumb_dir returns tmp_path/breadcrumbs for set_breadcrumb.
         # Without resetting the counter, the debounced write (every 5 calls) doesn't
         # fire and the test reads the stale init-time file.

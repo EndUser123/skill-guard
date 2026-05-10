@@ -28,7 +28,7 @@ import re
 import sys
 from pathlib import Path
 
-HOOKS_DIR = Path(r"P:\\\\.claude/hooks")
+HOOKS_DIR = Path(r"P:\\\\\\.claude/hooks")
 sys.path.insert(0, str(HOOKS_DIR))
 
 _STATE_DIR = HOOKS_DIR / "state" / "skill_context"

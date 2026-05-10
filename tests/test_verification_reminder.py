@@ -2,10 +2,10 @@ r"""
 Failing tests for check_verification_reminder() function.
 
 These tests verify the verification reminder functionality for TASK-004.
-Run with: pytest P:\\\\packages/skill-guard/tests/test_verification_reminder.py -v
+Run with: pytest P:\\\\\\packages/skill-guard/tests/test_verification_reminder.py -v
 
 Function specification:
-- Location: P:\\\\.claude/hooks/StopHook_skill_execution_gate.py
+- Location: P:\\\\\\.claude/hooks/StopHook_skill_execution_gate.py
 - Filters steps by kind=verification, status!=done
 - Returns {"allow": True, "reminder": "..."}
 - Warn-only (never blocks)
@@ -19,7 +19,7 @@ from typing import Any, Dict
 import pytest
 
 # Add hooks directory to path for importing
-HOOKS_DIR = Path(r"P:\\\\.claude/hooks")
+HOOKS_DIR = Path(r"P:\\\\\\.claude/hooks")
 if str(HOOKS_DIR) not in sys.path:
     sys.path.insert(0, str(HOOKS_DIR))
 

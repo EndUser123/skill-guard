@@ -98,7 +98,7 @@ KNOWLEDGE_SKILLS = {
 
 
 def discover_all_skills(
-    skills_dir: str | Path = r"P:\\\\.claude/skills",
+    skills_dir: str | Path = r"P:\\\\\\.claude/skills",
 ) -> dict:
     r"""
     Auto-discover ALL skills from SKILL.md frontmatter.
@@ -106,7 +106,7 @@ def discover_all_skills(
     Scans .claude/skills/*/SKILL.md files and extracts metadata from frontmatter.
 
     Args:
-        skills_dir: Path to skills directory (default: r"P:\\\\.claude/skills")
+        skills_dir: Path to skills directory (default: r"P:\\\\\\.claude/skills")
 
     Returns:
         Dictionary mapping skill names to their configurations:
@@ -299,7 +299,7 @@ def get_skill_config(
 
 
 def discover_hooks(
-    skills_dir: str | Path = r"P:\\\\.claude/skills",
+    skills_dir: str | Path = r"P:\\\\\\.claude/skills",
 ) -> list[dict]:
     r"""
     Auto-discover hook declarations from SKILL.md frontmatter.
@@ -307,7 +307,7 @@ def discover_hooks(
     Scans .claude/skills/*/SKILL.md files and extracts hooks: declarations.
 
     Args:
-        skills_dir: Path to skills directory (default: r"P:\\\\.claude/skills")
+        skills_dir: Path to skills directory (default: r"P:\\\\\\.claude/skills")
 
     Returns:
         List of hook configs:
@@ -433,7 +433,7 @@ def _detect_script_pattern(skill_name: str) -> str:
     Returns:
         Pattern string (e.g., "run_heavy.py") or empty string
     """
-    skill_path = Path(r"P:\\\\.claude/skills") / skill_name
+    skill_path = Path(r"P:\\\\\\.claude/skills") / skill_name
 
     # Check for run_heavy.py
     if (skill_path / "run_heavy.py").exists():

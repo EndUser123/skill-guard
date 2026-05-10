@@ -24,7 +24,7 @@ import sys
 from pathlib import Path
 
 # Add skill-guard to path
-SKILL_GUARD = Path(r"P:\\\\packages/skill-guard/src")
+SKILL_GUARD = Path(r"P:\\\\\\packages/skill-guard/src")
 if SKILL_GUARD.exists():
     sys.path.insert(0, str(SKILL_GUARD))
 

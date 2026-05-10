@@ -180,7 +180,7 @@ class TestHybridSystemPerformance:
         skill = "benchmark_hybrid_e2e"
 
         # Create SKILL.md with workflow_steps for this test skill
-        skill_dir = Path(r"P:\\\\.claude/skills") / skill.lower()
+        skill_dir = Path(r"P:\\\\\\.claude/skills") / skill.lower()
         skill_dir.mkdir(parents=True, exist_ok=True)
         skill_file = skill_dir / "SKILL.md"
 
@@ -245,7 +245,7 @@ r""")
         skill = "benchmark_hybrid_memory"
 
         # Create SKILL.md with workflow_steps for this test skill
-        skill_dir = Path(r"P:\\\\.claude/skills") / skill.lower()
+        skill_dir = Path(r"P:\\\\\\.claude/skills") / skill.lower()
         skill_dir.mkdir(parents=True, exist_ok=True)
         skill_file = skill_dir / "SKILL.md"
 

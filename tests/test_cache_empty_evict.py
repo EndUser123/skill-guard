@@ -7,7 +7,7 @@ The bug: _evict_if_needed() calls min(_access_times) without checking if _access
 Location: skill_guard/breadcrumb/cache.py:181
 Finding: PERF-006
 
-Run with: pytest P:\\\\packages/skill-guard/tests/test_cache_empty_evict.py -v
+Run with: pytest P:\\\\\\packages/skill-guard/tests/test_cache_empty_evict.py -v
 """
 
 import pytest

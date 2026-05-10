@@ -38,7 +38,7 @@ from skill_guard._skill_frontmatter_loader import (
 
 # Primary skill directory — also used by _load_skill_frontmatter in skill_guard.
 # Override via SKILL_DIR env var or the --skills-dir argument.
-SKILL_DIR = Path(os.environ.get("SKILL_DIR", r"P:\\\\packages/.claude-marketplace/plugins/cc-skills-thinking/skills"))
+SKILL_DIR = Path(os.environ.get("SKILL_DIR", r"P:\\\\\\packages/.claude-marketplace/plugins/cc-skills-thinking/skills"))
 
 
 def _load_target_frontmatter(skill_name: str, skills_dir: Path | None = None) -> dict[str, Any] | None:
@@ -103,7 +103,7 @@ def _generate_patch(
         suggested = f"{skill_name}-ct"
         lines.append("")
         lines.append(f"# Naming recommendation: rename skill directory and 'name:' field to '{suggested}'")
-        lines.append(fr"# See: P:\\\\.claude/docs/claude-skill-v1.0.md § Naming conventions")
+        lines.append(fr"# See: P:\\\\\\.claude/docs/claude-skill-v1.0.md § Naming conventions")
         lines.append("# then run: /migrate-skill-ct <new-name> --mode patch --write true")
 
     lines.append("")
@@ -573,7 +573,7 @@ def main() -> None:
     parser.add_argument(
         "--skills-dir",
         default=None,
-        help=r"Override the skills directory (default: P:\\\\packages/.claude-marketplace/plugins/cc-skills-thinking/skills)",
+        help=r"Override the skills directory (default: P:\\\\\\packages/.claude-marketplace/plugins/cc-skills-thinking/skills)",
     )
     parser.add_argument(
         "--batch",

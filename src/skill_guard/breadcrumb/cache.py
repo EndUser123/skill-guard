@@ -36,7 +36,7 @@ from skill_guard.utils.terminal_detection import detect_terminal_id
 # CONFIGURATION
 # =============================================================================
 
-STATE_DIR = Path(r"P:\\\\.claude/state")
+STATE_DIR = Path(r"P:\\\\\\.claude/state")
 
 # Snapshot interval (seconds)
 SNAPSHOT_INTERVAL = 30.0

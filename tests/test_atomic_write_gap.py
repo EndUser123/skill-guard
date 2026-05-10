@@ -5,7 +5,7 @@ These tests assert CORRECT behavior and FAIL against the buggy implementation.
 The bug: _atomic_write_json uses unlink() then rename() as separate operations,
 creating a data-loss window. Correct behavior: use os.replace() for atomic overwrite.
 
-Run with: pytest P:\\\\packages/skill-guard/tests/test_atomic_write_gap.py -v
+Run with: pytest P:\\\\\\packages/skill-guard/tests/test_atomic_write_gap.py -v
 """
 
 import pytest

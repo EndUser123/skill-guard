@@ -4,8 +4,8 @@ execution_store.py
 
 ExecutionStore interface + ArtifactsExecutionStore implementation.
 
-Sole authority path: P:\\\\.claude/.artifacts/console_{terminal_id}/execution-state.json
-Append-only log: P:\\\\.claude/.artifacts/console_{terminal_id}/execution-events.jsonl
+Sole authority path: P:\\\\\\.claude/.artifacts/console_{terminal_id}/execution-state.json
+Append-only log: P:\\\\\\.claude/.artifacts/console_{terminal_id}/execution-events.jsonl
 
 INVARIANT 1 (one active run per terminal):
   execution-state.json is the SOLE authority for active contract runs.
@@ -82,7 +82,7 @@ class ArtifactsExecutionStore(ExecutionStore):
         execution-events.jsonl (append-only event log)
     """
 
-    ARTIFACTS_ROOT = Path(r"P:\\\\.claude/.artifacts")
+    ARTIFACTS_ROOT = Path(r"P:\\\\\\.claude/.artifacts")
 
     def __init__(self, terminal_id: str):
         self._terminal_id = terminal_id

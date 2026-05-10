@@ -19,7 +19,7 @@ class TestSkillExecutionStateRefactorProgress:
     @pytest.fixture
     def source_file(self):
         """Path to the skill_execution_state.py file."""
-        return Path(r"P:\\\\packages/skill-guard/src/skill_guard/skill_execution_state.py")
+        return Path(r"P:\\\\\\packages/skill-guard/src/skill_guard/skill_execution_state.py")
 
     @pytest.fixture
     def source_code(self, source_file):
@@ -122,7 +122,7 @@ class TestSkillExecutionStateRefactorProgress:
 
     def test_phases_module_exists(self):
         """Goal: phases.py module should exist for phase constants.r"""
-        base = Path(r"P:\\\\packages/skill-guard/src/skill_guard")
+        base = Path(r"P:\\\\\\packages/skill-guard/src/skill_guard")
         phases = base / "phases.py"
         assert phases.exists(), (
             "phases.py should exist at src/skill_guard/phases.py. "
@@ -131,7 +131,7 @@ class TestSkillExecutionStateRefactorProgress:
 
     def test_frontmatter_loader_module_exists(self):
         """Goal: _skill_frontmatter_loader.py module should exist.r"""
-        base = Path(r"P:\\\\packages/skill-guard/src/skill_guard")
+        base = Path(r"P:\\\\\\packages/skill-guard/src/skill_guard")
         loader = base / "_skill_frontmatter_loader.py"
         assert loader.exists(), (
             "_skill_frontmatter_loader.py should exist at src/skill_guard/_skill_frontmatter_loader.py. "

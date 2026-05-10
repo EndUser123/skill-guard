@@ -57,14 +57,14 @@ WorkflowStepsResult = namedtuple("WorkflowStepsResult", ["steps", "parse_error"]
 # CONFIGURATION
 # =============================================================================
 
-STATE_DIR = Path(r"P:\\\\.claude/state")
+STATE_DIR = Path(r"P:\\\\\\.claude/state")
 # Maximum age for breadcrumb trails (2 hours)
 MAX_TRAIL_AGE_SECONDS = 7200
 
 # Global cache instance (terminal-scoped keys for multi-terminal safety)
 _cache = BreadcrumbStateCache()
 
-HOOKS_LIB_DIR = Path(r"P:\\\\.claude/hooks/__lib")
+HOOKS_LIB_DIR = Path(r"P:\\\\\\.claude/hooks/__lib")
 
 # Database path (uses existing diagnostics.db)
 DB_PATH = database.DEFAULT_DB_PATH
@@ -183,7 +183,7 @@ def _load_workflow_steps(skill_name: str) -> WorkflowStepsResult:
         If not present, no constraint is enforced for that step.
     """
     defaults = {"kind": "execution", "optional": False, "first_tool": None}
-    skill_dir = Path(r"P:\\\\.claude/skills") / skill_name.lower()
+    skill_dir = Path(r"P:\\\\\\.claude/skills") / skill_name.lower()
     skill_file = skill_dir / "SKILL.md"
 
     if not skill_file.exists():

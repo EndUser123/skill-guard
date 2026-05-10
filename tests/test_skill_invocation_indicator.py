@@ -4,9 +4,9 @@ r"""Test skill invocation indicator."""
 import sys
 
 # Add paths
-sys.path.insert(0, r"P:\\\\.claude/hooks")
-sys.path.insert(0, r"P:\\\\packages/skill-guard/src")
-sys.path.insert(0, r"P:\\\\.claude/hooks/UserPromptSubmit_modules")
+sys.path.insert(0, r"P:\\\\\\.claude/hooks")
+sys.path.insert(0, r"P:\\\\\\packages/skill-guard/src")
+sys.path.insert(0, r"P:\\\\\\.claude/hooks/UserPromptSubmit_modules")
 
 # Import the updated module
 import UserPromptSubmit_modules.breadcrumb_init as breadcrumb_module

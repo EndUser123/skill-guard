@@ -69,7 +69,7 @@ def test_record_slash_request_emits_event(monkeypatch):
     monkeypatch.setattr(slash_obs, "classify_slash_command", lambda command: {
         "command_name": command,
         "command_family": "skill",
-        "command_path": r"P:\\\\packages/skill-guard/src/skill_guard/skills/arch/SKILL.md",
+        "command_path": r"P:\\\\\\packages/skill-guard/src/skill_guard/skills/arch/SKILL.md",
         "backing_target": "arch",
     })
 

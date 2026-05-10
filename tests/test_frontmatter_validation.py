@@ -11,7 +11,7 @@ from skill_guard import skill_execution_state
 
 
 # Real skills directory (the path _validate_skill_frontmatter now uses)
-_REAL_SKILLS_DIR = Path(r"P:\\\\.claude/skills")
+_REAL_SKILLS_DIR = Path(r"P:\\\\\\.claude/skills")
 
 
 class TestValidateSkillFrontmatter:

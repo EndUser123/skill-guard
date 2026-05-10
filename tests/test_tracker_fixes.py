@@ -187,13 +187,13 @@ def test_no_file_operations_on_import():
 def test_migration_still_works_explicitly():
     """Test that legacy migration still works when explicitly called."""
     pytest.skip(
-        r"Test uses P:\\\\.claude/state/ but code uses P:\\\\.claude/.state/ — pre-existing path mismatch. "
+        r"Test uses P:\\\\\\.claude/state/ but code uses P:\\\\\\.claude/.state/ — pre-existing path mismatch. "
         "The test was created with wrong path; migration logic is verified by other tests."
     )
     from skill_guard import skill_execution_state
 
     # Create fake legacy state file
-    legacy_state = Path(r"P:\\\\.claude/state/skill_execution_pending.json")
+    legacy_state = Path(r"P:\\\\\\.claude/state/skill_execution_pending.json")
 
     # Create test legacy state
     legacy_state.parent.mkdir(parents=True, exist_ok=True)

@@ -55,8 +55,8 @@ from skill_guard.phases import (
 # CONFIGURATION
 # =============================================================================
 
-STATE_DIR = Path(r"P:\\\\.claude/.state")
-HOOKS_LIB_DIR = Path(r"P:\\\\.claude/hooks/__lib")
+STATE_DIR = Path(r"P:\\\\\\.claude/.state")
+HOOKS_LIB_DIR = Path(r"P:\\\\\\.claude/hooks/__lib")
 
 # _normalize_string_list, _infer_contract_type now delegated to _skill_frontmatter_loader
 _VALID_CONTRACT_TYPES = {"workflow", "output", "hybrid", "analysis"}
@@ -217,7 +217,7 @@ def _get_active_turn_scope() -> tuple[str, str]:
         return "", ""
     try:
         # Add hooks directory to path for evidence_store import
-        hooks_dir = Path(r"P:\\\\.claude/hooks")
+        hooks_dir = Path(r"P:\\\\\\.claude/hooks")
         if hooks_dir.exists() and str(hooks_dir) not in sys.path:
             sys.path.insert(0, str(hooks_dir))
         from evidence_store import get_active_turn
@@ -327,7 +327,7 @@ def set_skill_loaded(
         # No execution requirements and no first-tool coherence.
         # Skip tracking for pure knowledge skills (no metadata at all).
         # We use frontmatter as the signal: if _load_skill_frontmatter returned
-        # an empty dict (no file exists at P:\\\\.claude/skills/), skip state.
+        # an empty dict (no file exists at P:\\\\\\.claude/skills/), skip state.
         # This avoids redundant file I/O — we already loaded frontmatter above.
         # R3: frontmatter_warnings non-empty always wins — warnings must be recorded.
         if not frontmatter_warnings and not frontmatter:
@@ -720,7 +720,7 @@ def migrate_legacy_state() -> None:
 def cleanup_stale_state_files(stale_timeout: int | None = None) -> int:
     """Remove state directories for terminals that no longer exist.
 
-    Scans P:\\\\\.claude/.state/skill_execution_* directories and removes
+    Scans P:\\\\\\\.claude/.state/skill_execution_* directories and removes
     those belonging to terminals that are no longer active.
 
     Args:

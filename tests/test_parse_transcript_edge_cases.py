@@ -2,7 +2,7 @@ r"""
 Characterization tests for _parse_transcript_for_response edge cases.
 
 These tests CAPTURE CURRENT BEHAVIOR before refactoring.
-Run with: pytest P:\\\\packages/skill-guard/tests/test_parse_transcript_edge_cases.py -v
+Run with: pytest P:\\\\\\packages/skill-guard/tests/test_parse_transcript_edge_cases.py -v
 
 FINDING: _parse_transcript_for_response has "except Exception: pass" at line 176-177
 that silently swallows all exceptions and returns "". This is problematic because:
@@ -54,7 +54,7 @@ class TestEmptyTranscriptFile:
 
     def test_nonexistent_path_returns_empty_string(self):
         """Characterization: Nonexistent path returns empty string - correct behavior."""
-        result = _parse_transcript_for_response(r"P:\\\\tmp/nonexistent_transcript_12345.jsonl")
+        result = _parse_transcript_for_response(r"P:\\\\\\tmp/nonexistent_transcript_12345.jsonl")
         assert result == ""
 
 

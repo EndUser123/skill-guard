@@ -23,7 +23,7 @@ from typing import Any
 
 # Add parent hooks directory for imports.
 # Keep both the symlink-local hooks root and the resolved package root so the
-# module works whether it is launched through P:\\\\.claude/hooks or imported
+# module works whether it is launched through P:\\\\\\.claude/hooks or imported
 # directly from the package source tree.
 _script_path = Path(__file__)
 for _hooks_root in (
@@ -50,7 +50,7 @@ class SkillExecutionTracker:
 
     def __init__(self):
         # Import PostToolUseHook here (not at module level) to avoid sys.path
-        # conflicts when skill_guard.posttooluse and P:\\\\‎.claude/hooks/posttooluse
+        # conflicts when skill_guard.posttooluse and P:\\\\\\‎.claude/hooks/posttooluse
         # are both in the module graph during pytest runs.
         from posttooluse.base import PostToolUseHook
         # Dynamically inject base class to avoid circular import at class definition time

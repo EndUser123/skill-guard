@@ -1,7 +1,7 @@
 r"""Characterization tests for blocking file I/O in create_run.
 
 These tests CAPTURE CURRENT BEHAVIOR before refactoring.
-Run with: pytest P:\\\\packages/skill-guard/tests/test_create_run_blocking_io.py -v
+Run with: pytest P:\\\\\\packages/skill-guard/tests/test_create_run_blocking_io.py -v
 
 PY25-002: create_run performs blocking file I/O synchronously with no async alternative.
 """

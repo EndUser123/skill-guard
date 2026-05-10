@@ -105,9 +105,9 @@ FIRST_TOOL_COHERENCE_ENABLED = (
     os.environ.get("FIRST_TOOL_COHERENCE_ENABLED", "true").lower() == "true"
 )
 
-STATE_DIR = Path(r"P:\\\\.claude/.state")
-DISAGREEMENT_LOG = Path(r"P:\\\\.claude/logs/skill_execution_gate.jsonl")
-COHERENCE_LOG = Path(r"P:\\\\.claude/logs/first_tool_coherence.jsonl")
+STATE_DIR = Path(r"P:\\\\\\.claude/.state")
+DISAGREEMENT_LOG = Path(r"P:\\\\\\.claude/logs/skill_execution_gate.jsonl")
+COHERENCE_LOG = Path(r"P:\\\\\\.claude/logs/first_tool_coherence.jsonl")
 
 # Investigation tools - ALWAYS allowed (for understanding the problem)
 INVESTIGATION_TOOLS = {
@@ -274,7 +274,7 @@ def _check_daemon_intent(command: str, skill: str, timeout: float = 2.5) -> bool
     try:
         # Import here to avoid issues if daemon_client unavailable
         # Guard against sys.path accumulation (memory leak)
-        _csf_src = str(Path(r"P:\\\\__csf/src"))
+        _csf_src = str(Path(r"P:\\\\\\__csf/src"))
         if _csf_src not in sys.path:
             sys.path.insert(0, _csf_src)
         from daemons.daemon_client import DaemonClient
@@ -379,7 +379,7 @@ def _read_pending_command_intent() -> dict | None:
     state = None
     for candidate_terminal_id in dict.fromkeys(candidate_terminal_ids):
         state_file = (
-            Path(r"P:\\\\.claude/hooks/.state/terminals")
+            Path(r"P:\\\\\\.claude/hooks/.state/terminals")
             / candidate_terminal_id
             / "pending_command_intent.json"
         )
@@ -612,7 +612,7 @@ def _load_frontmatter_execution_config(skill_name: str) -> dict:
     Returns:
         Dict with tools/pattern/hint keys, or empty dict if not declared.
     """
-    skill_file = Path(r"P:\\\\.claude/skills") / skill_name / "SKILL.md"
+    skill_file = Path(r"P:\\\\\\.claude/skills") / skill_name / "SKILL.md"
     if not skill_file.exists():
         return {}
     try:
@@ -939,7 +939,7 @@ import time as _probe_time
 import json as _probe_json
 from pathlib import Path as _probe_path
 
-_LEGACY_PROBE_LOG = _probe_path(r"P:\\\\.claude/tmp/PRETOOL_GATE_PROBE.jsonl")
+_LEGACY_PROBE_LOG = _probe_path(r"P:\\\\\\.claude/tmp/PRETOOL_GATE_PROBE.jsonl")
 _LEGACY_PROBE_LOG.parent.mkdir(parents=True, exist_ok=True)
 
 
@@ -1213,7 +1213,7 @@ def main():
         # Log error to diagnostics only, not stderr
         try:
             from pathlib import Path
-            log_path = Path(r"P:\\\\.claude/hooks/logs/diagnostics/skill_pattern_gate_errors.log")
+            log_path = Path(r"P:\\\\\\.claude/hooks/logs/diagnostics/skill_pattern_gate_errors.log")
             log_path.parent.mkdir(parents=True, exist_ok=True)
             with open(log_path, "a", encoding="utf-8") as f:
                 from datetime import datetime

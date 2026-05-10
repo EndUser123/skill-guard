@@ -24,7 +24,7 @@ import sys
 from pathlib import Path
 
 # Add hooks directory to path for imports (hardcoded — __file__ resolves to plugin dir)
-HOOKS_DIR = Path(r"P:\\\\.claude/hooks")
+HOOKS_DIR = Path(r"P:\\\\\\.claude/hooks")
 sys.path.insert(0, str(HOOKS_DIR))
 
 # Configuration
@@ -365,7 +365,7 @@ From: {file_path}
 
 The evidence store is unavailable for this session, so prior investigation
 cannot be verified. Before removing this import, search for the symbol:
-  grep -r "{sorted(removed_symbols)[0]}" --include="*.py" P:\\\\
+  grep -r "{sorted(removed_symbols)[0]}" --include="*.py" P:\\\\\\
 
 If the search confirms the symbol is genuinely absent everywhere, proceed.
 
@@ -394,7 +394,7 @@ You are removing the import of: {symbols_str}
 From: {file_path}
 
 Before removing this import, search for the symbol across the codebase:
-  grep -r "{symbols_without_search[0]}" --include="*.py" P:\\\\
+  grep -r "{symbols_without_search[0]}" --include="*.py" P:\\\\\\
 
 The import path may be wrong (file at wrong location) without the symbol itself
 being absent. Removing the import silently deletes functionality.
