@@ -136,10 +136,11 @@ Choose based on workflow shape, not personal preference:
 - No orchestration framework needed
 
 **Branching or non-linear workflows** (conditional routing, human-in-the-loop, dynamic node selection):
-- LangGraph appropriate when workflow graph has multiple paths, checkpoints, or conditional edges
-- Consider whether the complexity is inherent to the problem or introduced by the tooling
+- LangGraph fits when workflow requires dynamic node routing based on state — LangGraph's checkpoint and conditional-edge primitives map directly to these cases
+- If the branching is shallow (2-3 fixed paths), a state machine with Pydantic + explicit transitions handles it with less overhead
+- If the branching is deep or non-linear (multi-step human approval, dynamic subgraph), LangGraph's graph primitives reduce custom boilerplate
 
-**Use the simplest approach that fits the workflow complexity.** A linear pipeline doesn't need LangGraph; a workflow with dynamic branching does. The decision criterion is workflow shape, not preference.
+**Why this matters:** Linear pipelines have fixed step order — no routing decision is needed at runtime, so a directed phase-gate executor is sufficient. Branching pipelines require runtime state to determine the next node, which is exactly what graph-based frameworks provide.
 
 **State persistence:** File-based (JSON in `.claude/.artifacts/`). Never in-memory — multi-terminal sessions share no memory space.
 
