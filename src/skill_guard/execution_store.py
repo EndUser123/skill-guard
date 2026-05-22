@@ -101,11 +101,25 @@ class ArtifactsExecutionStore(ExecutionStore):
         return self.console_dir() / "execution-events.jsonl"
 
     def _atomic_write_json(self, path: Path, data: dict) -> None:
-        """Atomic write: temp-file-write + rename."""
+        """Atomic write: temp-file-write + rename.
+
+        Retries once with gc.collect() on WinError 32 (PermissionError).
+        Raises on repeated failure — callers must handle.
+        """
         path.parent.mkdir(parents=True, exist_ok=True)
         tmp = path.with_suffix(path.suffix + ".tmp")
-        tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
-        os.replace(str(tmp), str(path))
+        text = json.dumps(data, indent=2, ensure_ascii=False)
+        try:
+            tmp.write_text(text, encoding="utf-8")
+            os.replace(str(tmp), str(path))
+        except PermissionError:
+            import gc
+            gc.collect()
+            try:
+                tmp.write_text(text, encoding="utf-8")
+                os.replace(str(tmp), str(path))
+            except PermissionError:
+                raise OSError(f"Failed to write {path} after retry") from None
 
     def load_active_run(self) -> ExecutionRun | None:
         state_path = self._state_path()

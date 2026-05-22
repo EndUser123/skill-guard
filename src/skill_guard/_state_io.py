@@ -47,22 +47,24 @@ def detect_terminal_id() -> str:
 def _atomic_write_json(path: Path, data: dict) -> None:
     """Write JSON data atomically using write-to-temp-then-rename pattern.
 
-    Uses gc.collect() + retry for Windows handle release, then rename.
-    Falls back to direct write on repeated failure to avoid blocking.
+    Retries once with gc.collect() on WinError 32 (PermissionError).
+    Raises on repeated failure — callers must handle.
     """
     import gc
 
+    path.parent.mkdir(parents=True, exist_ok=True)
     temp = path.with_suffix(path.suffix + ".tmp")
+    text = json.dumps(data, indent=2)
     try:
-        temp.write_text(json.dumps(data, indent=2))
+        temp.write_text(text)
         os.replace(str(temp), str(path))
-    except OSError:
+    except PermissionError:
         gc.collect()
         try:
-            temp.write_text(json.dumps(data, indent=2))
+            temp.write_text(text)
             os.replace(str(temp), str(path))
-        except OSError:
-            path.write_text(json.dumps(data, indent=2))
+        except PermissionError:
+            raise OSError(f"Failed to write {path} after retry") from None
 
 
 def sanitize_terminal_id(terminal_id: str) -> str:
