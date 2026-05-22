@@ -44,7 +44,7 @@ def _skills_dir() -> Path:
 
 SLASH_COMMAND_RE = re.compile(r"^/([a-z0-9_-]+)(?:\s+(.*))?$", re.IGNORECASE)
 NAMESPACED_SLASH_COMMAND_RE = re.compile(r"^/([a-z0-9_-]+):([a-z0-9_-]+)(?:\s+(.*))?$", re.IGNORECASE)
-LEADING_PROMPT_GLYPHS_RE = re.compile(r"^\s*(?:[❯›»>$#]+\s*)+r")
+LEADING_PROMPT_GLYPHS_RE = re.compile(r"^\s*(?:[❯›»>$#]+\s*)+")
 BACKING_SKILL_RE = re.compile(r'Skill\(\s*["\']([A-Za-z0-9_-]+)["\']\s*\)')
 
 

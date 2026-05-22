@@ -52,7 +52,13 @@ from skill_guard.execution_runtime import ExecutionRuntime
 from skill_guard.execution_run import ExecutionRun
 from skill_guard.skill_auto_discovery import get_skill_config, discover_all_skills
 from skill_guard.utils.terminal_detection import detect_terminal_id
-from skill_guard.slash_command_observability import extract_command_name
+from skill_guard.slash_command_observability import extract_command_name, extract_slash_command
+from skill_guard.skill_enforcer import (
+    build_command_context,
+    is_topic_inquiry,
+    log_command_intent_telemetry,
+    should_block_command,
+)
 
 # Contract type mapping: skill config value → ExecutionRun contract_type
 _CONTRACT_TYPE_MAP = {
@@ -117,64 +123,61 @@ _NON_SKILL_COMMANDS = frozenset({
 
 def handle_user_prompt_submit(data: dict) -> dict:
     """
-    UserPromptSubmit handler for execution contract run creation.
+    UserPromptSubmit handler for skill enforcement + execution contract run creation.
 
-    Args:
-        data: hook payload with prompt, session_id, terminal_id, etc.
-
-    Returns:
-        dict with hook result (empty on success, advisory on warning)
+    Returns {"additionalContext": "..."} when enforcement fires, {"continue": True} otherwise.
+    Run creation is a side effect; it does not change the return shape.
     """
     prompt = data.get("prompt", "") or data.get("userMessage", "") or ""
     session_id = data.get("session_id", "") or ""
     terminal_id = detect_terminal_id() or os.environ.get("CLAUDE_TERMINAL_ID", "unknown")
 
-    # Step 1: Extract /skill-name from prompt
-    skill_name = extract_command_name(str(prompt))
-    if not skill_name:
+    normalized = str(prompt).strip()
+
+    # Topic inquiries ("tell me about /cmd") bypass enforcement entirely
+    if is_topic_inquiry(normalized):
         return {"continue": True}
 
-    # Step 2: Skip non-skill commands
-    if skill_name in _NON_SKILL_COMMANDS:
+    # Extract command + args
+    command, args = extract_slash_command(normalized)
+    if not command:
         return {"continue": True}
 
-    # Step 3: Get skill config for this specific skill
-    config = get_skill_config(skill_name, explicit_registry=None)
-    if not config.get("discovered") and not config.get("has_execution", True):
+    # Run creation (side effect, fail-open)
+    skill_name = command
+    if skill_name not in _NON_SKILL_COMMANDS:
+        config = get_skill_config(skill_name, explicit_registry=None)
+        if config.get("discovered") or config.get("has_execution", True):
+            try:
+                config_contract = config.get("contract_type", "analysis")
+                runtime = ExecutionRuntime()
+                run = runtime.create_run(
+                    skill_name=skill_name,
+                    contract_type=_map_contract_type(config_contract),
+                    session_id=session_id,
+                    required_artifacts=_get_required_artifacts(skill_name),
+                    allowed_tools=_get_allowed_tools(skill_name),
+                    blocked_tools=[],
+                    response_requirements=_get_response_requirements(skill_name),
+                )
+                turn_id = data.get("turn_id") or data.get("turnId")
+                if turn_id and hasattr(run, "turn_id"):
+                    run.turn_id = turn_id
+                    runtime.store.save_run(run)
+            except (OSError, RuntimeError, ValueError, KeyError):
+                pass  # fail-open
+
+    # Enforcement: built-ins, ignored commands, and _NON_SKILL_COMMANDS pass through
+    if command in _NON_SKILL_COMMANDS or should_block_command(command):
         return {"continue": True}
 
-    # Step 4: Map skill metadata to runtime fields
-    config_contract = config.get("contract_type", "analysis")
-    contract_type = _map_contract_type(config_contract)
-
-    allowed_tools = _get_allowed_tools(skill_name)
-    required_artifacts = _get_required_artifacts(skill_name)
-    response_requirements = _get_response_requirements(skill_name)
-
-    # Step 5: Create the run
+    # Write telemetry (fail-open)
     try:
-        runtime = ExecutionRuntime()
-        run = runtime.create_run(
-            skill_name=skill_name,
-            contract_type=contract_type,
-            session_id=session_id,
-            required_artifacts=required_artifacts,
-            allowed_tools=allowed_tools,
-            blocked_tools=[],
-            response_requirements=response_requirements if response_requirements.get("sections") or response_requirements.get("prohibited_claims") else {},
-        )
-        # Store turn_id if available in payload
-        turn_id = data.get("turn_id") or data.get("turnId")
-        if turn_id and hasattr(run, "turn_id"):
-            run.turn_id = turn_id
-            runtime.store.save_run(run)
+        log_command_intent_telemetry(terminal_id, session_id, prompt, command)
+    except OSError:
+        pass
 
-    except (OSError, RuntimeError, ValueError, KeyError) as e:
-        # Fail-open: if run creation fails, do not block tools
-        # The runtime remains dormant; PreToolUse allows all tools
-        return {"continue": True}
-
-    return {"continue": True}
+    return {"additionalContext": build_command_context(command, args)}
 
 
 # ---------------------------------------------------------------------------

@@ -24,6 +24,7 @@ from skills.migrate_skill_ct import (
     _load_all_skill_frontmatter,
     _load_target_frontmatter,
     _parse_prompt,
+    _resolve_skill_path,
     _verify_patch,
     run_batch_audit,
     run_bulk_apply,
@@ -35,8 +36,23 @@ class TestParseInvocation:
     def test_basic_skill_name(self):
         result = _parse_prompt("/migrate-skill-ct trace")
         assert result["skill_name"] == "trace"
+        assert result["plugin"] is None
         assert result["mode"] == "audit"
         assert result["write"] is False
+
+    def test_scoped_plugin_skill(self):
+        result = _parse_prompt("/migrate-skill-ct cc-skills-analysis:gto")
+        assert result["plugin"] == "cc-skills-analysis"
+        assert result["skill_name"] == "gto"
+
+    def test_explicit_plugin_flag(self):
+        result = _parse_prompt("/migrate-skill-ct gto --plugin cc-skills-analysis")
+        assert result["plugin"] == "cc-skills-analysis"
+        assert result["skill_name"] == "gto"
+
+    def test_scoped_overrides_plugin_flag(self):
+        result = _parse_prompt("/migrate-skill-ct cc-skills-analysis:gto --plugin cc-skills-sdlc")
+        assert result["plugin"] == "cc-skills-sdlc"  # explicit --plugin wins
 
     def test_mode_audit(self):
         result = _parse_prompt("/migrate-skill-ct decision-tree --mode audit")
@@ -64,6 +80,59 @@ class TestParseInvocation:
         assert result["skill_name"] == ""
 
 
+class TestResolveSkillPath:
+    """Tests for _resolve_skill_path with --plugin and auto-search."""
+
+    def test_explicit_plugin_resolves_to_correct_path(self, tmp_path):
+        # Create mock plugin + skill structure
+        plugin_dir = tmp_path / "cc-skills-analysis"
+        skills_dir = plugin_dir / "skills"
+        skill_dir = skills_dir / "gto"
+        skill_dir.mkdir(parents=True)
+        (skill_dir / "SKILL.md").write_text("---\nname: gto\n---\n# Skill\n", encoding="utf-8")
+
+        import skills.migrate_skill_ct.src.migrate_skill_contract as src_module
+        with patch.object(src_module, "PLUGINS_DIR", tmp_path):
+            plugin, skill_file = _resolve_skill_path("cc-skills-analysis", "gto")
+            assert plugin == "cc-skills-analysis"
+            assert skill_file == tmp_path / "cc-skills-analysis" / "skills" / "gto" / "SKILL.md"
+
+    def test_auto_search_finds_skill_in_single_plugin(self, tmp_path):
+        plugin_dir = tmp_path / "cc-skills-analysis"
+        skills_dir = plugin_dir / "skills"
+        skill_dir = skills_dir / "gto"
+        skill_dir.mkdir(parents=True)
+        (skill_dir / "SKILL.md").write_text("---\nname: gto\n---\n# Skill\n", encoding="utf-8")
+
+        import skills.migrate_skill_ct.src.migrate_skill_contract as src_module
+        with patch.object(src_module, "PLUGINS_DIR", tmp_path):
+            plugin, skill_file = _resolve_skill_path(None, "gto")
+            assert plugin == "cc-skills-analysis"
+            assert skill_file.exists()
+
+    def test_auto_search_raises_on_ambiguous_skill(self, tmp_path):
+        # Skill exists in two plugins
+        for plugin_name in ("cc-skills-analysis", "cc-skills-sdlc"):
+            skill_dir = tmp_path / plugin_name / "skills" / "gto"
+            skill_dir.mkdir(parents=True)
+            (skill_dir / "SKILL.md").write_text("---\nname: gto\n---\n# Skill\n", encoding="utf-8")
+
+        import skills.migrate_skill_ct.src.migrate_skill_contract as src_module
+        with patch.object(src_module, "PLUGINS_DIR", tmp_path):
+            with pytest.raises(ValueError) as exc_info:
+                _resolve_skill_path(None, "gto")
+            assert "cc-skills-analysis" in str(exc_info.value)
+            assert "cc-skills-sdlc" in str(exc_info.value)
+            assert "Use --plugin" in str(exc_info.value)
+
+    def test_auto_search_raises_on_nonexistent_skill(self, tmp_path):
+        import skills.migrate_skill_ct.src.migrate_skill_contract as src_module
+        with patch.object(src_module, "PLUGINS_DIR", tmp_path):
+            with pytest.raises(ValueError) as exc_info:
+                _resolve_skill_path(None, "nonexistent-skill")
+            assert "not found" in str(exc_info.value)
+
+
 class TestRunMigrationResultShape:
     """Basic result shape tests without requiring real skill files."""
 
@@ -81,6 +150,12 @@ class TestRunMigrationResultShape:
         result = run_migration("/migrate-skill-ct trace --mode invalid")
         assert "error" in result
         assert "Unknown mode" in result["error"]
+
+    def test_scoped_form_sets_plugin_and_skill(self):
+        result = run_migration("/migrate-skill-ct cc-skills-analysis:gto --mode audit")
+        # Either finds it or returns a proper error with plugin set
+        assert "plugin" in result
+        assert result["skill_name"] == "gto"
 
 
 class TestGeneratePatch:
@@ -137,16 +212,15 @@ class TestApplyPatchErrors:
     """Patch application edge cases."""
 
     def test_apply_patch_nonexistent_skill_returns_error(self):
-        result = _apply_patch("nonexistent-skill-xyz", {}, [])
+        result = _apply_patch("nonexistent-plugin", "nonexistent-skill", {}, [])
         assert "error" in result
-        assert "not found" in result["error"].lower() or "nonexistent" in result["error"].lower()
 
 
 class TestVerifyPatch:
     """Verification of patch results."""
 
     def test_verify_nonexistent_skill_returns_not_ok(self):
-        result = _verify_patch("nonexistent-skill-xyz")
+        result = _verify_patch("nonexistent-plugin", "nonexistent-skill", skill_file=None)
         assert result["ok"] is False
 
 

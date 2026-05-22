@@ -55,8 +55,8 @@ from skill_guard.phases import (
 # CONFIGURATION
 # =============================================================================
 
-STATE_DIR = Path(r"P:\\\\\\.claude/.state")
-HOOKS_LIB_DIR = Path(r"P:\\\\\\.claude/hooks/__lib")
+STATE_DIR = Path(r"P:/.claude/.state")
+HOOKS_LIB_DIR = Path(r"P:/.claude/hooks/__lib")
 
 # _normalize_string_list, _infer_contract_type now delegated to _skill_frontmatter_loader
 _VALID_CONTRACT_TYPES = {"workflow", "output", "hybrid", "analysis"}
@@ -73,130 +73,41 @@ def _get_legacy_skill_metadata_cache():
 
 
 # =============================================================================
-# TERMINAL DETECTION
+# STATE I/O (extracted to _state_io.py - ARCH-003)
 # =============================================================================
 
+# Import state I/O from dedicated module - all state file functions live there
+from skill_guard._state_io import (
+    STATE_DIR,
+    detect_terminal_id,
+    sanitize_terminal_id,
+    _atomic_write_json,
+    _get_state_dir,
+    _get_state_file_for_terminal,
+    _read_pending_state_file,
+    _write_pending_state_file,
+    _clear_pending_state_file,
+)
 
-def detect_terminal_id() -> str:
-    """Detect terminal ID for state isolation.
+# Re-export for backward compat with callers that import from this module
+__all__ = [
+    "STATE_DIR",
+    "detect_terminal_id",
+    "sanitize_terminal_id",
+    "_get_state_dir",
+    "_get_state_file_for_terminal",
+    "_read_pending_state_file",
+    "_write_pending_state_file",
+    "_clear_pending_state_file",
+]
 
-    Uses terminal_detection.py from utils for consistent ID detection.
-    r"""
-    try:
-        # Import shared terminal detection from utils
-        from skill_guard.utils.terminal_detection import detect_terminal_id as shared_detect
-
-        return shared_detect()
-    except ImportError:
-        # Fallback if terminal_detection not available. Do not synthesize
-        # PID-based IDs because they break cross-hook state sharing.
-        terminal_id = os.environ.get("CLAUDE_TERMINAL_ID")
-        if terminal_id:
-            return terminal_id
-        return ""
-
-
-# =============================================================================
-# STATE MANAGEMENT
-# =============================================================================
-
-
-def _atomic_write_json(path: Path, data: dict) -> None:
-    """Write JSON data atomically using write-to-temp-then-rename pattern.
-
-    Uses gc.collect() + retry for Windows handle release, then rename.
-    Falls back to direct write on repeated failure to avoid blocking.
-    """
-    import gc
-
-    temp = path.with_suffix(path.suffix + ".tmp")
-    try:
-        temp.write_text(json.dumps(data, indent=2))
-        os.replace(str(temp), str(path))
-    except OSError:
-        # Windows: file handle still held. Retry after gc to release handles.
-        gc.collect()
-        try:
-            temp.write_text(json.dumps(data, indent=2))
-            os.replace(str(temp), str(path))
-        except OSError:
-            # Final fallback: direct write (not atomic, but wonr't orphan temp)
-            path.write_text(json.dumps(data, indent=2))
-
-
-def sanitize_terminal_id(terminal_id: str) -> str:
-    """Sanitize terminal ID for use in file paths.
-
-    Removes characters that are unsafe for filesystem paths.
-    Only allows alphanumeric, underscore, and hyphen. Colon is excluded
-    because it causes issues on Windows (drive letter separator).
-    """
-    import re
-
-    return re.sub(r"[^a-zA-Z0-9_\-]", "_", terminal_id)
-
-
+# _get_state_file is kept for backward compat (legacy callers)
 def _get_state_file() -> Path:
     """Legacy path retained for compatibility only."""
-    terminal_id = detect_terminal_id()
-    state_subdir = STATE_DIR / f"skill_execution_{sanitize_terminal_id(terminal_id or 'unknown')}"
-    state_subdir.mkdir(parents=True, exist_ok=True)
+    state_subdir = _get_state_dir()
     return state_subdir / "skill_execution_pending.json"
 
-
-# Cached state directory per terminal_id (avoids repeated mkdir on every call)
-_state_dir_cache: dict[str, Path] = {}
-
-
-def _get_state_dir() -> Path:
-    """Get the state directory for this terminal.
-
-    Caches the result per terminal_id to avoid repeated directory
-    creation syscalls on every invocation.
-    """
-    terminal_id = detect_terminal_id()
-    cache_key = sanitize_terminal_id(terminal_id or "unknown")
-    if cache_key in _state_dir_cache:
-        return _state_dir_cache[cache_key]
-    state_subdir = STATE_DIR / f"skill_execution_{cache_key}"
-    state_subdir.mkdir(parents=True, exist_ok=True)
-    _state_dir_cache[cache_key] = state_subdir
-    return state_subdir
-
-
-def _get_state_file_for_terminal(terminal_id: str) -> Path:
-    """Return the compatibility state file for a specific terminal."""
-    state_subdir = STATE_DIR / f"skill_execution_{sanitize_terminal_id(terminal_id or 'unknown')}"
-    state_subdir.mkdir(parents=True, exist_ok=True)
-    return state_subdir / "skill_execution_pending.json"
-
-
-def _read_pending_state_file(terminal_id: str) -> dict[str, Any] | None:
-    state_file = _get_state_file_for_terminal(terminal_id)
-    if not state_file.exists():
-        return None
-    try:
-        data = json.loads(state_file.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, OSError):
-        return None
-    return data if isinstance(data, dict) else None
-
-
-def _write_pending_state_file(terminal_id: str, state: dict[str, Any]) -> bool:
-    try:
-        _atomic_write_json(_get_state_file_for_terminal(terminal_id), state)
-        return True
-    except OSError:
-        return False
-
-
-def _clear_pending_state_file(terminal_id: str) -> None:
-    try:
-        _get_state_file_for_terminal(terminal_id).unlink(missing_ok=True)
-    except OSError:
-        pass
-
-
+# _load_skill_frontmatter now delegated to _skill_frontmatter_loader
 # _load_skill_frontmatter now delegated to _skill_frontmatter_loader
 def _load_skill_frontmatter(skill_name: str) -> dict[str, Any] | None:
     """Wrapper that delegates to _skill_frontmatter_loader.
@@ -230,36 +141,11 @@ def _get_active_turn_scope() -> tuple[str, str]:
 
 
 # =============================================================================
-# LEDGER MODULE INTEGRATION
-# =============================================================================
+# LEDGER MODULE INTEGRATION (extracted to _ledger_integration.py - ARCH-003)
+from skill_guard._ledger_integration import _get_ledger_module
 
-# Module-level cache for hook_ledger (pattern from the legacy metadata cache)
-_HOOKS_LEDGER_MODULE = None
-
-
-def _get_ledger_module():
-    """Import and return hook_ledger module from Claude Code hooks.
-
-    Returns:
-        hook_ledger module if available, None otherwise.
-
-    Note:
-    Follows the same lazy-import pattern as the legacy metadata cache.
-        Uses the same path manipulation as breadcrumb/tracker.py.
-    r"""
-    global _HOOKS_LEDGER_MODULE
-    if _HOOKS_LEDGER_MODULE is not None:
-        return _HOOKS_LEDGER_MODULE
-
-    try:
-        if HOOKS_LIB_DIR.exists() and str(HOOKS_LIB_DIR) not in sys.path:
-            sys.path.insert(0, str(HOOKS_LIB_DIR))
-        import hook_ledger  # type: ignore
-
-        _HOOKS_LEDGER_MODULE = hook_ledger
-        return hook_ledger
-    except Exception:
-        return None
+# Remaining ledger calls in this module use _get_ledger_module() from _ledger_integration
+# The module-level cache and path manipulation are encapsulated in _ledger_integration.py
 
 
 def set_skill_loaded(
@@ -663,124 +549,10 @@ def clear_state() -> None:
 
 
 # =============================================================================
-# MIGRATION HELPERS
+# MIGRATION HELPERS (extracted to _migration_helpers.py - ARCH-003)
 # =============================================================================
+from skill_guard._migration_helpers import (
+    migrate_legacy_state,
+    cleanup_stale_state_files,
+)
 
-
-def migrate_legacy_state() -> None:
-    """Migrate state from old location to new terminal-isolated location.
-
-    This handles backward compatibility with state files created
-    before v3.2 terminal isolation.
-
-    Call this function explicitly from hooks or scripts when needed.
-    Migration is no longer automatic on import to avoid side effects.
-    """
-    # Check for legacy state file
-    legacy_state = STATE_DIR / "skill_execution_pending.json"
-    if not legacy_state.exists():
-        return
-
-    try:
-        # Read legacy state
-        legacy_data = json.loads(legacy_state.read_text())
-
-        # Extend schema if missing fields (v3.2 backward compatibility)
-        if "required_pattern" not in legacy_data:
-            legacy_data["required_pattern"] = legacy_data.get("pattern", "")
-        if "hint" not in legacy_data:
-            legacy_data["hint"] = ""
-        if "intent_enabled" not in legacy_data:
-            legacy_data["intent_enabled"] = False
-        legacy_data.setdefault("required_phase_artifacts", [])
-        legacy_data.setdefault("workflow_binding", "")
-        legacy_data.setdefault("workflow_enforcement", "")
-        legacy_data.setdefault("phase_recovery_mode", "")
-        legacy_data.setdefault("user_override", "")
-        legacy_data.setdefault("contract_type", "analysis")
-        legacy_data.setdefault("output_enforcement", "")
-        legacy_data.setdefault("final_output_schema", "")
-        legacy_data.setdefault("required_markers", [])
-        legacy_data.setdefault("required_sections", [])
-        legacy_data.setdefault("completion_criteria", [])
-        legacy_data.setdefault("enforcement_tier", "")
-
-        # Write to new location
-        new_state_file = _get_state_file()
-        new_state_file.parent.mkdir(parents=True, exist_ok=True)
-        new_state_file.write_text(json.dumps(legacy_data, indent=2))
-
-        # Remove legacy file
-        legacy_state.unlink()
-
-    except (json.JSONDecodeError, OSError):
-        pass
-
-
-def cleanup_stale_state_files(stale_timeout: int | None = None) -> int:
-    """Remove state directories for terminals that no longer exist.
-
-    Scans P:\\\\\\\.claude/.state/skill_execution_* directories and removes
-    those belonging to terminals that are no longer active.
-
-    Args:
-        stale_timeout: Seconds after which a state directory is considered stale.
-            Defaults to DEFAULT_STALE_TIMEOUT (300 seconds).
-
-    Returns:
-        Number of directories removed.
-    """
-    if stale_timeout is None:
-        stale_timeout = DEFAULT_STALE_TIMEOUT
-
-    removed_count = 0
-    current_terminal_id = detect_terminal_id()
-
-    if not STATE_DIR.exists():
-        return 0
-
-    try:
-        # Get all skill_execution_* directories
-        for state_subdir in STATE_DIR.iterdir():
-            if not state_subdir.is_dir():
-                continue
-            if not state_subdir.name.startswith("skill_execution_"):
-                continue
-
-            # Extract terminal_id from directory name
-            dir_terminal_id = state_subdir.name.replace("skill_execution_", "")
-
-            # Don't remove current terminal's state
-            if dir_terminal_id == current_terminal_id:
-                continue
-
-            # Check if this terminal still exists (via ledger)
-            try:
-                ledger = _get_ledger_module()
-                if ledger is not None and ledger.get_active_turn(dir_terminal_id) is not None:
-                    continue
-            except Exception:
-                # If we can't determine activity, check file age as fallback
-                pass
-
-            # Check directory age
-            try:
-                dir_mtime = state_subdir.stat().st_mtime
-                age_seconds = time.time() - dir_mtime
-                if age_seconds < stale_timeout:
-                    continue
-            except OSError:
-                pass
-
-            # Remove stale directory
-            try:
-                import shutil
-                shutil.rmtree(state_subdir)
-                removed_count += 1
-            except OSError:
-                pass
-
-    except OSError:
-        pass
-
-    return removed_count

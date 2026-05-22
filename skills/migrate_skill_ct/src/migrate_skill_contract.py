@@ -4,11 +4,11 @@ Wraps existing skill-guard helpers to provide audit and patch modes
 for migrating target skills to the execution-contract frontmatter model.
 
 Usage:
-    python migrate_skill_contract.py [--skill <name>] [--mode audit|patch] [--write]
+    python migrate_skill_contract.py [--skill <name>] [--plugin <plugin>] [--mode audit|patch] [--write]
 
 Or import run_migration() directly:
     from skills.migrate_skill_ct import run_migration
-    result = run_migration("/migrate-skill-ct trace")
+    result = run_migration("/migrate-skill-ct gto --plugin cc-skills-analysis --mode patch --write true")
 """
 
 from __future__ import annotations
@@ -36,14 +36,55 @@ from skill_guard._skill_frontmatter_loader import (
     classify_migration_status,
 )
 
-# Primary skill directory — also used by _load_skill_frontmatter in skill_guard.
-# Override via SKILL_DIR env var or the --skills-dir argument.
-SKILL_DIR = Path(os.environ.get("SKILL_DIR", r"P:\\\\\\packages/.claude-marketplace/plugins/cc-skills-thinking/skills"))
+# Primary marketplace plugins directory.
+# Skills live under: <PLUGINS_DIR>/<plugin>/skills/<skill>/SKILL.md
+PLUGINS_DIR = Path(os.environ.get("PLUGINS_DIR", r"P:\packages\.claude-marketplace\plugins"))
 
 
-def _load_target_frontmatter(skill_name: str, skills_dir: Path | None = None) -> dict[str, Any] | None:
-    """Load the frontmatter dict for a target skill.r"""
-    skill_file = (skills_dir or SKILL_DIR) / skill_name / "SKILL.md"
+def _resolve_skill_path(plugin: str | None, skill_name: str) -> tuple[str, Path]:
+    """Resolve (plugin_name, skill_file_path) from explicit plugin or auto-search.
+
+    If plugin is provided: resolves to PLUGINS_DIR/<plugin>/skills/<skill>/SKILL.md.
+    If plugin is None: searches all plugins for a matching skill directory.
+    Returns (resolved_plugin_name, skill_file_path).
+    Raises ValueError if ambiguous or not found.
+    """
+    if plugin:
+        plugin_dir = PLUGINS_DIR / plugin
+        skill_file = plugin_dir / "skills" / skill_name / "SKILL.md"
+        return plugin, skill_file
+
+    # Auto-search: find which plugin owns this skill
+    candidates = []
+    if PLUGINS_DIR.exists():
+        for entry in sorted(PLUGINS_DIR.iterdir()):
+            if not entry.is_dir():
+                continue
+            skill_file = entry / "skills" / skill_name / "SKILL.md"
+            if skill_file.exists():
+                candidates.append((entry.name, skill_file))
+
+    if not candidates:
+        raise ValueError(
+            f"Skill '{skill_name}' not found in any plugin under {PLUGINS_DIR}. "
+            "Use --plugin <name> to specify the plugin explicitly."
+        )
+    if len(candidates) > 1:
+        names = ", ".join(p for p, _ in candidates)
+        raise ValueError(
+            f"Skill '{skill_name}' found in multiple plugins: {names}. "
+            "Use --plugin <name> to disambiguate."
+        )
+
+    return candidates[0]
+
+
+def _load_target_frontmatter(plugin: str | None, skill_name: str) -> dict[str, Any] | None:
+    """Load the frontmatter dict for a target skill."""
+    try:
+        _, skill_file = _resolve_skill_path(plugin, skill_name)
+    except ValueError:
+        return None
     if not skill_file.exists():
         return None
     try:
@@ -64,7 +105,7 @@ def _generate_patch(
     frontmatter: dict[str, Any] | None,
     result: dict[str, Any],
 ) -> dict[str, Any]:
-    """Generate a minimal patch plan from build_migration_result output.r"""
+    """Generate a minimal patch plan from build_migration_result output."""
     changes: list[dict[str, str]] = []
     status = result["status"]
     if status == "MIGRATED":
@@ -103,7 +144,7 @@ def _generate_patch(
         suggested = f"{skill_name}-ct"
         lines.append("")
         lines.append(f"# Naming recommendation: rename skill directory and 'name:' field to '{suggested}'")
-        lines.append(fr"# See: P:\\\\\\.claude/docs/claude-skill-v1.0.md § Naming conventions")
+        lines.append(r"# See: P:\\.claude\docs\claude-skill-v1.0.md § Naming conventions")
         lines.append("# then run: /migrate-skill-ct <new-name> --mode patch --write true")
 
     lines.append("")
@@ -117,13 +158,19 @@ def _generate_patch(
 
 
 def _apply_patch(
+    plugin: str | None,
     skill_name: str,
     frontmatter: dict[str, Any],
     changes: list[dict[str, str]],
-    skills_dir: Path | None = None,
+    skill_file: Path | None = None,
 ) -> dict[str, Any]:
     """Apply minimal patch to a target skill's SKILL.md atomically."""
-    skill_file = (skills_dir or SKILL_DIR) / skill_name / "SKILL.md"
+    if skill_file is None:
+        try:
+            _, skill_file = _resolve_skill_path(plugin, skill_name)
+        except ValueError as e:
+            return {"files_modified": [], "error": str(e)}
+
     if not skill_file.exists():
         return {"files_modified": [], "error": f"SKILL.md not found at {skill_file}"}
 
@@ -148,8 +195,6 @@ def _apply_patch(
             value: Any = []
         elif value_raw == "{}":
             value = {}
-        elif field == "contract_type":
-            value = value_raw
         else:
             value = value_raw
         fm[field] = value
@@ -163,13 +208,29 @@ def _apply_patch(
 
     return {
         "files_modified": [str(skill_file)],
-        "fields_changed": [f"{c['field']}: {c['valuer']}" for c in changes],
+        "fields_changed": [f"{c['field']}: {c['value']}" for c in changes],
     }
 
 
-def _verify_patch(skill_name: str, skills_dir: Path | None = None) -> dict[str, Any]:
+def _verify_patch(plugin: str | None, skill_name: str, skill_file: Path | None = None) -> dict[str, Any]:
     """Re-classify updated frontmatter to verify patch success."""
-    fm = _load_target_frontmatter(skill_name, skills_dir=skills_dir)
+    if skill_file is None:
+        try:
+            fm = _load_target_frontmatter(plugin, skill_name)
+        except ValueError:
+            return {"ok": False, "error": "Could not reload frontmatter after patch"}
+    else:
+        try:
+            import yaml
+            content = skill_file.read_text(encoding="utf-8", errors="replace")
+            parts = content.split("---")
+            if len(parts) < 3:
+                return {"ok": False, "error": "SKILL.md missing YAML frontmatter delimiters"}
+            fm: dict[str, Any] = yaml.safe_load(parts[1])
+            if not isinstance(fm, dict):
+                fm = dict(fm) if fm else {}
+        except Exception:
+            return {"ok": False, "error": f"Failed to re-parse YAML: {e}"}
     if fm is None:
         return {"ok": False, "error": "Could not reload frontmatter after patch"}
     status = classify_migration_status(fm)
@@ -180,14 +241,15 @@ def run_migration(prompt: str) -> dict[str, Any]:
     """Main entrypoint — parse prompt and run migration.
 
     Args:
-        prompt: The full skill invocation prompt, e.g. "/migrate-skill-ct trace --mode patch --write"
+        prompt: The full skill invocation prompt, e.g. "/migrate-skill-ct gto --plugin cc-skills-analysis --mode patch"
 
     Returns:
-        Dict with skill_name, status, action, reason, missing_fields,
+        Dict with skill_name, plugin, status, action, reason, missing_fields,
         patch (proposed diff), files_modified, fields_changed, verification.
     """
     parsed = _parse_prompt(prompt)
     return _do_migration(
+        plugin=parsed["plugin"],
         skill_name=parsed["skill_name"],
         mode=parsed["mode"],
         write=parsed["write"],
@@ -195,8 +257,16 @@ def run_migration(prompt: str) -> dict[str, Any]:
 
 
 def _parse_prompt(prompt: str) -> dict[str, Any]:
-    """Extract skill_name, mode, write from a skill invocation prompt."""
+    """Extract plugin, skill_name, mode, write from a skill invocation prompt.
+
+    Supports:
+      /migrate-skill-ct gto --plugin cc-skills-analysis
+      /migrate-skill-ct cc-skills-analysis:gto
+      /migrate-skill-ct trace
+      /migrate-skill-ct gto --mode patch --write true
+    """
     result: dict[str, Any] = {
+        "plugin": None,
         "skill_name": "",
         "mode": "audit",
         "write": False,
@@ -206,30 +276,44 @@ def _parse_prompt(prompt: str) -> dict[str, Any]:
     parts = prompt.split()
     if not parts:
         return result
-    result["skill_name"] = parts[0].lstrip("/")
+
+    first = parts[0]
+    # Handle plugin:skill scoped form (e.g. "cc-skills-analysis:gto")
+    if ":" in first:
+        plugin_part, skill_part = first.split(":", 1)
+        result["plugin"] = plugin_part
+        result["skill_name"] = skill_part.lstrip("/")
+    else:
+        result["skill_name"] = first.lstrip("/")
 
     i = 1
     while i < len(parts):
         lower = parts[i].lower()
-        if lower == "--mode" and i + 1 < len(parts):
+        if lower == "--plugin" and i + 1 < len(parts):
+            result["plugin"] = parts[i + 1]
+            i += 2
+        elif lower == "--mode" and i + 1 < len(parts):
             result["mode"] = parts[i + 1].lower()
             i += 2
         elif lower == "--write" and i + 1 < len(parts):
             result["write"] = parts[i + 1].lower() in ("true", "1", "yes")
             i += 2
-        elif lower in ("--mode", "--write"):
-            if i + 1 < len(parts):
-                if lower == "--mode":
-                    result["mode"] = parts[i + 1].lower()
-                else:
-                    result["write"] = parts[i + 1].lower() in ("true", "1", "yes")
-            i += 2
+        elif lower in ("--plugin", "--mode", "--write"):
+            # Flag with no value (treat as bool flag)
+            if lower == "--plugin":
+                result["plugin"] = ""
+            elif lower == "--mode":
+                result["mode"] = "audit"
+            elif lower == "--write":
+                result["write"] = True
+            i += 1
         else:
             i += 1
     return result
 
 
 def _do_migration(
+    plugin: str | None,
     skill_name: str,
     mode: str = "audit",
     write: bool = False,
@@ -239,29 +323,41 @@ def _do_migration(
         return {
             "error": (
                 "No skill name provided. Usage: /migrate-skill-ct <skill-name> "
-                "[--mode audit|patch] [--write true|false]"
+                "[--plugin <plugin-name>] [--mode audit|patch] [--write true|false]"
             ),
         }
 
     if mode not in {"audit", "patch"}:
         return {"error": f"Unknown mode '{mode}'. Use --mode audit or --mode patch.", "skill_name": skill_name}
 
-    frontmatter = _load_target_frontmatter(skill_name)
-    if frontmatter is None:
+    try:
+        resolved_plugin, skill_file = _resolve_skill_path(plugin, skill_name)
+    except ValueError as e:
         return {
-            "error": (
-                f"Could not load SKILL.md for skill '{skill_name}'. "
-                f"Checked: {SKILL_DIR / skill_name / 'SKILL.md'}"
-            ),
+            "error": str(e),
             "skill_name": skill_name,
+            "plugin": plugin,
         }
 
-    classification = classify_migration_status(frontmatter)
-    migration_result = build_migration_result(skill_name, frontmatter)
+    fm = _load_target_frontmatter(plugin, skill_name)
+    if fm is None:
+        return {
+            "error": (
+                f"Could not load SKILL.md for skill '{skill_name}'"
+                + (f" in plugin '{plugin}'" if plugin else "")
+                + f". Checked: {skill_file}"
+            ),
+            "skill_name": skill_name,
+            "plugin": plugin,
+        }
+
+    classification = classify_migration_status(fm)
+    migration_result = build_migration_result(skill_name, fm)
 
     if classification == "MIGRATED":
         return {
             "skill_name": skill_name,
+            "plugin": resolved_plugin,
             "status": classification,
             "action": "none",
             "reason": migration_result["reason"],
@@ -269,22 +365,24 @@ def _do_migration(
             "verification": "Skill already has contract_type and required contract fields. No migration needed.",
         }
 
-    patch_plan = _generate_patch(frontmatter, migration_result)
+    patch_plan = _generate_patch(fm, migration_result)
 
     if mode == "patch":
         changes = patch_plan["changes"]
         if changes and write:
-            apply_result = _apply_patch(skill_name, frontmatter, changes)
+            apply_result = _apply_patch(plugin, skill_name, fm, changes, skill_file=skill_file)
             if apply_result.get("error"):
                 return {
                     "skill_name": skill_name,
+                    "plugin": resolved_plugin,
                     "status": classification,
                     "action": "error",
                     "error": apply_result["error"],
                 }
-            verify_result = _verify_patch(skill_name, skills_dir=None)
+            verify_result = _verify_patch(plugin, skill_name, skill_file=skill_file)
             return {
                 "skill_name": skill_name,
+                "plugin": resolved_plugin,
                 "status": classification,
                 "action": "applied",
                 "files_modified": apply_result.get("files_modified", []),
@@ -294,6 +392,7 @@ def _do_migration(
             }
         return {
             "skill_name": skill_name,
+            "plugin": resolved_plugin,
             "status": classification,
             "action": "plan" if changes else "none",
             "reason": migration_result["reason"],
@@ -308,6 +407,7 @@ def _do_migration(
 
     return {
         "skill_name": skill_name,
+        "plugin": resolved_plugin,
         "status": classification,
         "action": "plan",
         "reason": migration_result["reason"],
@@ -466,7 +566,8 @@ def run_bulk_apply(
             })
             continue
 
-        apply_result = _apply_patch(skill_name, fm, changes, skills_dir=skills_dir)
+        skill_file = skills_dir / skill_name / "SKILL.md"
+        apply_result = _apply_patch(None, skill_name, fm, changes, skill_file=skill_file)
         if apply_result.get("error"):
             results.append({
                 "name": skill_name,
@@ -477,7 +578,7 @@ def run_bulk_apply(
             })
             continue
 
-        verify_result = _verify_patch(skill_name, skills_dir=skills_dir)
+        verify_result = _verify_patch(None, skill_name, skill_file=skill_file)
         results.append({
             "name": skill_name,
             "old_status": classification,
@@ -559,6 +660,11 @@ def main() -> None:
     )
     parser.add_argument("--skill", help="Name of the skill to migrate (required for single-skill mode)")
     parser.add_argument(
+        "--plugin",
+        help="Plugin name (e.g. cc-skills-analysis). Overrides auto-detection. "
+             "Also accepts plugin:skill form as first positional arg.",
+    )
+    parser.add_argument(
         "--mode",
         choices=["audit", "patch"],
         default="audit",
@@ -571,14 +677,13 @@ def main() -> None:
         help="Apply changes (true) or just propose (false, default)",
     )
     parser.add_argument(
-        "--skills-dir",
-        default=None,
-        help=r"Override the skills directory (default: P:\\\\\\packages/.claude-marketplace/plugins/cc-skills-thinking/skills)",
-    )
-    parser.add_argument(
         "--batch",
         action="store_true",
         help="Audit all skills in --skills-dir. Read-only; prints a summary table.",
+    )
+    parser.add_argument(
+        "--skills-dir",
+        help=r"Override the skills directory for --batch (default: <PLUGINS_DIR>/<plugin>/skills)",
     )
     parser.add_argument(
         "--all",
@@ -599,20 +704,41 @@ def main() -> None:
     )
     args = parser.parse_args()
 
+    # Determine effective skills_dir for batch/bulk modes
+    # For single-skill, we use _resolve_skill_path which doesn't need skills_dir
+    effective_skills_dir: Path | None = None
     if args.skills_dir:
-        global SKILL_DIR
-        SKILL_DIR = Path(args.skills_dir)
+        effective_skills_dir = Path(args.skills_dir)
+    elif args.batch or args.all:
+        # Default to first plugin's skills dir for batch ops, or use PLUGINS_DIR + scan all
+        effective_skills_dir = PLUGINS_DIR  # scan all plugins
 
-    effective_skills_dir = SKILL_DIR
+    # Single-skill mode
+    if args.skill and not args.batch and not args.all:
+        plugin = args.plugin  # can be None — auto-resolve handles it
+        result = _do_migration(
+            plugin=plugin,
+            skill_name=args.skill,
+            mode=args.mode,
+            write=args.write == "true",
+        )
+        print(json.dumps(result, indent=2))
+        return
 
-    # Batch audit mode: read-only scan of all skills
+    # Batch audit mode
     if args.batch:
+        if not effective_skills_dir:
+            parser.error("--batch requires --skills-dir or PLUGINS_DIR to be set")
+            return
         results = run_batch_audit(effective_skills_dir)
         _print_batch_summary(results, effective_skills_dir)
         return
 
     # Bulk apply mode
     if args.all:
+        if not effective_skills_dir:
+            parser.error("--all requires --skills-dir or PLUGINS_DIR to be set")
+            return
         status_filter = set(args.status_filter) if args.status_filter else {"UNMIGRATED"}
         write = args.write == "true" and not args.dry_run
         results = run_bulk_apply(
@@ -624,17 +750,11 @@ def main() -> None:
         _print_bulk_summary(results, effective_skills_dir)
         return
 
-    # Single-skill mode
-    if not args.skill:
-        parser.error("--skill is required when --batch and --all are not specified")
-        return
-
-    result = _do_migration(
-        skill_name=args.skill,
-        mode=args.mode,
-        write=args.write == "true",
+    # No mode selected
+    parser.error(
+        "Specify --skill <name> for single-skill mode, or --batch / --all for batch mode. "
+        "Use --help for full usage."
     )
-    print(json.dumps(result, indent=2))
 
 
 if __name__ == "__main__":

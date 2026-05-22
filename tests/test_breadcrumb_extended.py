@@ -967,9 +967,9 @@ class TestSetBreadcrumbEvidence:
             f"Expected completed_steps to remain {initial_completed}, got {updated_trail['completed_steps']}"
 
         # ASSERT: No changes to steps dict
-        assert updated_trail["steps"] == initial_trail["stepsr"], \
+        assert updated_trail["steps"] == initial_trail["steps"], \
             "Expected steps dict to remain unchanged"
 
         # ASSERT: Invalid step not in steps
-        assert "invalid_step" not in updated_trail["stepsr"], \
+        assert "invalid_step" not in updated_trail["steps"], \
             "Invalid step should not be added to steps dict"

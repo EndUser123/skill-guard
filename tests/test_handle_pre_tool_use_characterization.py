@@ -224,8 +224,8 @@ class TestHandlePreToolUseNoSkillConfig:
             "skill": "test-skill",
             "required_tools": ["Bash"],
         }
-        with patch("skill_guard.PreToolUse.PreToolUse_skill_pattern_gate._read_pending_stater", return_value=state), \
-             patch("skill_guard.PreToolUse.PreToolUse_skill_pattern_gate._read_pending_command_intentr", return_value=None), \
+        with patch("skill_guard.PreToolUse.PreToolUse_skill_pattern_gate._read_pending_state", return_value=state), \
+             patch("skill_guard.PreToolUse.PreToolUse_skill_pattern_gate._read_pending_command_intent", return_value=None), \
              patch("skill_guard.PreToolUse.PreToolUse_skill_pattern_gate.get_skill_config", return_value={}):
             result = handle_pre_tool_use({"tool_name": "Bash", "input": {"command": "ls"}})
         assert result == {}

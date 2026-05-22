@@ -87,6 +87,28 @@ print(f"Expected pattern: {config.get('pattern')}")    # e.g., call Skill first
 4. Breadcrumb system tracks execution steps
 5. Skill self-verifies it's following documented workflow
 
+## ⚠️ Known Issues
+
+### GitHub Issue #16288: Plugin hooks not loaded from external hooks.json
+
+**Status**: OPEN (as of 2026-05-21)
+
+**Problem**: skill-guard defines hooks in `hooks/hooks.json` following the plugin specification, but Claude Code does not load hooks from external `hooks.json` files even when the plugin shows as "enabled" in the UI.
+
+**Workaround Implemented**: skill-guard hooks are registered directly in `P:/.claude/settings.json` via a router pattern:
+
+1. **Router script**: `src/skill_guard/__lib/router.py` dispatches to the appropriate hook module
+2. **Settings entries**: Three compact registrations in `~/.claude/settings.json`:
+   - UserPromptSubmit → router.py UserPromptSubmit
+   - PreToolUse → router.py PreToolUse  
+   - Stop → router.py Stop
+
+**Why this approach**: A single router script minimizes settings.json footprint while providing centralized dispatch logic. When issue #16288 is resolved, the router can be removed and hooks will load automatically from `hooks/hooks.json`.
+
+**Related issues**: #45296 (hooks.json deleted), #29767 (Stop hooks never execute), #18547 (hooks not loaded in VSCode extension)
+
+---
+
 ## 🔧 Development (Windows)
 
 ### Setup

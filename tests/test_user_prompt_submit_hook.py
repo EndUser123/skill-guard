@@ -59,22 +59,23 @@ class TestSkillDetection:
             data = {"prompt": "/gto analyze foo", "session_id": "s1"}
             result = handle_user_prompt_submit(data)
 
-            assert result.get("continue") is True
+            # Enforcement fires for a real skill — result carries additionalContext
+            assert "additionalContext" in result
             mock_runtime.create_run.assert_called()
             call_kwargs = mock_runtime.create_run.call_args[1]
             assert call_kwargs["skill_name"] == "gto"
             assert call_kwargs["contract_type"] == "workflow-execution"
 
     def test_fail_open_on_run_creation_error(self):
-        """Run creation failure → tools still allowed (fail-open)."""
+        """Run creation failure → tools still allowed (fail-open); enforcement still fires."""
         with patch("skill_guard.user_prompt_submit_hook.ExecutionRuntime") as MockRuntime:
             MockRuntime.side_effect = OSError("disk full")
 
             data = {"prompt": "/gto analyze foo", "session_id": "s1"}
             result = handle_user_prompt_submit(data)
 
-            # Fail-open: continues even on error
-            assert result.get("continue") is True
+            # Fail-open: no blocking stop reason even on run creation error
+            assert "stopReason" not in result
 
 
 class TestContractTypeDerivation:
