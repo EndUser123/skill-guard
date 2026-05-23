@@ -17,9 +17,9 @@ echo ""
 
 # 1. Check database exists
 echo "1. Database existence:"
-if [ -f "P:\\\\\\.claude/hooks/logs/diagnostics/diagnostics.db" ]; then
+if [ -f "P://.claude/hooks/logs/diagnostics/diagnostics.db" ]; then
     echo "   ✓ Database exists"
-    ls -lh P:\\\\\\.claude/hooks/logs/diagnostics/diagnostics.db
+    ls -lh P://.claude/hooks/logs/diagnostics/diagnostics.db
 else
     echo "   ✗ Database missing"
 fi
@@ -27,12 +27,12 @@ echo ""
 
 # 2. Check database integrity
 echo "2. Database integrity:"
-sqlite3 P:\\\\\\.claude/hooks/logs/diagnostics/diagnostics.db "PRAGMA integrity_check;"
+sqlite3 P://.claude/hooks/logs/diagnostics/diagnostics.db "PRAGMA integrity_check;"
 echo ""
 
 # 3. Check schema
 echo "3. Schema verification:"
-sqlite3 P:\\\\\\.claude/hooks/logs/diagnostics/diagnostics.db "
+sqlite3 P://.claude/hooks/logs/diagnostics/diagnostics.db "
 SELECT 'breadcrumb_trails' as table_name, COUNT(*) FROM breadcrumb_trails
 UNION ALL
 SELECT 'breadcrumb_events', COUNT(*) FROM breadcrumb_events;
@@ -41,14 +41,14 @@ echo ""
 
 # 4. Check database size
 echo "4. Database size:"
-du -sh P:\\\\\\.claude/hooks/logs/diagnostics/diagnostics.db
+du -sh P://.claude/hooks/logs/diagnostics/diagnostics.db
 echo ""
 
 # 5. Check WAL file
 echo "5. WAL file status:"
-if [ -f "P:\\\\\\.claude/hooks/logs/diagnostics/diagnostics.db-wal" ]; then
+if [ -f "P://.claude/hooks/logs/diagnostics/diagnostics.db-wal" ]; then
     echo "   ✓ WAL file exists"
-    ls -lh P:\\\\\\.claude/hooks/logs/diagnostics/diagnostics.db-wal
+    ls -lh P://.claude/hooks/logs/diagnostics/diagnostics.db-wal
 else
     echo "   ✗ WAL file missing (WAL mode not enabled)"
 fi
@@ -56,7 +56,7 @@ echo ""
 
 # 6. Check active connections
 echo "6. Lock status:"
-sqlite3 P:\\\\\\.claude/hooks/logs/diagnostics/diagnostics.db "PRAGMA database_list;"
+sqlite3 P://.claude/hooks/logs/diagnostics/diagnostics.db "PRAGMA database_list;"
 echo ""
 
 echo "=== Health Check Complete ==="
@@ -68,7 +68,7 @@ echo "=== Health Check Complete ==="
 
 1. Database existence:
    ✓ Database exists
--rw-r--r-- 1 user group 2.5M Mar 14 10:30 P:\\\\\\.claude/hooks/logs/diagnostics/diagnostics.db
+-rw-r--r-- 1 user group 2.5M Mar 14 10:30 P://.claude/hooks/logs/diagnostics/diagnostics.db
 
 2. Database integrity:
 ok
@@ -78,11 +78,11 @@ breadcrumb_trails|150
 breadcrumb_events|1250
 
 4. Database size:
-2.5M    P:\\\\\\.claude/hooks/logs/diagnostics/diagnostics.db
+2.5M    P://.claude/hooks/logs/diagnostics/diagnostics.db
 
 5. WAL file status:
    ✓ WAL file exists
--rw-r--r-- 1 user group 1.2M Mar 14 10:30 P:\\\\\\.claude/hooks/logs/diagnostics/diagnostics.db-wal
+-rw-r--r-- 1 user group 1.2M Mar 14 10:30 P://.claude/hooks/logs/diagnostics/diagnostics.db-wal
 
 6. Lock status:
 0|main|/p/.claude/hooks/logs/diagnostics/diagnostics.db
@@ -102,10 +102,10 @@ breadcrumb_events|1250
 **Diagnosis**:
 ```bash
 # Check for active connections
-lsof P:\\\\\\.claude/hooks/logs/diagnostics/diagnostics.db
+lsof P://.claude/hooks/logs/diagnostics/diagnostics.db
 
 # Check lock status
-sqlite3 P:\\\\\\.claude/hooks/logs/diagnostics/diagnostics.db "PRAGMA lock_status;"
+sqlite3 P://.claude/hooks/logs/diagnostics/diagnostics.db "PRAGMA lock_status;"
 ```
 
 **Causes**:
@@ -139,11 +139,11 @@ _BUSY_TIMEOUT_MS = 10000  # 10 seconds (default: 5000)
 **Solution 4: Remove lock files (last resort)**
 ```bash
 # Check for lock files
-ls -la P:\\\\\\.claude/hooks/logs/diagnostics/diagnostics.db-*
+ls -la P://.claude/hooks/logs/diagnostics/diagnostics.db-*
 
 # Remove lock files (DANGER: Only if no active connections)
-rm P:\\\\\\.claude/hooks/logs/diagnostics/diagnostics.db-shm
-rm P:\\\\\\.claude/hooks/logs/diagnostics/diagnostics.db-wal
+rm P://.claude/hooks/logs/diagnostics/diagnostics.db-shm
+rm P://.claude/hooks/logs/diagnostics/diagnostics.db-wal
 ```
 
 **Prevention**:
@@ -162,7 +162,7 @@ rm P:\\\\\\.claude/hooks/logs/diagnostics/diagnostics.db-wal
 **Diagnosis**:
 ```bash
 # Check database integrity
-sqlite3 P:\\\\\\.claude/hooks/logs/diagnostics/diagnostics.db "PRAGMA integrity_check;"
+sqlite3 P://.claude/hooks/logs/diagnostics/diagnostics.db "PRAGMA integrity_check;"
 
 # Expected output: "ok"
 # Any other output indicates corruption
@@ -182,7 +182,7 @@ sqlite3 P:\\\\\\.claude/hooks/logs/diagnostics/diagnostics.db "PRAGMA integrity_
 python -m skill_guard.breadcrumb.migration --rollback
 
 # Delete corrupted database
-rm P:\\\\\\.claude/hooks/logs/diagnostics/diagnostics.db
+rm P://.claude/hooks/logs/diagnostics/diagnostics.db
 
 # Re-run migration
 python -m skill_guard.breadcrumb.migration --all
@@ -191,22 +191,22 @@ python -m skill_guard.breadcrumb.migration --all
 **Solution 2: Export and reimport**
 ```bash
 # Export data to SQL
-sqlite3 P:\\\\\\.claude/hooks/logs/diagnostics/diagnostics.db .dump > backup.sql
+sqlite3 P://.claude/hooks/logs/diagnostics/diagnostics.db .dump > backup.sql
 
 # Create new database
 sqlite3 new_diagnostic.db < backup.sql
 
 # Replace old database
-mv new_diagnostic.db P:\\\\\\.claude/hooks/logs/diagnostics/diagnostics.db
+mv new_diagnostic.db P://.claude/hooks/logs/diagnostics/diagnostics.db
 ```
 
 **Solution 3: Recover data**
 ```bash
 # Attempt recovery (may lose data)
-sqlite3 P:\\\\\\.claude/hooks/logs/diagnostics/diagnostics.db "PRAGMA wal_checkpoint(TRUNCATE);"
+sqlite3 P://.claude/hooks/logs/diagnostics/diagnostics.db "PRAGMA wal_checkpoint(TRUNCATE);"
 
 # If still corrupted, dump and recover
-sqlite3 P:\\\\\\.claude/hooks/logs/diagnostics/diagnostics.db ".recover" | sqlite3 recovered.db
+sqlite3 P://.claude/hooks/logs/diagnostics/diagnostics.db ".recover" | sqlite3 recovered.db
 ```
 
 **Prevention**:
@@ -225,10 +225,10 @@ sqlite3 P:\\\\\\.claude/hooks/logs/diagnostics/diagnostics.db ".recover" | sqlit
 **Diagnosis**:
 ```bash
 # Check database permissions
-ls -la P:\\\\\\.claude/hooks/logs/diagnostics/diagnostics.db
+ls -la P://.claude/hooks/logs/diagnostics/diagnostics.db
 
 # Check directory permissions
-ls -la P:\\\\\\.claude/hooks/logs/diagnostics/
+ls -la P://.claude/hooks/logs/diagnostics/
 ```
 
 **Causes**:
@@ -242,23 +242,23 @@ ls -la P:\\\\\\.claude/hooks/logs/diagnostics/
 **Solution 1: Fix permissions**
 ```bash
 # Grant read/write to owner
-chmod 644 P:\\\\\\.claude/hooks/logs/diagnostics/diagnostics.db
+chmod 644 P://.claude/hooks/logs/diagnostics/diagnostics.db
 
 # Grant execute on directory
-chmod 755 P:\\\\\\.claude/hooks/logs/diagnostics/
+chmod 755 P://.claude/hooks/logs/diagnostics/
 ```
 
 **Solution 2: Change ownership**
 ```bash
 # Take ownership of database
-sudo chown $USER:$USER P:\\\\\\.claude/hooks/logs/diagnostics/diagnostics.db
+sudo chown $USER:$USER P://.claude/hooks/logs/diagnostics/diagnostics.db
 ```
 
 **Solution 3: Check file system**
 ```bash
 # Verify file system is writable
-touch P:\\\\\\.claude/hooks/logs/diagnostics/test.txt
-rm P:\\\\\\.claude/hooks/logs/diagnostics/test.txt
+touch P://.claude/hooks/logs/diagnostics/test.txt
+rm P://.claude/hooks/logs/diagnostics/test.txt
 ```
 
 **Prevention**:
@@ -276,17 +276,17 @@ rm P:\\\\\\.claude/hooks/logs/diagnostics/test.txt
 **Diagnosis**:
 ```bash
 # Check database size
-du -sh P:\\\\\\.claude/hooks/logs/diagnostics/diagnostics.db
+du -sh P://.claude/hooks/logs/diagnostics/diagnostics.db
 
 # Check table size
-sqlite3 P:\\\\\\.claude/hooks/logs/diagnostics/diagnostics.db "
+sqlite3 P://.claude/hooks/logs/diagnostics/diagnostics.db "
 SELECT 'breadcrumb_trails' as table_name, COUNT(*) FROM breadcrumb_trails
 UNION ALL
 SELECT 'breadcrumb_events', COUNT(*) FROM breadcrumb_events;
 "
 
 # Analyze query plan
-sqlite3 P:\\\\\\.claude/hooks/logs/diagnostics/diagnostics.db "
+sqlite3 P://.claude/hooks/logs/diagnostics/diagnostics.db "
 EXPLAIN QUERY PLAN
 SELECT * FROM breadcrumb_trails WHERE terminal_id = 'term-123';
 "
@@ -303,10 +303,10 @@ SELECT * FROM breadcrumb_trails WHERE terminal_id = 'term-123';
 **Solution 1: Analyze and optimize**
 ```bash
 # Update query optimizer statistics
-sqlite3 P:\\\\\\.claude/hooks/logs/diagnostics/diagnostics.db "ANALYZE;"
+sqlite3 P://.claude/hooks/logs/diagnostics/diagnostics.db "ANALYZE;"
 
 # Rebuild database
-sqlite3 P:\\\\\\.claude/hooks/logs/diagnostics/diagnostics.db "VACUUM;"
+sqlite3 P://.claude/hooks/logs/diagnostics/diagnostics.db "VACUUM;"
 ```
 
 **Solution 2: Archive old data**
@@ -384,7 +384,7 @@ if not json_valid:
 **Solution 1: Fix validation errors**
 ```bash
 # Check specific file
-cat P:\\\\\\.claude/state/breadcrumb_logs_terminal-123/code.jsonl | python -m json.tool
+cat P://.claude/state/breadcrumb_logs_terminal-123/code.jsonl | python -m json.tool
 
 # Fix malformed JSON lines
 # (Manual editing required)
@@ -393,7 +393,7 @@ cat P:\\\\\\.claude/state/breadcrumb_logs_terminal-123/code.jsonl | python -m js
 **Solution 2: Remove corrupted files**
 ```bash
 # Remove problematic files
-rm P:\\\\\\.claude/state/breadcrumb_logs_terminal-123/corrupted.jsonl
+rm P://.claude/state/breadcrumb_logs_terminal-123/corrupted.jsonl
 
 # Re-run migration
 python -m skill_guard.breadcrumb.migration
@@ -426,10 +426,10 @@ python -m skill_guard.breadcrumb.migration --terminal terminal-123
 **Diagnosis**:
 ```bash
 # Check WAL file size
-ls -lh P:\\\\\\.claude/hooks/logs/diagnostics/diagnostics.db-wal
+ls -lh P://.claude/hooks/logs/diagnostics/diagnostics.db-wal
 
 # Check WAL checkpoint status
-sqlite3 P:\\\\\\.claude/hooks/logs/diagnostics/diagnostics.db "PRAGMA wal_checkpoint;"
+sqlite3 P://.claude/hooks/logs/diagnostics/diagnostics.db "PRAGMA wal_checkpoint;"
 ```
 
 **Causes**:
@@ -443,7 +443,7 @@ sqlite3 P:\\\\\\.claude/hooks/logs/diagnostics/diagnostics.db "PRAGMA wal_checkp
 **Solution 1: Force checkpoint**
 ```bash
 # Checkpoint WAL file
-sqlite3 P:\\\\\\.claude/hooks/logs/diagnostics/diagnostics.db "PRAGMA wal_checkpoint(TRUNCATE);"
+sqlite3 P://.claude/hooks/logs/diagnostics/diagnostics.db "PRAGMA wal_checkpoint(TRUNCATE);"
 ```
 
 **Solution 2: Restart connections**
@@ -549,24 +549,24 @@ echo "Closing all terminals..."
 
 # 2. Backup existing data
 echo "Backing up data..."
-mkdir -p P:\\\\\\.claude/state/emergency_backup_$(date +%Y%m%d_%H%M%S)
-cp -r P:\\\\\\.claude/state/breadcrumb_logs_* P:\\\\\\.claude/state/emergency_backup_$(date +%Y%m%d_%H%M%S)/ 2>/dev/null
-cp -r P:\\\\\\.claude/state/breadcrumbs_* P:\\\\\\.claude/state/emergency_backup_$(date +%Y%m%d_%H%M%S)/ 2>/dev/null
-cp P:\\\\\\.claude/hooks/logs/diagnostics/diagnostics.db P:\\\\\\.claude/state/emergency_backup_$(date +%Y%m%d_%H%M%S)/ 2>/dev/null
+mkdir -p P://.claude/state/emergency_backup_$(date +%Y%m%d_%H%M%S)
+cp -r P://.claude/state/breadcrumb_logs_* P://.claude/state/emergency_backup_$(date +%Y%m%d_%H%M%S)/ 2>/dev/null
+cp -r P://.claude/state/breadcrumbs_* P://.claude/state/emergency_backup_$(date +%Y%m%d_%H%M%S)/ 2>/dev/null
+cp P://.claude/hooks/logs/diagnostics/diagnostics.db P://.claude/state/emergency_backup_$(date +%Y%m%d_%H%M%S)/ 2>/dev/null
 
 # 3. Delete database
 echo "Deleting database..."
-rm -f P:\\\\\\.claude/hooks/logs/diagnostics/diagnostics.db
-rm -f P:\\\\\\.claude/hooks/logs/diagnostics/diagnostics.db-*
+rm -f P://.claude/hooks/logs/diagnostics/diagnostics.db
+rm -f P://.claude/hooks/logs/diagnostics/diagnostics.db-*
 
 # 4. Delete old file-based data
 echo "Deleting old breadcrumb data..."
-rm -rf P:\\\\\\.claude/state/breadcrumb_logs_*
-rm -rf P:\\\\\\.claude/state/breadcrumbs_*
+rm -rf P://.claude/state/breadcrumb_logs_*
+rm -rf P://.claude/state/breadcrumbs_*
 
 # 5. System will auto-initialize on next skill use
 echo "Reset complete. System will auto-initialize on next skill use."
-echo "Backup location: P:\\\\\\.claude/state/emergency_backup_$(date +%Y%m%d_%H%M%S)/"
+echo "Backup location: P://.claude/state/emergency_backup_$(date +%Y%m%d_%H%M%S)/"
 ```
 
 ### Data Recovery
@@ -575,10 +575,10 @@ echo "Backup location: P:\\\\\\.claude/state/emergency_backup_$(date +%Y%m%d_%H%
 
 ```bash
 # Restore from backup
-cp P:\\\\\\.claude/state/backup_YYYYMMDD/diagnostics.db P:\\\\\\.claude/hooks/logs/diagnostics/diagnostics.db
+cp P://.claude/state/backup_YYYYMMDD/diagnostics.db P://.claude/hooks/logs/diagnostics/diagnostics.db
 
 # Verify integrity
-sqlite3 P:\\\\\\.claude/hooks/logs/diagnostics/diagnostics.db "PRAGMA integrity_check;"
+sqlite3 P://.claude/hooks/logs/diagnostics/diagnostics.db "PRAGMA integrity_check;"
 
 # If ok, you're done
 # If not, try older backup
@@ -600,7 +600,7 @@ When reporting issues, collect:
 
 ### Log Locations
 
-- **Database logs**: `P:\\\\\\.claude/hooks/logs/`
+- **Database logs**: `P://.claude/hooks/logs/`
 - **Python logs**: Check terminal output
 - **SQLite logs**: Enable with `conn.set_trace_callback()`
 
@@ -617,10 +617,10 @@ python --version
 pip show skill-guard
 
 # Database schema
-sqlite3 P:\\\\\\.claude/hooks/logs/diagnostics/diagnostics.db ".schema"
+sqlite3 P://.claude/hooks/logs/diagnostics/diagnostics.db ".schema"
 
 # Database statistics
-sqlite3 P:\\\\\\.claude/hooks/logs/diagnostics/diagnostics.db "SELECT COUNT(*) FROM breadcrumb_trails;"
+sqlite3 P://.claude/hooks/logs/diagnostics/diagnostics.db "SELECT COUNT(*) FROM breadcrumb_trails;"
 ```
 
 ## Prevention Checklist

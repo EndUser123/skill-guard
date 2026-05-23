@@ -114,6 +114,7 @@ def _get_response_requirements(skill_name: str) -> dict:
 _NON_SKILL_COMMANDS = frozenset({
     "discover", "ask", "search", "research", "help", "config",
     "init", "review", "genius", "reason", "s",
+    "status", "model", "cost", "stats", "clear",
 })
 
 
@@ -127,6 +128,8 @@ def handle_user_prompt_submit(data: dict) -> dict:
 
     Returns {"additionalContext": "..."} when enforcement fires, {"continue": True} otherwise.
     Run creation is a side effect; it does not change the return shape.
+
+    Built-in commands and non-skill commands return early before run creation.
     """
     prompt = data.get("prompt", "") or data.get("userMessage", "") or ""
     session_id = data.get("session_id", "") or ""
@@ -143,33 +146,32 @@ def handle_user_prompt_submit(data: dict) -> dict:
     if not command:
         return {"continue": True}
 
-    # Run creation (side effect, fail-open)
-    skill_name = command
-    if skill_name not in _NON_SKILL_COMMANDS:
-        config = get_skill_config(skill_name, explicit_registry=None)
-        if config.get("discovered") or config.get("has_execution", True):
-            try:
-                config_contract = config.get("contract_type", "analysis")
-                runtime = ExecutionRuntime()
-                run = runtime.create_run(
-                    skill_name=skill_name,
-                    contract_type=_map_contract_type(config_contract),
-                    session_id=session_id,
-                    required_artifacts=_get_required_artifacts(skill_name),
-                    allowed_tools=_get_allowed_tools(skill_name),
-                    blocked_tools=[],
-                    response_requirements=_get_response_requirements(skill_name),
-                )
-                turn_id = data.get("turn_id") or data.get("turnId")
-                if turn_id and hasattr(run, "turn_id"):
-                    run.turn_id = turn_id
-                    runtime.store.save_run(run)
-            except (OSError, RuntimeError, ValueError, KeyError):
-                pass  # fail-open
-
-    # Enforcement: built-ins, ignored commands, and _NON_SKILL_COMMANDS pass through
+    # Built-ins, ignored commands, and non-skill commands pass through without creating runs
     if command in _NON_SKILL_COMMANDS or should_block_command(command):
         return {"continue": True}
+
+    # Run creation (side effect, fail-open) — only for skills that will actually execute
+    skill_name = command
+    config = get_skill_config(skill_name, explicit_registry=None)
+    if config.get("discovered") or config.get("has_execution", True):
+        try:
+            config_contract = config.get("contract_type", "analysis")
+            runtime = ExecutionRuntime()
+            run = runtime.create_run(
+                skill_name=skill_name,
+                contract_type=_map_contract_type(config_contract),
+                session_id=session_id,
+                required_artifacts=_get_required_artifacts(skill_name),
+                allowed_tools=_get_allowed_tools(skill_name),
+                blocked_tools=[],
+                response_requirements=_get_response_requirements(skill_name),
+            )
+            turn_id = data.get("turn_id") or data.get("turnId")
+            if turn_id and hasattr(run, "turn_id"):
+                run.turn_id = turn_id
+                runtime.store.save_run(run)
+        except (OSError, RuntimeError, ValueError, KeyError):
+            pass  # fail-open
 
     # Write telemetry (fail-open)
     try:

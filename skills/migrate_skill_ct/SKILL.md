@@ -47,7 +47,7 @@ Resolve the skill's SKILL.md path:
 - **With `--plugin` or scoped form**: `PLUGINS_DIR/<plugin>/skills/<skill-name>/SKILL.md`
 - **With auto-search**: scan `PLUGINS_DIR/*/skills/<skill-name>/SKILL.md` for candidates
 
-`PLUGINS_DIR` defaults to `P:\\.claude-marketplace\plugins`. Override via the `PLUGINS_DIR` env var.
+`PLUGINS_DIR` defaults to `P:/.claude-marketplace/plugins`. Override via the `PLUGINS_DIR` env var.
 
 If the file does not exist, return an error immediately.
 
@@ -56,7 +56,7 @@ If the file does not exist, return an error immediately.
 Run the migration script:
 
 ```bash
-cd "P:\\packages/skill-guard" && python skills/migrate_skill_ct/src/migrate_skill_contract.py --skill <skill-name> --mode <audit|patch> [--write true] [--plugin <plugin-name>]
+cd "P:/packages/skill-guard" && python skills/migrate_skill_ct/src/migrate_skill_contract.py --skill <skill-name> --mode <audit|patch> [--write true] [--plugin <plugin-name>]
 ```
 
 The script wraps `classify_migration_status()` and `build_migration_result()` from `skill_guard._skill_frontmatter_loader`.

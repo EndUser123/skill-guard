@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - TTL-based stale data cleanup (300 seconds)
   - Tool conflict detection (Bash vs read-only skills)
   - Canonical location: `src/skill_guard/skill_forced_eval.py`
-  - Symlink: `P:\\\\\\.claude/hooks/UserPromptSubmit_modules/skill_forced_eval.py`
+  - Symlink: `P://.claude/hooks/UserPromptSubmit_modules/skill_forced_eval.py`
 
 ## [2.0.0] - 2026-03-14
 

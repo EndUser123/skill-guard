@@ -185,13 +185,13 @@ trails = get_active_trails(terminal_id)  # Could be 100+
 **Run VACUUM periodically**:
 ```bash
 # Reclaim space from deleted trails
-sqlite3 P:\\\\\\.claude/hooks/logs/diagnostics/diagnostics.db "VACUUM;"
+sqlite3 P://.claude/hooks/logs/diagnostics/diagnostics.db "VACUUM;"
 ```
 
 **Run ANALYZE for query optimization**:
 ```bash
 # Update statistics for query planner
-sqlite3 P:\\\\\\.claude/hooks/logs/diagnostics/diagnostics.db "ANALYZE;"
+sqlite3 P://.claude/hooks/logs/diagnostics/diagnostics.db "ANALYZE;"
 ```
 
 **Frequency**: Monthly or after bulk deletions.
@@ -234,10 +234,10 @@ cache = BreadcrumbStateCache()
 **Database size**:
 ```bash
 # Check database size
-ls -lh P:\\\\\\.claude/hooks/logs/diagnostics/diagnostics.db
+ls -lh P://.claude/hooks/logs/diagnostics/diagnostics.db
 
 # Check table sizes
-sqlite3 P:\\\\\\.claude/hooks/logs/diagnostics/diagnostics.db "
+sqlite3 P://.claude/hooks/logs/diagnostics/diagnostics.db "
 SELECT 'breadcrumb_trails' as table_name, COUNT(*) as row_count,
        SUM(length(workflow_steps) + length(steps)) as data_size
 FROM breadcrumb_trails
