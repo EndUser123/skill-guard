@@ -16,67 +16,67 @@ for _p in (hooks_path, skill_guard_root):
     if _p not in sys.path:
         sys.path.insert(0, _p)
 
-from skills.migrate_skill_ct import (
+from skills.migrate_skill_ef.src.migrate_skill_ef import (
     _apply_patch,
-    _do_migration,
+    _do_ct_migration,
     _generate_patch,
-    _infer_contract_type,
+    _infer_ct,
     _load_all_skill_frontmatter,
     _load_target_frontmatter,
-    _parse_prompt,
+    _parse_ct_prompt,
     _resolve_skill_path,
     _verify_patch,
     run_batch_audit,
     run_bulk_apply,
-    run_migration,
+    run_ct_migration,
 )
 
 
 class TestParseInvocation:
     def test_basic_skill_name(self):
-        result = _parse_prompt("/migrate-skill-ct trace")
+        result = _parse_ct_prompt("/migrate-skill-ct trace")
         assert result["skill_name"] == "trace"
         assert result["plugin"] is None
         assert result["mode"] == "audit"
         assert result["write"] is False
 
     def test_scoped_plugin_skill(self):
-        result = _parse_prompt("/migrate-skill-ct cc-skills-analysis:gto")
+        result = _parse_ct_prompt("/migrate-skill-ct cc-skills-analysis:gto")
         assert result["plugin"] == "cc-skills-analysis"
         assert result["skill_name"] == "gto"
 
     def test_explicit_plugin_flag(self):
-        result = _parse_prompt("/migrate-skill-ct gto --plugin cc-skills-analysis")
+        result = _parse_ct_prompt("/migrate-skill-ct gto --plugin cc-skills-analysis")
         assert result["plugin"] == "cc-skills-analysis"
         assert result["skill_name"] == "gto"
 
     def test_scoped_overrides_plugin_flag(self):
-        result = _parse_prompt("/migrate-skill-ct cc-skills-analysis:gto --plugin cc-skills-sdlc")
+        result = _parse_ct_prompt("/migrate-skill-ct cc-skills-analysis:gto --plugin cc-skills-sdlc")
         assert result["plugin"] == "cc-skills-sdlc"  # explicit --plugin wins
 
     def test_mode_audit(self):
-        result = _parse_prompt("/migrate-skill-ct decision-tree --mode audit")
+        result = _parse_ct_prompt("/migrate-skill-ct decision-tree --mode audit")
         assert result["skill_name"] == "decision-tree"
         assert result["mode"] == "audit"
 
     def test_mode_patch(self):
-        result = _parse_prompt("/migrate-skill-ct gto --mode patch")
+        result = _parse_ct_prompt("/migrate-skill-ct gto --mode patch")
         assert result["skill_name"] == "gto"
         assert result["mode"] == "patch"
 
     def test_write_true(self):
-        result = _parse_prompt("/migrate-skill-ct gto --mode patch --write true")
+        result = _parse_ct_prompt("/migrate-skill-ct gto --mode patch --write true")
         assert result["skill_name"] == "gto"
         assert result["mode"] == "patch"
         assert result["write"] is True
 
     def test_write_false(self):
-        result = _parse_prompt("/migrate-skill-ct gto --write false")
+        result = _parse_ct_prompt("/migrate-skill-ct gto --write false")
         assert result["skill_name"] == "gto"
         assert result["write"] is False
 
     def test_no_skill_name(self):
-        result = _parse_prompt("/migrate-skill-ct")
+        result = _parse_ct_prompt("/migrate-skill-ct")
         assert result["skill_name"] == ""
 
 
@@ -91,7 +91,7 @@ class TestResolveSkillPath:
         skill_dir.mkdir(parents=True)
         (skill_dir / "SKILL.md").write_text("---\nname: gto\n---\n# Skill\n", encoding="utf-8")
 
-        import skills.migrate_skill_ct.src.migrate_skill_contract as src_module
+        import skills.migrate_skill_ef.src.migrate_skill_ef as src_module
         with patch.object(src_module, "PLUGINS_DIR", tmp_path):
             plugin, skill_file = _resolve_skill_path("cc-skills-analysis", "gto")
             assert plugin == "cc-skills-analysis"
@@ -104,7 +104,7 @@ class TestResolveSkillPath:
         skill_dir.mkdir(parents=True)
         (skill_dir / "SKILL.md").write_text("---\nname: gto\n---\n# Skill\n", encoding="utf-8")
 
-        import skills.migrate_skill_ct.src.migrate_skill_contract as src_module
+        import skills.migrate_skill_ef.src.migrate_skill_ef as src_module
         with patch.object(src_module, "PLUGINS_DIR", tmp_path):
             plugin, skill_file = _resolve_skill_path(None, "gto")
             assert plugin == "cc-skills-analysis"
@@ -117,7 +117,7 @@ class TestResolveSkillPath:
             skill_dir.mkdir(parents=True)
             (skill_dir / "SKILL.md").write_text("---\nname: gto\n---\n# Skill\n", encoding="utf-8")
 
-        import skills.migrate_skill_ct.src.migrate_skill_contract as src_module
+        import skills.migrate_skill_ef.src.migrate_skill_ef as src_module
         with patch.object(src_module, "PLUGINS_DIR", tmp_path):
             with pytest.raises(ValueError) as exc_info:
                 _resolve_skill_path(None, "gto")
@@ -126,7 +126,7 @@ class TestResolveSkillPath:
             assert "Use --plugin" in str(exc_info.value)
 
     def test_auto_search_raises_on_nonexistent_skill(self, tmp_path):
-        import skills.migrate_skill_ct.src.migrate_skill_contract as src_module
+        import skills.migrate_skill_ef.src.migrate_skill_ef as src_module
         with patch.object(src_module, "PLUGINS_DIR", tmp_path):
             with pytest.raises(ValueError) as exc_info:
                 _resolve_skill_path(None, "nonexistent-skill")
@@ -137,22 +137,22 @@ class TestRunMigrationResultShape:
     """Basic result shape tests without requiring real skill files."""
 
     def test_missing_skill_returns_error(self):
-        result = run_migration("/migrate-skill-ct nonexistent-skill-xyz")
+        result = run_ct_migration("/migrate-skill-ct nonexistent-skill-xyz")
         assert "error" in result
         assert result["skill_name"] == "nonexistent-skill-xyz"
 
     def test_no_skill_name_returns_error(self):
-        result = run_migration("/migrate-skill-ct")
+        result = run_ct_migration("/migrate-skill-ct")
         assert "error" in result
         assert "No skill name provided" in result["error"]
 
     def test_unknown_mode_returns_error(self):
-        result = run_migration("/migrate-skill-ct trace --mode invalid")
+        result = run_ct_migration("/migrate-skill-ct trace --mode invalid")
         assert "error" in result
         assert "Unknown mode" in result["error"]
 
     def test_scoped_form_sets_plugin_and_skill(self):
-        result = run_migration("/migrate-skill-ct cc-skills-analysis:gto --mode audit")
+        result = run_ct_migration("/migrate-skill-ct cc-skills-analysis:gto --mode audit")
         # Either finds it or returns a proper error with plugin set
         assert "plugin" in result
         assert result["skill_name"] == "gto"

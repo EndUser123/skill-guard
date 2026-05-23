@@ -20,7 +20,7 @@ for _p in (hooks_path, skill_guard_root):
     if _p not in sys.path:
         sys.path.insert(0, _p)
 
-# Verify skills is importable (for migrate-skill-ct tests)
+# Verify skills is importable (for migrate-skill-ef tests)
 import os
 
 os.makedirs(skill_guard_root, exist_ok=True)

@@ -85,7 +85,7 @@ def test_migration_advisory_emits_notification_for_unmigrated(monkeypatch):
     assert captured.get("notification_type") == "warning"
     assert "legacy" in captured.get("message", "").lower()
     assert captured.get("source") == "skill_metadata_advisory:old-skill"
-    assert "migrate-skill-ct" in captured.get("message", "")
+    assert "migrate-skill-ef" in captured.get("message", "")
     assert captured.get("priority") == 1
 
 
@@ -110,7 +110,7 @@ def test_migration_advisory_emits_info_notification_for_partially_migrated(monke
     assert captured.get("notification_type") == "info"
     assert "incomplete" in captured.get("message", "").lower()
     assert captured.get("source") == "skill_metadata_advisory:half-migrated"
-    assert "migrate-skill-ct" in captured.get("message", "")
+    assert "migrate-skill-ef" in captured.get("message", "")
     assert captured.get("priority") == 1
 
 

@@ -232,7 +232,7 @@ def skill_metadata_advisory(context: Any) -> str | None:
                     notification_type="warning",
                     message=(
                         f"Skill '/{candidate}' appears to be legacy and not yet migrated to the execution-contract model. "
-                        f"Hint: run '/migrate-skill-ct {candidate}' to audit or generate a migration plan. "
+                        f"Hint: run '/migrate-skill-ef {candidate}' to audit or generate a migration plan. "
                         f"Contract-era skills should use the -ct suffix naming standard."
                     ),
                     source=f"skill_metadata_advisory:{candidate}",
@@ -247,7 +247,7 @@ def skill_metadata_advisory(context: Any) -> str | None:
                     notification_type="info",
                     message=(
                         f"Skill '/{candidate}' has some contract metadata but appears incomplete for its contract type. "
-                        f"Hint: run '/migrate-skill-ct {candidate}' to inspect missing fields and generate a patch plan."
+                        f"Hint: run '/migrate-skill-ef {candidate}' to inspect missing fields and generate a patch plan."
                     ),
                     source=f"skill_metadata_advisory:{candidate}",
                     priority=1,
