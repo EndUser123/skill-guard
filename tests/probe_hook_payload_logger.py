@@ -84,7 +84,7 @@ if __name__ == "__main__":
             print(json.dumps(result))
         else:
             # No stdin — called as module, not subprocess
-            print(json.dumps({"allow": True, "note": "probe: no stdin"}))
+            print(json.dumps({"decision": "approve"}))
     except json.JSONDecodeError as e:
         print(json.dumps({"allow": True, "note": f"probe: JSON parse error {e}"}), file=sys.stderr)
         sys.exit(1)

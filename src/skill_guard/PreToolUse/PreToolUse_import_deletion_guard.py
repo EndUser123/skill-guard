@@ -8,11 +8,15 @@ was searched for in the current turn.
 Prevents the HyDEGenerator incident: LLM deleted import because file search
 failed, but symbol actually existed at a different path.
 
+Evidence sources (in priority order):
+    1. Evidence store (turn_scoped_evidence) — fast, structured
+    2. Transcript JSONL (transcript_path) — reliable fallback
+
 Configuration:
     IMPORT_DELETION_GUARD_ENABLED=true to enable (default)
     IMPORT_DELETION_GUARD_VERBOSE=true for detailed logging
 
-Bypass: Add --allow-import-removal to user message
+Bypass: Add --allow-import-removal to your message
 """
 
 from __future__ import annotations
@@ -22,6 +26,26 @@ import os
 import re
 import sys
 from pathlib import Path
+
+def _normalize_stdout(data: dict) -> dict:
+    """Normalize hook output to Claude Code Zod-valid schema."""
+    if data.get('decision') == 'allow':
+        return {'decision': 'approve'}
+    if data.get('decision') == 'block':
+        return {'decision': 'block', 'reason': data.get('reason', '')}
+    if 'allow' in data:
+        if data['allow'] is False:
+            return {'decision': 'block', 'reason': data.get('reason', '')}
+        return {'decision': 'approve'}
+    if 'continue' in data:
+        if data['continue'] is False:
+            return {'decision': 'block', 'reason': data.get('reason', '')}
+        return {'decision': 'approve'}
+    if 'ok' in data:
+        return {'decision': 'approve'}
+    return data
+
+
 
 # Add hooks directory to path for imports (hardcoded — __file__ resolves to plugin dir)
 HOOKS_DIR = Path(r"P:\\\\\\.claude/hooks")
@@ -39,16 +63,35 @@ except Exception:
     load_turn_scoped_events = None  # type: ignore[assignment]
     EVIDENCE_AVAILABLE = False
 
-# Patterns for import parsing (with DOTALL for multiline imports)
 FROM_IMPORT_RE = re.compile(
-    r"^\s*from\s+\S+\s+import\s+(.+)",
-    re.MULTILINE | re.DOTALL
+    r"^\s*from\s+\S+\s+import\s+(.+)", re.MULTILINE
 )
 
 IMPORT_RE = re.compile(
-    r"^\s*import\s+(.+)",
-    re.MULTILINE | re.DOTALL
+    r"^\s*import\s+(.+)", re.MULTILINE
 )
+
+
+def _parse_import_clause(import_clause: str) -> set[str]:
+    """Parse a comma-separated import clause into symbol names.
+
+    Handles 'symbol as alias' syntax and strips comments/parentheses.
+    """
+    symbols: set[str] = set()
+    # Strip comments
+    import_clause = re.sub(r"#.*", "", import_clause)
+    # Strip parentheses and normalize whitespace
+    import_clause = re.sub(r"[()]", " ", import_clause)
+    import_clause = re.sub(r"\s+", " ", import_clause).strip()
+
+    for part in import_clause.split(","):
+        part = part.strip()
+        if not part:
+            continue
+        symbol = part.split(" as ")[0].strip()
+        if symbol:
+            symbols.add(symbol)
+    return symbols
 
 
 def extract_import_symbols(text: str) -> set[str]:
@@ -57,56 +100,63 @@ def extract_import_symbols(text: str) -> set[str]:
     Handles:
     - from module import Foo
     - from module import Foo, Bar
-    - from module import (Foo, Bar) [multiline]
+    - from module import (Foo, Bar) [single-line parenthesized]
+    - from module import (
+    Foo,
+    Bar
+) [multiline parenthesized]
     - import module
     - import module as alias
     - import os, sys, re (multiple on one line)
 
     Returns:
         Set of symbol names (not module paths, not aliases)
-    r"""
-    symbols = set()
+    """
+    symbols: set[str] = set()
+    lines = text.splitlines()
+    i = 0
 
-    # Process 'from ... import' statements
-    for match in FROM_IMPORT_RE.finditer(text):
-        import_clause = match.group(1)
-        # Strip comments
-        import_clause = re.sub(r"#.*", "", import_clause)
-        # Strip parentheses and normalize whitespace
-        import_clause = re.sub(r"[()]", " ", import_clause)
-        import_clause = re.sub(r"\s+", " ", import_clause).strip()
+    while i < len(lines):
+        line = lines[i]
 
-        # Split by comma and extract symbol names
-        for part in import_clause.split(","):
-            part = part.strip()
-            if not part:
-                continue
-            # Extract symbol name (handle 'symbol as alias')
-            symbol = part.split(" as ")[0].strip()
-            if symbol:
-                symbols.add(symbol)
+        # Check for 'from ... import' statements
+        from_match = FROM_IMPORT_RE.match(line)
+        if from_match:
+            import_clause = from_match.group(1)
+            # Check if this is a multiline parenthesized import
+            if "(" in import_clause and ")" not in import_clause:
+                # Collect continuation lines until closing ')'
+                i += 1
+                while i < len(lines):
+                    cont_line = lines[i]
+                    import_clause += " " + cont_line
+                    if ")" in cont_line:
+                        break
+                    i += 1
+            symbols.update(_parse_import_clause(import_clause))
+            i += 1
+            continue
 
-    # Process 'import ...' statements
-    for match in IMPORT_RE.finditer(text):
-        module_spec = match.group(1)
-        # Strip comments
-        module_spec = re.sub(r"#.*", "", module_spec).strip()
+        # Check for 'import ...' statements
+        import_match = IMPORT_RE.match(line)
+        if import_match:
+            module_spec = import_match.group(1)
+            # Strip comments
+            module_spec = re.sub(r"#.*", "", module_spec).strip()
 
-        # Handle multiple imports on one line: import os, sys, re
-        # Also handle: import os as my_os
-        for part in module_spec.split(","):
-            part = part.strip()
-            if not part:
-                continue
-            # Extract module name (handle 'module as alias')
-            module = part.split(" as ")[0].strip()
-            if module:
-                # For 'import os.path', we want 'os.path'
-                # For 'import os', we want 'os'
-                symbols.add(module)
+            for part in module_spec.split(","):
+                part = part.strip()
+                if not part:
+                    continue
+                module = part.split(" as ")[0].strip()
+                if module:
+                    symbols.add(module)
+            i += 1
+            continue
+
+        i += 1
 
     return symbols
-
 
 def extract_removed_symbols(old_string: str, new_string: str) -> set[str]:
     """Find symbols present in old_string imports but absent in new_string imports.
@@ -276,9 +326,104 @@ def load_this_turn_events(session_id: str, terminal_id: str) -> list[dict] | Non
         return None
 
 
-def has_bypass_flag(user_message: str) -> bool:
-    """Check if user message contains bypass flag."""
-    return "--allow-import-removal" in user_message
+def _resolve_session_id(data: dict) -> str:
+    """Resolve session ID from multiple possible field names."""
+    for key in ("session_id", "sessionId", "conversation_id", "conversationId"):
+        val = data.get(key, "")
+        if val:
+            return str(val)
+    return os.environ.get("CLAUDE_SESSION_ID", "")
+
+
+def _parse_transcript_for_evidence(data: dict) -> tuple[str, list[dict]]:
+    """Read transcript_path JSONL to extract user prompt and recent tool events.
+
+    Returns (user_prompt, tool_events) where tool_events contains Grep/Bash/Read
+    events from the most recent assistant turn — the same evidence sources the
+    evidence store would provide.
+    """
+    transcript_path = data.get("transcript_path", "")
+    if not transcript_path:
+        return "", []
+
+    try:
+        path = Path(transcript_path)
+        if not path.exists():
+            return "", []
+        content = path.read_text(encoding="utf-8")
+    except OSError:
+        return "", []
+
+    user_prompt = ""
+    tool_events: list[dict] = []
+    found_user = False
+
+    for line in reversed(content.strip().split("\n")):
+        if not line.strip():
+            continue
+        try:
+            entry = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+
+        role = entry.get("role", "")
+        msg_type = entry.get("type", "")
+        message = entry.get("message", entry)
+        message_content = message.get("content", entry.get("content", ""))
+
+        is_assistant = (
+            (msg_type == "message" and role == "assistant")
+            or msg_type == "assistant"
+            or role == "assistant"
+        )
+        is_user = role == "user" or (msg_type == "message" and role == "user")
+        # tool_result messages have role=user but type="tool_result"
+        is_tool_result = msg_type == "tool_result" or (
+            is_user and isinstance(message_content, list)
+            and any(isinstance(b, dict) and b.get("type") == "tool_result" for b in message_content)
+        )
+
+        if is_assistant:
+            # Extract tool_use blocks as evidence events
+            if isinstance(message_content, list):
+                for block in message_content:
+                    if isinstance(block, dict) and block.get("type") == "tool_use":
+                        name = block.get("name", "")
+                        inp = block.get("input", {})
+                        if name and isinstance(inp, dict):
+                            tool_events.append({"name": name, **inp})
+
+        elif is_user and msg_type != "system-reminder" and not is_tool_result:
+            text = ""
+            if isinstance(message_content, list):
+                text = " ".join(
+                    b.get("text", "")
+                    for b in message_content
+                    if isinstance(b, dict) and b.get("type") == "text"
+                )
+            elif isinstance(message_content, str):
+                text = message_content
+
+            text = text.strip()
+            if text:
+                user_prompt = text
+                found_user = True
+
+            if found_user:
+                break
+
+    return user_prompt, tool_events
+
+
+def has_bypass_flag(data: dict) -> bool:
+    """Check if user message contains bypass flag via transcript_path."""
+    # Fast path: check direct field (rarely present but cheap)
+    direct = data.get("user_message", "")
+    if "--allow-import-removal" in direct:
+        return True
+    # Primary path: read from transcript
+    user_prompt, _ = _parse_transcript_for_evidence(data)
+    return "--allow-import-removal" in user_prompt
 
 
 def _iter_candidate_edits(tool_name: str, tool_input: dict) -> list[tuple[str, str, str]]:
@@ -343,18 +488,36 @@ def evaluate(data: dict) -> dict | None:
 
     tool_input = data.get("tool_input", {})
 
-    user_message = data.get("user_message", "")
-    if has_bypass_flag(user_message):
+    if has_bypass_flag(data):
         return None
 
-    session_id = data.get("session_id", "")
+    session_id = _resolve_session_id(data)
     terminal_id = data.get("terminal_id", "")
 
     tool_events = load_this_turn_events(session_id, terminal_id)
+
+    # Transcript fallback when evidence store is unavailable
     if tool_events is None:
-        # Fail closed: block import deletions when evidence store is unavailable
+        _, transcript_events = _parse_transcript_for_evidence(data)
+        if transcript_events is not None:
+            tool_events = transcript_events
+
+    if tool_events is None:
+        # Fail closed: block import deletions when no evidence available
         for file_path, old_string, new_string in _iter_candidate_edits(tool_name, tool_input):
             removed_symbols = extract_removed_symbols(old_string, new_string)
+            if not removed_symbols:
+                continue
+            # Filter out symbols no longer used in the new content body
+            new_body_lines = [
+                line for line in new_string.splitlines()
+                if not re.match(r"^\s*(from\s+|import\s+)", line)
+            ]
+            new_body = "\n".join(new_body_lines)
+            removed_symbols = {
+                s for s in removed_symbols
+                if re.search(r"\b" + re.escape(s) + r"\b", new_body)
+            }
             if not removed_symbols:
                 continue
             symbols_str = ", ".join(sorted(removed_symbols))
@@ -377,6 +540,22 @@ Bypass: Add --allow-import-removal to your message."""
         removed_symbols = extract_removed_symbols(old_string, new_string)
         if not removed_symbols:
             continue
+
+        # Filter out symbols no longer used in the new content body.
+        # If a symbol was removed from imports AND its usage was also removed,
+        # the deletion is intentional (code was rewritten to not need it).
+        # Strip import lines from new_string to check only code body usage.
+        new_body_lines = [
+            line for line in new_string.splitlines()
+            if not re.match(r"^\s*(from\s+|import\s+)", line)
+        ]
+        new_body = "\n".join(new_body_lines)
+        removed_symbols = {
+            s for s in removed_symbols
+            if re.search(r"\b" + re.escape(s) + r"\b", new_body)
+        }
+        if not removed_symbols:
+            continue  # All removed imports had their usage removed too — intentional
 
         # Broader investigation check: Read of module, git log, or grep
         if has_investigation_evidence(old_string, removed_symbols, file_path, tool_events):
@@ -418,19 +597,19 @@ def main() -> int:
     try:
         input_text = sys.stdin.read().strip()
         if not input_text:
-            print(json.dumps({"continue": True}))
+            print(json.dumps({"decision": "approve"}))
             return 0
         data = json.loads(input_text)
     except (json.JSONDecodeError, ValueError):
-        print(json.dumps({"continue": True}))
+        print(json.dumps({"decision": "approve"}))
         return 0
 
     result = evaluate(data)
     if result and not result.get("continue", True):
-        print(json.dumps(result))
+        print(json.dumps(_normalize_stdout(result)))
         return 2
 
-    print(json.dumps({"continue": True}))
+    print(json.dumps({"decision": "approve"}))
     return 0
 
 

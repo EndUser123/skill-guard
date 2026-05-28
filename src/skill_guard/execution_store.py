@@ -142,11 +142,8 @@ class ArtifactsExecutionStore(ExecutionStore):
 
         state_path = self._state_path()
         if state_path.exists():
-            # Rename to .ended backup (not deleted — for post-mortem)
             backup = state_path.with_suffix(".json.ended")
-            if backup.exists():
-                backup.unlink()
-            state_path.rename(backup)
+            state_path.replace(backup)
 
     def append_event(self, event: ExecutionEvent) -> None:
         events_path = self._events_path()

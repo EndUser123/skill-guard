@@ -36,7 +36,10 @@ for _hooks_root in (
         sys.path.insert(0, _hooks_root_str)
 
 
-class SkillExecutionTracker:
+from posttooluse.base import PostToolUseHook
+
+
+class SkillExecutionTracker(PostToolUseHook):
     """Tracks skill loads and tool usage for execution validation.
 
     Non-blocking - just tracks state for the Stop hook to validate.
@@ -49,15 +52,8 @@ class SkillExecutionTracker:
     default_enabled = True
 
     def __init__(self):
-        # Import PostToolUseHook here (not at module level) to avoid sys.path
-        # conflicts when skill_guard.posttooluse and P:\\\\\\‎.claude/hooks/posttooluse
-        # are both in the module graph during pytest runs.
-        from posttooluse.base import PostToolUseHook
-        # Dynamically inject base class to avoid circular import at class definition time
-        self.__class__.__bases__ = (PostToolUseHook,)
-        PostToolUseHook.__init__(self)
+        super().__init__()
         self._import_functions()
-
     def _import_functions(self):
         """Fail-fast import of state management functions."""
         from skill_execution_state import (
