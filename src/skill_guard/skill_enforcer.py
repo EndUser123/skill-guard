@@ -437,11 +437,12 @@ def build_main_health_context() -> str:
                 pass
     if lines:
         return "\n\n**Hook Health Report:**\n" + "\n".join(lines)
-    checked = "\n".join(f"- {path}" for path in checked_paths)
+    paths_to_display = checked_paths if checked_paths else [_hook_health_report(), _fallback_hook_health_report()]
+    checked = "\n".join(f"- {path}" for path in paths_to_display)
     return "No startup health report found yet\nChecked:\n" + checked
 
 
-def build_command_context(command: str, args: str) -> str:
+def build_command_context(command: str, args: str, context=None) -> str:
     """Build context injection text that forces Skill() tool invocation."""
     parts = []
 
