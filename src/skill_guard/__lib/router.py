@@ -20,7 +20,7 @@ import sys
 from pathlib import Path
 
 # Ensure skill_guard package is importable
-SRC_DIR = Path(__file__).resolve().parent.parent
+SRC_DIR = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(SRC_DIR))
 
 # Also ensure local hooks dir is importable (matches hook script behavior)
@@ -53,4 +53,19 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except SystemExit:
+        raise
+    except Exception as _e:
+        import sys, traceback as _tb
+        from pathlib import Path as _P
+        try:
+            _lib = _P(__file__).resolve().parent.parent.parent / "__lib"
+            if str(_lib) not in sys.path:
+                sys.path.insert(0, str(_lib))
+            from hook_error_sink import log_hook_error
+            log_hook_error(__file__, str(_e), _tb.format_exc())
+        except Exception:
+            pass
+        sys.exit(1)
