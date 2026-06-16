@@ -193,11 +193,16 @@ def handle_user_prompt_submit(data: dict) -> dict:
         except (OSError, RuntimeError, ValueError, KeyError):
             pass  # fail-open
 
-    # Write telemetry (fail-open)
-    try:
-        log_command_intent_telemetry(terminal_id, session_id, prompt, command)
-    except OSError:
-        pass
+    # Write the pending-command-intent (fail-open). This file is what the
+    # PreToolUse + Stop skill-first gates key off. Plugin (colon-namespaced)
+    # commands auto-load their SKILL.md, so we do NOT want the gates to demand a
+    # redundant Skill() tool call and block direct execution — skip the intent
+    # for them so they run their workflow on the first turn.
+    if ":" not in command:
+        try:
+            log_command_intent_telemetry(terminal_id, session_id, prompt, command)
+        except OSError:
+            pass
 
     return {"additionalContext": build_command_context(command, args)}
 

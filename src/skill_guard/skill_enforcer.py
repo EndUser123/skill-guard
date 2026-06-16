@@ -135,6 +135,23 @@ Path validation, directory checks, and orientation all happen INSIDE the skill, 
 Do NOT substitute your own analysis or improvise.
 """.strip()
 
+# Plugin (colon-namespaced) slash commands AUTO-LOAD their SKILL.md — the CLI
+# injects the full skill content as a user turn when /plugin:skill is typed. So
+# the "call Skill() first / do not use Bash" contract above is both redundant and
+# harmful: it forbids the one action the model needs (executing), which makes the
+# model write its tool calls as prose and stall. For plugin commands, tell it the
+# skill is loaded and to execute the workflow directly by INVOKING tools.
+PLUGIN_SLASH_EXECUTION_LANE = """
+INSTRUCTION: Execute skill {command}
+
+The skill's SKILL.md is ALREADY LOADED in this turn (the slash command injected it
+above). You do NOT need to call the Skill tool — it is redundant here.
+
+Execute the skill's documented workflow NOW by actually INVOKING tools (Bash, Read,
+Write, etc.) as the skill directs. Do NOT write tool calls as prose and stop. Do NOT
+substitute your own analysis or improvise.
+""".strip()
+
 HELP_REQUEST_LANE = """
 The user passed a help flag ({flag}). After calling Skill("{command}"):
 - Look for a flags/options/usage section in the skill's documentation.
@@ -451,11 +468,16 @@ def build_command_context(command: str, args: str, context=None) -> str:
     """Build context injection text that forces Skill() tool invocation."""
     parts = []
 
-    advisory = _check_workflow_steps_advisory(command)
-    if advisory:
-        parts.append(advisory)
+    # Plugin (colon-namespaced) commands auto-load their SKILL.md, so steer them
+    # to execute directly instead of demanding a redundant Skill() tool call.
+    if ":" in command:
+        parts.append(PLUGIN_SLASH_EXECUTION_LANE.replace("{command}", command))
+    else:
+        advisory = _check_workflow_steps_advisory(command)
+        if advisory:
+            parts.append(advisory)
+        parts.append(SLASH_EXECUTION_LANE.replace("{command}", command))
 
-    parts.append(SLASH_EXECUTION_LANE.replace("{command}", command))
     parts.append(f"**Detected Command**: /{command}")
 
     if args and args.strip():
