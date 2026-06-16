@@ -8,8 +8,8 @@ SCOPE RULES (v2.0):
     scope-gated. Must match expected_dir from skill context state.
 
 SKILL CONTEXT SHOW/RESET API:
-  Bash(python P:/packages/skill-guard/tools/skill_context.py show)
-  Bash(python P:/packages/skill-guard/tools/skill_context.py reset)
+  Bash(python P:/packages/.claude-marketplace/plugins/skill-guard/tools/skill_context.py show)
+  Bash(python P:/packages/.claude-marketplace/plugins/skill-guard/tools/skill_context.py reset)
 
 ENABLED: SKILL_DIR_GATE_ENABLED env var ("true"/"false", default "true")
 FAIL OPEN: any exception -> allow (never break tool execution)

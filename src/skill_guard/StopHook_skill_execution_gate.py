@@ -70,7 +70,7 @@ if TYPE_CHECKING:
     pass
 
 HOOKS_DIR = Path(__file__).resolve().parent
-SKILL_GUARD_SRC = Path(r"P:\\\\\\packages/skill-guard/src")
+SKILL_GUARD_SRC = Path(r"P:/packages/.claude-marketplace/plugins/skill-guard/src")
 MAIN_HOOKS_DIR = Path(r"P:\\\\\\.claude/hooks")
 # Must insert MAIN_HOOKS_DIR at position 0 — $__CSF_ROOT/__lib shadows __lib
 for _p in (MAIN_HOOKS_DIR, HOOKS_DIR, SKILL_GUARD_SRC):

@@ -62,7 +62,7 @@ P://.claude/state/breadcrumbs_terminal-123/
 ### 2. Install Updated skill-guard
 
 ```bash
-cd P://packages/skill-guard
+cd P://packages/.claude-marketplace/plugins/skill-guard
 pip install -e .
 ```
 
@@ -110,7 +110,7 @@ If you want to migrate all terminals at once:
 
 ```bash
 # Navigate to skill-guard package
-cd P://packages/skill-guard
+cd P://packages/.claude-marketplace/plugins/skill-guard
 
 # Migrate all terminals
 python -m skill_guard.breadcrumb.migration \

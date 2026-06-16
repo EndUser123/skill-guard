@@ -13,8 +13,8 @@ Thank you for your interest in contributing to skill-guard! This document provid
 
 1. **Clone the repository**:
 ```bash
-git clone https://github.com/yourusername/skill-guard.git P://packages/skill-guard
-cd P://packages/skill-guard
+git clone https://github.com/yourusername/skill-guard.git P://packages/.claude-marketplace/plugins/skill-guard
+cd P://packages/.claude-marketplace/plugins/skill-guard
 ```
 
 2. **Create a virtual environment**:
