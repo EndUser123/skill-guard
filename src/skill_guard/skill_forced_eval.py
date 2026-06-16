@@ -22,7 +22,7 @@ from datetime import datetime
 from pathlib import Path
 
 # Add hooks directory to path for imports from UserPromptSubmit_modules
-# This module lives in packages/skill-guard but needs to import from .claude/hooks
+# This module lives in packages/.claude-marketplace/plugins/skill-guard but needs to import from .claude/hooks
 # Must insert at position 0 — $__CSF_ROOT/__lib shadows __lib namespace
 _hooks_dir = Path(r"P:\\\\\\.claude/hooks")
 if _hooks_dir.exists():
