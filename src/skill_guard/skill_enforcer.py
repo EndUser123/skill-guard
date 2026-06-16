@@ -407,6 +407,11 @@ def store_active_command(terminal_id: str, session_id: str, prompt: str, command
 
 
 def _check_workflow_steps_advisory(command: str) -> str | None:
+    # Plugin-namespaced skills (plugin:skill format) are in the plugin cache,
+    # not in .claude/skills/. _load_workflow_steps can't find them, so it
+    # would emit a false "no workflow_steps" advisory. Skip it entirely.
+    if ":" in command:
+        return None
     try:
         from skill_guard.breadcrumb.tracker import _load_workflow_steps
 
