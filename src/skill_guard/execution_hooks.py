@@ -36,6 +36,17 @@ import time
 from pathlib import Path
 from typing import Any
 
+_SHARED_LIB = Path(__file__).resolve().parent.parent.parent.parent.parent.parent.parent / ".claude" / "hooks" / "__lib"
+if str(_SHARED_LIB) not in sys.path:
+    sys.path.insert(0, str(_SHARED_LIB))
+try:
+    from stop_block_log import _extract_block_ctx, _log_stop_block  # noqa: E402
+except ImportError:
+    def _extract_block_ctx(event: str, input_data: bytes) -> dict:  # type: ignore[misc]
+        return {}
+    def _log_stop_block(hook_name: str, reason: str, child_stderr: str, ctx: dict | None) -> None:  # type: ignore[misc]
+        pass
+
 def _normalize_stdout(data: dict) -> dict:
     """Normalize hook output to Claude Code Zod-valid schema."""
     if data.get('decision') == 'allow':
@@ -310,14 +321,18 @@ def pre_tool_use_main():
 
 def stop_main():
     """Subprocess Stop entry point."""
+    raw = sys.stdin.buffer.read()
+    block_ctx = _extract_block_ctx("Stop", raw)
     try:
-        payload = json.loads(sys.stdin.read())
+        payload = json.loads(raw.decode("utf-8", "replace"))
     except json.JSONDecodeError:
         print(json.dumps({}))
         return
     result = handle_stop(payload)
     if result.get("allow") is False:
-        print(json.dumps({"decision": "block", "reason": result.get("reason", "")}))
+        reason = result.get("reason", "")
+        _log_stop_block("skill-guard_Stop", reason, "", block_ctx)
+        print(json.dumps({"decision": "block", "reason": reason}))
     else:
         print(json.dumps({}))
 
