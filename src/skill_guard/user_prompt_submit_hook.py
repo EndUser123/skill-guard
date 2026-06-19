@@ -79,6 +79,11 @@ from skill_guard.skill_enforcer import (
     log_command_intent_telemetry,
     should_block_command,
 )
+# Canonical manual invocation tracking
+from skill_guard.manual_invocation_tracker import (
+    create_manual_invocation,
+    _is_ignorable_command,
+)
 
 # Contract type mapping: skill config value → ExecutionRun contract_type
 _CONTRACT_TYPE_MAP = {
