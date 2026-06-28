@@ -1,24 +1,29 @@
 """
 Terminal ID detection module for skill-guard package.
 
-Provides terminal identification with consistent format across all sources.
+Derivation delegates to the canonical algorithm
+(``skill_guard.utils.canonical_terminal_id``), shared byte-identically across
+every plugin so the writer and all readers agree on one key. Legacy
+``normalize_terminal_id`` is retained ONLY for sanitizing historical state that
+may still carry ``env_``/``session_`` prefixes on read; it is NOT used to derive
+new ids — that path produced ``env_<id>`` which readers could not match.
 
-FORMAT: {source}_{id}
-  - env_{id}      : From CLAUDE_TERMINAL_ID or other env vars
-  - console_{hex} : Windows GetConsoleWindow() handle (stable per terminal)
-
-Priority order:
-1. CLAUDE_TERMINAL_ID environment variable (explicit user/system override)
-2. TERMINAL_ID, TERM_ID, SESSION_TERMINAL environment variables
-3. Windows GetConsoleWindow() handle (stable across all subprocesses in same console)
-4. Returns "" — callers must handle missing terminal ID; PID fallback is forbidden
-   because PID differs per subprocess and silently breaks cross-hook state sharing.
+Detection priority:
+1. Read from terminal-specific state file (SessionStart wrote this; legacy-format
+   entries are tolerated until they age out or are migrated).
+2. ``canonical_terminal_id()`` — CLAUDE_TERMINAL_ID, then per-terminal session
+   env vars (WT_SESSION / ITERM_SESSION_ID / WEZTERM_SESSION_ID / TMUX), then
+   ConEmuServerPID, then a derived sha1(ppid) fallback. NEVER returns a static
+   or empty id.
 """
 
 import os
 import sys
 
-# Canonical terminal ID normalization (single source of truth)
+from skill_guard.utils.canonical_terminal_id import canonical_terminal_id
+
+# Legacy normalization — retained for read-side sanitization of historical state
+# (old env_/session_ keys). Not used for new id derivation.
 from skill_guard.utils.terminal_id import SOURCE_CONSOLE, SOURCE_ENV, normalize_terminal_id
 
 SOURCE_FALLBACK = "fallback"  # Deprecated: kept for backward compat only; not used in detection
@@ -143,19 +148,10 @@ def detect_terminal_id() -> str:
         # State file already contains normalized ID
         return terminal_id
 
-    # Priority 2: CLAUDE_TERMINAL_ID and other env vars
-    for env_var in TERMINAL_ENV_VARS:
-        value = os.environ.get(env_var)
-        if value:
-            return normalize_terminal_id(value, SOURCE_ENV)
-
-    # Priority 3: Windows GetConsoleWindow() handle (direct detection)
-    handle = _detect_console_window()
-    if handle:
-        return normalize_terminal_id(handle, SOURCE_CONSOLE)
-
-    # Priority 4: Return "" if no detection method succeeded
-    return ""
+    # Priority 2: canonical derivation (shared algorithm; never static/empty).
+    # env vars -> console_<id>; derived sha1(ppid) fallback guarantees a unique,
+    # stable id per terminal even when no env var is set.
+    return canonical_terminal_id()
 
 
 def detect_terminal_id_with_source() -> tuple[str, str]:
@@ -165,13 +161,5 @@ def detect_terminal_id_with_source() -> tuple[str, str]:
     Returns:
         tuple[str, str]: (terminal_id, source) — terminal_id may be "" if undetectable.
     """
-    for env_var in TERMINAL_ENV_VARS:
-        value = os.environ.get(env_var)
-        if value:
-            return normalize_terminal_id(value, SOURCE_ENV), SOURCE_ENV
-
-    handle = _detect_console_window()
-    if handle:
-        return normalize_terminal_id(handle, SOURCE_CONSOLE), SOURCE_CONSOLE
-
-    return "", ""
+    tid = canonical_terminal_id()
+    return tid, SOURCE_CONSOLE  # canonical always emits console_<id>
