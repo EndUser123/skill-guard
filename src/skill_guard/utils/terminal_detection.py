@@ -131,13 +131,15 @@ def detect_terminal_id() -> str:
     """
     Detect terminal ID with multi-terminal isolation.
 
-    Returns normalized format: {source}_{id}, or "" if not detectable.
+    Always returns ``console_<id>`` — never empty. Callers do not need to
+    handle an empty-string return.
 
     Priority:
-    1. Read from terminal-specific state file (SessionStart wrote this)
-    2. CLAUDE_TERMINAL_ID and other env vars
-    3. Windows GetConsoleWindow() handle
-    4. "" — PID fallback is intentionally absent; callers must handle empty string.
+    1. Read from terminal-specific state file (SessionStart wrote this).
+    2. ``canonical_terminal_id()`` — CLAUDE_TERMINAL_ID, then per-terminal
+       session env vars (WT_SESSION / ITERM_SESSION_ID / WEZTERM_SESSION_ID /
+       TMUX), then ConEmuServerPID, then a derived ``sha1(ppid)`` fallback
+       that is unique per terminal and stable across hook invocations.
 
     MULTI-TERMINAL ISOLATION: Each terminal reads from its own state file,
     preventing cross-terminal contamination when running 5+ concurrent terminals.
@@ -159,7 +161,9 @@ def detect_terminal_id_with_source() -> tuple[str, str]:
     Detect terminal ID and return both ID and detection source.
 
     Returns:
-        tuple[str, str]: (terminal_id, source) — terminal_id may be "" if undetectable.
+        tuple[str, str]: (terminal_id, source). terminal_id is always
+        ``console_<id>`` (canonical never returns empty); source is
+        ``SOURCE_CONSOLE``.
     """
     tid = canonical_terminal_id()
     return tid, SOURCE_CONSOLE  # canonical always emits console_<id>
