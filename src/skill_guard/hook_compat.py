@@ -2,9 +2,14 @@
 
 from __future__ import annotations
 
+import sys
 from typing import Any, Callable
 
 try:
+    # ponytail: importing the registry cold costs 17s+ and blows the 10s hook
+    # timeout; only reuse it when the hook runtime already loaded it.
+    if "UserPromptSubmit_modules.registry" not in sys.modules:
+        raise ImportError("registry not preloaded; using standalone fallback")
     from UserPromptSubmit_modules.base import HookResult as _HookResult
     from UserPromptSubmit_modules.registry import register_hook as _register_hook
 except Exception:  # pragma: no cover - package must import outside hook runtime
