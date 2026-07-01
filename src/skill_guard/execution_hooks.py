@@ -49,20 +49,28 @@ except ImportError:
 
 def _normalize_stdout(data: dict) -> dict:
     """Normalize hook output to Claude Code Zod-valid schema."""
+    def _allow() -> dict:
+        # ponytail: "approve" is invalid for Stop (JSON validation failed —
+        # see stop_hook_output_schema memory) and unneeded for PreToolUse;
+        # on allow, emit {} but keep any additionalContext.
+        out: dict = {}
+        if data.get('additionalContext'):
+            out['additionalContext'] = data['additionalContext']
+        return out
     if data.get('decision') == 'allow':
-        return {'decision': 'approve'}
+        return _allow()
     if data.get('decision') == 'block':
         return {'decision': 'block', 'reason': data.get('reason', '')}
     if 'allow' in data:
         if data['allow'] is False:
             return {'decision': 'block', 'reason': data.get('reason', '')}
-        return {'decision': 'approve'}
+        return _allow()
     if 'continue' in data:
         if data['continue'] is False:
             return {'decision': 'block', 'reason': data.get('reason', '')}
-        return {'decision': 'approve'}
+        return _allow()
     if 'ok' in data:
-        return {'decision': 'approve'}
+        return _allow()
     return data
 
 
@@ -313,7 +321,7 @@ def pre_tool_use_main():
     try:
         payload = json.loads(sys.stdin.read())
     except json.JSONDecodeError:
-        print(json.dumps({"decision": "approve"}))
+        print(json.dumps({}))
         return
     result = handle_pre_tool_use(payload)
     print(json.dumps(_normalize_stdout(result)))
