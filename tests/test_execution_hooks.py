@@ -357,3 +357,140 @@ class TestStopIsPure:
             result = handle_stop({})
             assert result.get("allow") is True
             # No LLM wrappers instantiated
+# ---------------------------------------------------------------------------
+# Regression tests for the universal skill-first gate (Layer 0 in
+# execution_hooks.handle_pre_tool_use). Runs BEFORE the run-state check, so
+# it fires even when there is no active run yet.
+# ---------------------------------------------------------------------------
+
+
+class TestUniversalSkillFirstGate:
+    def test_blocks_bash_before_skill_when_real_skill_invoked(self, tmp_path):
+        from skill_guard.execution_hooks import handle_pre_tool_use
+        from skill_guard.skill_enforcer import _skill_exists_cached
+        skill_dir = tmp_path / "project_parent" / "skills" / "my-skill"
+        skill_dir.mkdir(parents=True)
+        skill_dir.joinpath("SKILL.md").write_text("# stub", encoding="utf-8")
+        with patch("skill_guard.execution_hooks._hooks_dir", return_value=tmp_path / "project_parent"), \
+             patch("skill_guard.skill_enforcer._hooks_dir", return_value=tmp_path / "project_parent"):
+            _skill_exists_cached.cache_clear()
+            result = handle_pre_tool_use(
+                {"tool_name": "Bash", "input": {"command": "ls"},
+                 "user_message": "/my-skill"},
+                runtime=None,
+            )
+        assert result["continue"] is False, f"expected block, got {result}"
+        assert "my-skill" in result["reason"]
+        assert "Skill()" in result["reason"]
+
+    def test_blocks_namespaced_skill_before_skill(self):
+        from skill_guard.execution_hooks import handle_pre_tool_use
+        from skill_guard.skill_enforcer import _skill_exists_cached
+        _skill_exists_cached.cache_clear()
+        result = handle_pre_tool_use(
+            {"tool_name": "Bash", "input": {"command": "ls"},
+             "user_message": "/cc-skills-utils:plugin-installer"},
+            runtime=None,
+        )
+        assert result["continue"] is False
+        assert "cc-skills-utils:plugin-installer" in result["reason"]
+        assert "cc-skills-utils:" in result["reason"]
+
+    def test_allows_non_skill_command_no_block(self):
+        from skill_guard.execution_hooks import handle_pre_tool_use
+        from skill_guard.skill_enforcer import _skill_exists_cached
+        _skill_exists_cached.cache_clear()
+        result = handle_pre_tool_use(
+            {"tool_name": "Bash", "input": {"command": "ls"},
+             "user_message": "/nope-cmd-xyz-zzzzzz"},
+            runtime=None,
+        )
+        assert result["continue"] is True
+
+    def test_allows_builtin_clear(self):
+        from skill_guard.execution_hooks import handle_pre_tool_use
+        result = handle_pre_tool_use(
+            {"tool_name": "Bash", "input": {"command": "ls"},
+             "user_message": "/clear"},
+            runtime=None,
+        )
+        assert result["continue"] is True
+
+    def test_skill_call_passes_through_with_matching_name(self, tmp_path):
+        from skill_guard.execution_hooks import handle_pre_tool_use
+        from skill_guard.skill_enforcer import _skill_exists_cached
+        skill_dir = tmp_path / "skills" / "my-skill"
+        skill_dir.mkdir(parents=True)
+        skill_dir.joinpath("SKILL.md").write_text("#", encoding="utf-8")
+        with patch("skill_guard.execution_hooks._hooks_dir", return_value=tmp_path), \
+             patch("skill_guard.skill_enforcer._hooks_dir", return_value=tmp_path):
+            _skill_exists_cached.cache_clear()
+            result = handle_pre_tool_use(
+                {"tool_name": "Skill", "input": {"skill": "my-skill"},
+                 "user_message": "/my-skill"},
+                runtime=None,
+            )
+        assert result["continue"] is True, f"expected pass-through, got {result}"
+
+    def test_blocks_skill_with_mismatched_name(self, tmp_path):
+        from skill_guard.execution_hooks import handle_pre_tool_use
+        from skill_guard.skill_enforcer import _skill_exists_cached
+        skill_dir = tmp_path / "skills" / "my-skill"
+        skill_dir.mkdir(parents=True)
+        skill_dir.joinpath("SKILL.md").write_text("#", encoding="utf-8")
+        with patch("skill_guard.execution_hooks._hooks_dir", return_value=tmp_path), \
+             patch("skill_guard.skill_enforcer._hooks_dir", return_value=tmp_path):
+            _skill_exists_cached.cache_clear()
+            result = handle_pre_tool_use(
+                {"tool_name": "Skill", "input": {"skill": "other-skill"},
+                 "user_message": "/my-skill"},
+                runtime=None,
+            )
+        assert result["continue"] is False
+        assert "my-skill" in result["reason"]
+        assert "other-skill" in result["reason"]
+
+
+class TestNamespacedExtractor:
+    def test_extracts_full_namespaced_name(self):
+        from skill_guard.execution_hooks import _extract_slash_command
+        assert _extract_slash_command("/cc-skills-utils:plugin-installer") == "cc-skills-utils:plugin-installer"
+
+    def test_extracts_plain_name(self):
+        from skill_guard.execution_hooks import _extract_slash_command
+        assert _extract_slash_command("/plugin-installer arg") == "plugin-installer"
+
+    def test_extracts_builtin(self):
+        from skill_guard.execution_hooks import _extract_slash_command
+        assert _extract_slash_command("/clear") == "clear"
+
+    def test_returns_none_for_plain_text(self):
+        from skill_guard.execution_hooks import _extract_slash_command
+        assert _extract_slash_command("just chatting") is None
+
+
+class TestSkillExistsCache:
+    def test_returns_true_for_existing_skill(self):
+        from skill_guard.skill_enforcer import _skill_exists_cached
+        _skill_exists_cached.cache_clear()
+        assert _skill_exists_cached("plugin-installer") is True
+
+    def test_returns_true_for_namespaced_skill(self):
+        from skill_guard.skill_enforcer import _skill_exists_cached
+        _skill_exists_cached.cache_clear()
+        assert _skill_exists_cached("cc-skills-utils:plugin-installer") is True
+
+    def test_returns_false_for_missing_skill(self):
+        from skill_guard.skill_enforcer import _skill_exists_cached
+        _skill_exists_cached.cache_clear()
+        assert _skill_exists_cached("nope-cmd-xyz-not-a-real-skill") is False
+
+    def test_cache_hits_repeat_calls(self):
+        from skill_guard.skill_enforcer import _skill_exists_cached
+        _skill_exists_cached.cache_clear()
+        _skill_exists_cached("plugin-installer")
+        info_after_first = _skill_exists_cached.cache_info()
+        _skill_exists_cached("plugin-installer")
+        _skill_exists_cached("plugin-installer")
+        info_after_more = _skill_exists_cached.cache_info()
+        assert info_after_more.hits > info_after_first.hits
