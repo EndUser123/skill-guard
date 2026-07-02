@@ -265,6 +265,82 @@ def _skill_exists_cached(command: str) -> bool:
     return _skill_exists(command)
 
 
+def _resolve_skill_md_path(command: str) -> Path | None:
+    """Return the SKILL.md path for a command, or None if not found.
+
+    Mirrors `_skill_exists` but returns the actual path so callers can read
+    frontmatter. Does NOT return the first hit for ambiguous commands; for a
+    namespaced command it scopes to the plugin cache.
+    """
+    cmd = command.lower()
+    if ":" in cmd:
+        plugin_name, skill_name = cmd.split(":", 1)
+    else:
+        plugin_name, skill_name = None, cmd
+
+    hooks = _hooks_dir()
+    candidates: list[Path] = []
+
+    project_skills = hooks.parent / "skills"
+    if project_skills.is_dir():
+        candidates.append(project_skills / skill_name / "SKILL.md")
+
+    user_skills = Path.home() / ".claude" / "skills"
+    if user_skills.is_dir():
+        candidates.append(user_skills / skill_name / "SKILL.md")
+
+    plugin_cache = Path.home() / ".claude" / "plugins" / "cache"
+    if plugin_cache.is_dir():
+        for marketplace_dir in plugin_cache.iterdir():
+            if not marketplace_dir.is_dir():
+                continue
+            for plugin_dir in marketplace_dir.iterdir():
+                if not plugin_dir.is_dir():
+                    continue
+                if plugin_name and plugin_dir.name.lower() != plugin_name:
+                    continue
+                for version_dir in plugin_dir.iterdir():
+                    candidates.append(version_dir / "skills" / skill_name / "SKILL.md")
+
+    for p in candidates:
+        if p.is_file():
+            return p
+    return None
+
+
+@functools.lru_cache(maxsize=256)
+def _has_disable_model_invocation(command: str) -> bool:
+    """Return True if the command's SKILL.md frontmatter sets
+    `disable-model-invocation: true`.
+
+    Skills with this flag are loaded by harness injection when manually invoked,
+    not via the Skill() tool — the universal gate must bypass enforcement for
+    them or the Skill tool (which refuses to load them) creates a deadlock.
+    """
+    path = _resolve_skill_md_path(command)
+    if path is None:
+        return False
+    try:
+        content = path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return False
+    # Minimal frontmatter parser: scan lines between the first pair of "---"
+    # markers for `disable-model-invocation: true`. Avoids importing yaml here
+    # so this stays cheap to call on every tool use.
+    if not content.startswith("---"):
+        return False
+    end = content.find("\n---", 3)
+    if end == -1:
+        return False
+    fm = content[3:end]
+    for line in fm.splitlines():
+        stripped = line.strip().lower()
+        if stripped.startswith("disable-model-invocation:"):
+            value = stripped.split(":", 1)[1].strip()
+            return value == "true"
+    return False
+
+
 # ---------------------------------------------------------------------------
 # Enforcement decision
 # ---------------------------------------------------------------------------
@@ -303,6 +379,14 @@ def should_block_command(command: str) -> bool:
         return cmd not in allowlist
 
     if not _skill_exists_cached(cmd):
+        return True
+
+    # Skills with `disable-model-invocation: true` are loaded by harness injection
+    # when manually invoked, not via the Skill() tool. The universal gate must NOT
+    # require Skill() for these — otherwise it deadlocks with the Skill tool, which
+    # refuses to load them. Per code.claude.com: "disable-model-invocation: true →
+    # You can invoke: Yes; Description not in context, full skill loads when you invoke."
+    if _has_disable_model_invocation(cmd):
         return True
 
     return False
