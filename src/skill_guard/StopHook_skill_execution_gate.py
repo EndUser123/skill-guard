@@ -298,14 +298,18 @@ def extract_user_prompt(input_data: dict) -> str:
 
 
 def _extract_slash_command(prompt: str) -> str | None:
-    """Extract slash command name from prompt.
+    r"""Extract slash command name from prompt (namespaced-aware).
 
-    Returns the command name (e.g., 'debugRCA') or None if not a slash command.
-    r"""
-    match = re.match(r"^/([a-zA-Z][\w-]*)", prompt.strip())
-    if match:
-        return match.group(1)
-    return None
+    Replaces the prior colon-truncating regex r"^/([a-zA-Z][\w-]*)", which mis-extracted
+    `/cc-skills-utils:plugin-installer` as `cc-skills-utils`. The shared extractor
+    handles NAMESPACED_SLASH_COMMAND_RE and returns the full `plugin:skill-name`.
+    Returns None if the shared extractor is unavailable (fail open — no false blocks).
+    """
+    try:
+        from skill_guard.slash_command_observability import extract_command_name
+    except ImportError:
+        return None
+    return extract_command_name(prompt)
 
 
 def log(msg: str) -> None:

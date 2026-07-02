@@ -10,6 +10,7 @@ imports from here and registers the hook function using the local HookContext/Ho
 
 from __future__ import annotations
 
+import functools
 import hashlib
 import json
 import os
@@ -217,7 +218,12 @@ def is_command_directive(prompt: str) -> bool:
 
 
 def _skill_exists(command: str) -> bool:
-    """Return True if a SKILL.md exists for this command in any skill directory."""
+    """Return True if a SKILL.md exists for this command in any skill directory.
+
+    Cached with lru_cache so PreToolUse's per-tool-call invocation doesn't re-walk
+    the plugin cache on every tool call. Cache key is the lowercased command name;
+    cache lives for the lifetime of the hook subprocess (one PreToolUse invocation).
+    """
     cmd = command.lower()
     # Namespaced command: plugin:skill-name — search the matching plugin only
     if ":" in cmd:
@@ -250,6 +256,13 @@ def _skill_exists(command: str) -> bool:
                     candidates.append(version_dir / "skills" / skill_name / "SKILL.md")
 
     return any(p.is_file() for p in candidates)
+
+
+# Apply lru_cache to a wrapper so the filesystem walk runs once per command name
+# per hook subprocess (PreToolUse fires on every tool call during a skill turn).
+@functools.lru_cache(maxsize=256)
+def _skill_exists_cached(command: str) -> bool:
+    return _skill_exists(command)
 
 
 # ---------------------------------------------------------------------------
@@ -289,7 +302,7 @@ def should_block_command(command: str) -> bool:
         }
         return cmd not in allowlist
 
-    if not _skill_exists(cmd):
+    if not _skill_exists_cached(cmd):
         return True
 
     return False

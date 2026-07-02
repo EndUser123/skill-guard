@@ -100,6 +100,8 @@ from skill_guard.execution_runtime import (
     validate_response_requirements,
 )
 from skill_guard.utils.terminal_detection import detect_terminal_id
+from skill_guard.slash_command_observability import extract_command_name
+from skill_guard.skill_enforcer import should_block_command
 
 # ---------------------------------------------------------------------------
 # Tool input helpers
@@ -114,8 +116,13 @@ _INVESTIGATION_TOOLS = frozenset({
 
 
 def _extract_slash_command(prompt: str) -> str | None:
-    match = re.match(r"^/([a-zA-Z][\w-]*)", prompt.strip())
-    return match.group(1) if match else None
+    """Namespaced-aware extractor (delegates to the shared slash_command_observability).
+
+    Replaces the prior colon-truncating regex `^/([a-zA-Z][\w-]*)`, which mis-extracted
+    `/cc-skills-utils:plugin-installer` as `cc-skills-utils`. The shared extractor
+    handles NAMESPACED_SLASH_COMMAND_RE and returns the full `plugin:skill-name`.
+    """
+    return extract_command_name(prompt)
 
 
 def _artifact_written(tool_name: str, tool_input: dict[str, Any]) -> bool:
@@ -168,6 +175,9 @@ def handle_pre_tool_use(data: dict, runtime: ExecutionRuntime | None = None) -> 
     PreToolUse handler for execution contract enforcement.
 
     Checks:
+    0. Universal skill-first gate: if the user typed `/<skill>`, block every non-Skill
+       tool until Skill() is called. Runs BEFORE any run-state check so it fires even
+       when there is no active run yet (the user's reported failure mode).
     1. Is there an active run for this terminal?
     2. Is the requested tool allowed (in allowed_tools_now or not in blocked_tools)?
     3. If not allowed: record_tool_use(allowed=False), block.
@@ -180,10 +190,59 @@ def handle_pre_tool_use(data: dict, runtime: ExecutionRuntime | None = None) -> 
     tool_input = data.get("input", {})
     terminal_id = detect_terminal_id() or os.environ.get("CLAUDE_TERMINAL_ID", "unknown")
 
-    # Always allow investigation tools
+    # Always allow investigation tools (incl. Skill itself)
     if tool_name in _INVESTIGATION_TOOLS:
         _probe_log("runtime", "allow_investigation", tool_name, terminal_id, "", "", reason="investigation_tool")
         return {"continue": True}
+
+    # ------------------------------------------------------------------
+    # Layer 0: UNIVERSAL skill-first gate (no workflow_steps requirement).
+    # If the user typed /<skill>, block every non-Skill tool until Skill()
+    # is called — regardless of frontmatter, contract type, or run state.
+    # should_block_command returns False (= enforceable) only for real,
+    # non-exempt skills (project, user, OR plugin-cache). Non-skills,
+    # built-ins, ignored-config, allowlist misses → True (bypass → allow).
+    # ------------------------------------------------------------------
+    user_message = str(
+        data.get("user_message") or data.get("prompt") or data.get("message") or ""
+    )
+    slash_command = _extract_slash_command(user_message) if user_message else None
+    if slash_command:
+        # Allow the matching Skill() tool call itself
+        if tool_name == "Skill":
+            skill_name = tool_input.get("skill", "") if isinstance(tool_input, dict) else ""
+            if skill_name and skill_name.lower() == slash_command.lower():
+                # Skill() matches — proceed; do not block
+                pass
+            else:
+                # Skill tool called but the named skill doesn't match the typed
+                # slash command — block to keep the user on the intended path.
+                _probe_log("skill_first", "block", tool_name, terminal_id, "", slash_command, reason="skill_name_mismatch")
+                return _normalize_stdout({
+                    "continue": False,
+                    "reason": (
+                        f"⛔ SKILL-FIRST GATE\n\n"
+                        f"You typed /{slash_command} but called Skill('{skill_name}') instead.\n\n"
+                        f"Your FIRST action must be: Skill(skill='{slash_command}')\n\n"
+                        f"Do NOT respond with prose analysis or use other tools before calling Skill.\n"
+                        f"Do NOT bypass this gate by outputting inline analysis text without calling Skill(...)."
+                    ),
+                })
+        else:
+            enforce = not should_block_command(slash_command)
+            if enforce:
+                _probe_log("skill_first", "block", tool_name, terminal_id, "", slash_command, reason="skill_first_universal")
+                return _normalize_stdout({
+                    "continue": False,
+                    "reason": (
+                        f"⛔ SKILL-FIRST GATE\n\n"
+                        f"You typed /{slash_command} but haven't called Skill('{slash_command}') yet.\n\n"
+                        f"Skill() is required before any other tool for every manually-invoked skill.\n\n"
+                        f"Your FIRST action must be: Skill(skill='{slash_command}')\n\n"
+                        f"Do NOT respond with prose analysis or use other tools before calling Skill.\n"
+                        f"Do NOT bypass this gate by outputting inline analysis text without calling Skill(...)."
+                    ),
+                })
 
     if runtime is None:
         runtime = ExecutionRuntime()
