@@ -368,7 +368,7 @@ class TestUniversalSkillFirstGate:
     def test_blocks_bash_before_skill_when_real_skill_invoked(self, tmp_path):
         from skill_guard.execution_hooks import handle_pre_tool_use
         from skill_guard.skill_enforcer import _skill_exists_cached
-        skill_dir = tmp_path / "hooks" / "skills" / "my-skill"
+        skill_dir = tmp_path / "skills" / "my-skill"
         skill_dir.mkdir(parents=True)
         skill_dir.joinpath("SKILL.md").write_text("# stub", encoding="utf-8")
         with patch("skill_guard.skill_enforcer._hooks_dir", return_value=tmp_path / "hooks"):
@@ -422,7 +422,7 @@ class TestUniversalSkillFirstGate:
     def test_skill_call_passes_through_with_matching_name(self, tmp_path):
         from skill_guard.execution_hooks import handle_pre_tool_use
         from skill_guard.skill_enforcer import _skill_exists_cached
-        skill_dir = tmp_path / "hooks" / "skills" / "my-skill"
+        skill_dir = tmp_path / "skills" / "my-skill"
         skill_dir.mkdir(parents=True)
         skill_dir.joinpath("SKILL.md").write_text("#", encoding="utf-8")
         with patch("skill_guard.skill_enforcer._hooks_dir", return_value=tmp_path / "hooks"):
@@ -438,7 +438,7 @@ class TestUniversalSkillFirstGate:
     def test_blocks_skill_with_mismatched_name(self, tmp_path):
         from skill_guard.execution_hooks import handle_pre_tool_use
         from skill_guard.skill_enforcer import _skill_exists_cached
-        skill_dir = tmp_path / "hooks" / "skills" / "my-skill"
+        skill_dir = tmp_path / "skills" / "my-skill"
         skill_dir.mkdir(parents=True)
         skill_dir.joinpath("SKILL.md").write_text("#", encoding="utf-8")
         with patch("skill_guard.skill_enforcer._hooks_dir", return_value=tmp_path / "hooks"):
