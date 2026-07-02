@@ -108,7 +108,7 @@ from skill_guard.skill_enforcer import should_block_command
 # ---------------------------------------------------------------------------
 
 _INVESTIGATION_TOOLS = frozenset({
-    "Read", "Grep", "Glob", "AskUserQuestion", "Skill",
+    "Read", "Grep", "Glob", "AskUserQuestion",
     "WebSearch", "WebFetch",
     "mcp__4_5v_mcp__analyze_image",
     "mcp__web_reader__webReader",
@@ -190,18 +190,12 @@ def handle_pre_tool_use(data: dict, runtime: ExecutionRuntime | None = None) -> 
     tool_input = data.get("input", {})
     terminal_id = detect_terminal_id() or os.environ.get("CLAUDE_TERMINAL_ID", "unknown")
 
-    # Always allow investigation tools (incl. Skill itself)
-    if tool_name in _INVESTIGATION_TOOLS:
-        _probe_log("runtime", "allow_investigation", tool_name, terminal_id, "", "", reason="investigation_tool")
-        return {"continue": True}
-
     # ------------------------------------------------------------------
     # Layer 0: UNIVERSAL skill-first gate (no workflow_steps requirement).
-    # If the user typed /<skill>, block every non-Skill tool until Skill()
-    # is called — regardless of frontmatter, contract type, or run state.
-    # should_block_command returns False (= enforceable) only for real,
-    # non-exempt skills (project, user, OR plugin-cache). Non-skills,
-    # built-ins, ignored-config, allowlist misses → True (bypass → allow).
+    # Runs BEFORE the investigation allowlist so the Skill() tool itself is
+    # subject to the skill-first contract (its name must match the typed
+    # slash command). Other investigation tools (Read/Grep/Glob) still pass
+    # freely — they don't satisfy or bypass Skill().
     # ------------------------------------------------------------------
     user_message = str(
         data.get("user_message") or data.get("prompt") or data.get("message") or ""
@@ -243,6 +237,13 @@ def handle_pre_tool_use(data: dict, runtime: ExecutionRuntime | None = None) -> 
                         f"Do NOT bypass this gate by outputting inline analysis text without calling Skill(...)."
                     ),
                 })
+
+    # Always allow investigation tools (Read/Grep/Glob/etc.) — but NOT Skill,
+    # which is now gated by Layer 0 above so a mismatched Skill() call can be
+    # blocked.
+    if tool_name in _INVESTIGATION_TOOLS:
+        _probe_log("runtime", "allow_investigation", tool_name, terminal_id, "", "", reason="investigation_tool")
+        return {"continue": True}
 
     if runtime is None:
         runtime = ExecutionRuntime()
