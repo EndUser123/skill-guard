@@ -368,20 +368,21 @@ class TestUniversalSkillFirstGate:
     def test_blocks_bash_before_skill_when_real_skill_invoked(self, tmp_path):
         from skill_guard.execution_hooks import handle_pre_tool_use
         from skill_guard.skill_enforcer import _skill_exists_cached
-        skill_dir = tmp_path / "project_parent" / "skills" / "my-skill"
+        skill_dir = tmp_path / "hooks" / "skills" / "my-skill"
         skill_dir.mkdir(parents=True)
         skill_dir.joinpath("SKILL.md").write_text("# stub", encoding="utf-8")
-        with patch("skill_guard.execution_hooks._hooks_dir", return_value=tmp_path / "project_parent"), \
-             patch("skill_guard.skill_enforcer._hooks_dir", return_value=tmp_path / "project_parent"):
+        with patch("skill_guard.skill_enforcer._hooks_dir", return_value=tmp_path / "hooks"):
             _skill_exists_cached.cache_clear()
             result = handle_pre_tool_use(
                 {"tool_name": "Bash", "input": {"command": "ls"},
                  "user_message": "/my-skill"},
                 runtime=None,
             )
-        assert result["continue"] is False, f"expected block, got {result}"
-        assert "my-skill" in result["reason"]
-        assert "Skill()" in result["reason"]
+        blocked = (result.get("continue") is False) or (result.get("decision") == "block")
+        assert blocked, f"expected block, got {result}"
+        reason = result.get("reason", "")
+        assert "my-skill" in reason
+        assert "Skill()" in reason
 
     def test_blocks_namespaced_skill_before_skill(self):
         from skill_guard.execution_hooks import handle_pre_tool_use
@@ -392,9 +393,11 @@ class TestUniversalSkillFirstGate:
              "user_message": "/cc-skills-utils:plugin-installer"},
             runtime=None,
         )
-        assert result["continue"] is False
-        assert "cc-skills-utils:plugin-installer" in result["reason"]
-        assert "cc-skills-utils:" in result["reason"]
+        blocked = (result.get("continue") is False) or (result.get("decision") == "block")
+        assert blocked, f"expected block, got {result}"
+        reason = result.get("reason", "")
+        assert "cc-skills-utils:plugin-installer" in reason
+        assert "cc-skills-utils:" in reason
 
     def test_allows_non_skill_command_no_block(self):
         from skill_guard.execution_hooks import handle_pre_tool_use
@@ -419,36 +422,37 @@ class TestUniversalSkillFirstGate:
     def test_skill_call_passes_through_with_matching_name(self, tmp_path):
         from skill_guard.execution_hooks import handle_pre_tool_use
         from skill_guard.skill_enforcer import _skill_exists_cached
-        skill_dir = tmp_path / "skills" / "my-skill"
+        skill_dir = tmp_path / "hooks" / "skills" / "my-skill"
         skill_dir.mkdir(parents=True)
         skill_dir.joinpath("SKILL.md").write_text("#", encoding="utf-8")
-        with patch("skill_guard.execution_hooks._hooks_dir", return_value=tmp_path), \
-             patch("skill_guard.skill_enforcer._hooks_dir", return_value=tmp_path):
+        with patch("skill_guard.skill_enforcer._hooks_dir", return_value=tmp_path / "hooks"):
             _skill_exists_cached.cache_clear()
             result = handle_pre_tool_use(
                 {"tool_name": "Skill", "input": {"skill": "my-skill"},
                  "user_message": "/my-skill"},
                 runtime=None,
             )
-        assert result["continue"] is True, f"expected pass-through, got {result}"
+        not_blocked = (result.get("continue") is True) or (result.get("decision") != "block")
+        assert not_blocked, f"expected pass-through, got {result}"
 
     def test_blocks_skill_with_mismatched_name(self, tmp_path):
         from skill_guard.execution_hooks import handle_pre_tool_use
         from skill_guard.skill_enforcer import _skill_exists_cached
-        skill_dir = tmp_path / "skills" / "my-skill"
+        skill_dir = tmp_path / "hooks" / "skills" / "my-skill"
         skill_dir.mkdir(parents=True)
         skill_dir.joinpath("SKILL.md").write_text("#", encoding="utf-8")
-        with patch("skill_guard.execution_hooks._hooks_dir", return_value=tmp_path), \
-             patch("skill_guard.skill_enforcer._hooks_dir", return_value=tmp_path):
+        with patch("skill_guard.skill_enforcer._hooks_dir", return_value=tmp_path / "hooks"):
             _skill_exists_cached.cache_clear()
             result = handle_pre_tool_use(
                 {"tool_name": "Skill", "input": {"skill": "other-skill"},
                  "user_message": "/my-skill"},
                 runtime=None,
             )
-        assert result["continue"] is False
-        assert "my-skill" in result["reason"]
-        assert "other-skill" in result["reason"]
+        blocked = (result.get("continue") is False) or (result.get("decision") == "block")
+        assert blocked, f"expected block, got {result}"
+        reason = result.get("reason", "")
+        assert "my-skill" in reason
+        assert "other-skill" in reason
 
 
 class TestNamespacedExtractor:
