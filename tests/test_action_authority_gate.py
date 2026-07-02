@@ -189,8 +189,9 @@ class TestTranscriptParser:
             f.write(json.dumps({"type": "user", "message": {"content": "plain string"}}) + "\n")
         assert _parse_transcript_for_last_user_message(str(tp)) == "plain string"
 
-    def test_missing_file_returns_empty(self, tmp_path):
-        assert _parse_transcript_for_last_user_message(str(tmp_path / "nope.jsonl")) == ""
+    def test_missing_file_returns_none(self, tmp_path):
+        # Plan step 10: missing/unreadable transcript -> None -> fail-open (allow).
+        assert _parse_transcript_for_last_user_message(str(tmp_path / "nope.jsonl")) is None
 
 
 # ===========================================================================
@@ -267,15 +268,21 @@ class TestConcurrentTelemetryAppend:
         log = tmp_path / "ambig.jsonl"
         n_procs = 5
         n_per = 20
-        script = (
-            "import sys; sys.path.insert(0, r'" + str(SRC_ROOT) + "'); "
-            "from skill_guard import execution_hooks as eh; "
-            "eh._AMBIGUOUS_LOG = __import__('pathlib').Path(r'" + str(log) + "'); "
-            "for i in range(" + str(n_per) + "): "
-            "eh._log_ambiguous({'session_id':'s','tool':'Write','tool_input':{'file_path':'p'}}, "
-            "'the docs need work ' + str(i))"
+        # Worker as a real file: Python forbids compound statements (for) after ';'
+        # in a -c one-liner, so the script must run from disk.
+        worker = tmp_path / "worker.py"
+        worker.write_text(
+            "import sys\n"
+            "from pathlib import Path\n"
+            f"sys.path.insert(0, r'{SRC_ROOT}')\n"
+            "from skill_guard import execution_hooks as eh\n"
+            f"eh._AMBIGUOUS_LOG = Path(r'{log}')\n"
+            f"for i in range({n_per}):\n"
+            "    eh._log_ambiguous({'session_id':'s','tool':'Write','tool_input':{'file_path':'p'}}, "
+            "'the docs need work ' + str(i))\n",
+            encoding="utf-8",
         )
-        procs = [subprocess.run([sys.executable, "-c", script], capture_output=True, text=True)
+        procs = [subprocess.run([sys.executable, str(worker)], capture_output=True, text=True)
                  for _ in range(n_procs)]
         for p in procs:
             assert p.returncode == 0, f"proc failed: {p.stderr}"
