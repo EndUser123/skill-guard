@@ -134,6 +134,170 @@ def _artifact_written(tool_name: str, tool_input: dict[str, Any]) -> bool:
 
 
 # ---------------------------------------------------------------------------
+# Action-authority gate (Tier 1, deterministic)
+# ---------------------------------------------------------------------------
+# ponytail: read last user message from per-session transcript JSONL each fire.
+# No persisted auth state — multi-terminal isolated + stale-immune by construction.
+
+_SYSREMINDER_RE = re.compile(r"<system-reminder>.*?</system-reminder>", re.DOTALL | re.IGNORECASE)
+_BYPASS_RE = re.compile(r"--allow-unsolicited|--allow-unrequested", re.IGNORECASE)
+_CONFIRM_RE = re.compile(
+    r"\b(?:yes|yeah|yep|ok|okay|sure|please|go\s+ahead|do\s+it|proceed|continue"
+    r"|approved|lgtm|looks\s+good|ship\s+it|go\s+for\s+it|sounds\s+good)\b",
+    re.IGNORECASE,
+)
+# ponytail: file-mutation imperatives only — noun-ambiguous verbs (build, ship,
+# patch, clean, bump, generate, wire) excluded because they false-match inside
+# questions ("status of the build?"). "ship it" is covered by _CONFIRM_RE.
+_IMPERATIVE_RE = re.compile(
+    r"\b(?:fix|edit|update|change|modify|add|create|write|implement|refactor"
+    r"|move|rename|delete|remove|migrate)\b",
+    re.IGNORECASE,
+)
+# ponytail: single-line append in "a" mode (O_APPEND) is atomic per write at the
+# OS level, so concurrent terminals don't corrupt records. If measurement shows
+# interleaving, add msvcrt/fcntl locking here — telemetry is best-effort.
+_AMBIGUOUS_LOG = Path("P:/.claude/logs/diagnostics/action_authority_ambiguous.jsonl")
+
+
+def _strip_injections(text: str) -> str:
+    """Remove <system-reminder> blocks from user-authored text."""
+    return _SYSREMINDER_RE.sub("", text or "")
+
+
+def _parse_transcript_for_last_user_message(transcript_path: str) -> str | None:
+    """Return text of the last user-authored message in the transcript JSONL.
+
+    Skips tool_result entries (role:user with only tool_result blocks).
+    Returns None if the transcript is missing/unreadable (callers fail-open).
+    Returns '' only when the file is readable but holds no user text.
+    """
+    try:
+        path = Path(transcript_path)
+        if not path.exists():
+            return None
+        content = path.read_text(encoding="utf-8")
+    except Exception:
+        return None
+    for line in reversed(content.split("\n")):
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            entry = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if entry.get("role") != "user" and entry.get("type") != "user":
+            continue
+        message = entry.get("message", entry)
+        if not isinstance(message, dict):
+            continue
+        blocks = message.get("content", [])
+        if isinstance(blocks, str):
+            text = blocks
+        elif isinstance(blocks, list):
+            parts = [
+                b["text"] for b in blocks
+                if isinstance(b, dict) and b.get("type") == "text" and "text" in b
+            ]
+            text = "\n".join(parts)
+        else:
+            text = ""
+        if text.strip():
+            return text
+    return ""
+
+
+def _log_ambiguous(data: dict, authored: str) -> None:
+    """Best-effort append of an ambiguous-slice record (multi-terminal safe)."""
+    tool_input = data.get("tool_input") or data.get("input", {})
+    if not isinstance(tool_input, dict):
+        tool_input = {}
+    rec = {
+        "ts": time.time(),
+        "session_id": data.get("session_id", ""),
+        "tool": data.get("tool_name", ""),
+        "target": str(tool_input.get("file_path", "")),
+        "authored": authored[:300],
+    }
+    try:
+        _AMBIGUOUS_LOG.parent.mkdir(parents=True, exist_ok=True)
+        with _AMBIGUOUS_LOG.open("a", encoding="utf-8") as f:
+            f.write(json.dumps(rec, ensure_ascii=False) + "\n")
+    except Exception:
+        pass
+
+
+def _action_authority_gate(data: dict) -> dict | None:
+    """Tier 1 deterministic action-authority gate for Write|Edit|MultiEdit.
+
+    Returns {"continue": False, "reason": ...} to BLOCK, or None to allow.
+    Reads the last user-authored message from transcript_path (per-session,
+    fresh each fire) — no persisted auth state.
+    """
+    if data.get("tool_name") not in ("Write", "Edit", "MultiEdit"):
+        return None
+    tool_input = data.get("tool_input") or data.get("input", {})
+    if not isinstance(tool_input, dict):
+        tool_input = {}
+    norm = str(tool_input.get("file_path", "")).replace("\\", "/").lower()
+
+    # Inherent-allow short-circuit: artifacts/state/session/temp roots.
+    if any(p in norm for p in (
+        ".claude/.artifacts/", ".claude/state/", ".claude/.session/",
+        "/tmp/", ":/temp/", ":/tmp/",
+    )):
+        return None
+
+    raw = _parse_transcript_for_last_user_message(data.get("transcript_path", ""))
+    if raw is None:
+        return None  # missing/unreadable transcript → fail-open (step 10)
+    if _BYPASS_RE.search(raw):  # bypass flag anywhere in raw user text
+        return None
+    authored = _strip_injections(raw).strip()
+
+    # Empty-after-strip → BLOCK (the MEMORY.md catch).
+    if not authored:
+        return {
+            "continue": False,
+            "reason": (
+                "⛔ ACTION-AUTHORITY GATE\n"
+                "Write/Edit attempted with no recent user instruction authorizing file changes.\n"
+                "After stripping system/hook advisories, the session's last user message is empty.\n"
+                "If this work was requested, rephrase so the instruction is explicit, "
+                "or add --allow-unsolicited."
+            ),
+        }
+
+    has_confirm = bool(_CONFIRM_RE.search(authored))
+    has_imperative = bool(_IMPERATIVE_RE.search(authored))
+    is_question = "?" in authored
+
+    # Pure question (no imperative, no confirm) → BLOCK.
+    if is_question and not has_imperative and not has_confirm:
+        return {
+            "continue": False,
+            "reason": (
+                "⛔ ACTION-AUTHORITY GATE\n"
+                "Write/Edit attempted but the session's last user message is a question, "
+                f"not an instruction:\n\"{authored[:160]}\"\n"
+                "If you intended this as authorization, rephrase as an instruction "
+                "or add --allow-unsolicited."
+            ),
+        }
+
+    # Clear imperative (not in a question) → allow.
+    if has_imperative and not is_question:
+        return None
+    # Bare confirmation → allow.
+    if has_confirm:
+        return None
+    # Ambiguous (verb-in-question, declarative intent) → allow + telemetry.
+    _log_ambiguous(data, authored)
+    return None
+
+
+# ---------------------------------------------------------------------------
 # PreToolUse handler
 # ---------------------------------------------------------------------------
 
@@ -237,6 +401,19 @@ def handle_pre_tool_use(data: dict, runtime: ExecutionRuntime | None = None) -> 
                         f"Do NOT bypass this gate by outputting inline analysis text without calling Skill(...)."
                     ),
                 })
+
+    # ------------------------------------------------------------------
+    # Layer 0.5: Action-authority gate (Tier 1).
+    # Block Write/Edit/MultiEdit when the session's last user message has no
+    # instruction authorizing file changes (the MEMORY.md failure mode).
+    # Runs before run-state checks so it fires even with no active run.
+    # ------------------------------------------------------------------
+    if tool_name in ("Write", "Edit", "MultiEdit"):
+        _aa_block = _action_authority_gate(data)
+        if _aa_block:
+            _probe_log("action_authority", "block", tool_name, terminal_id, "", "",
+                       reason=_aa_block.get("reason", "")[:200])
+            return _normalize_stdout(_aa_block)
 
     # Always allow investigation tools (Read/Grep/Glob/etc.) — but NOT Skill,
     # which is now gated by Layer 0 above so a mismatched Skill() call can be
