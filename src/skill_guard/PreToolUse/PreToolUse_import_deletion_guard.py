@@ -597,11 +597,11 @@ def main() -> int:
     try:
         input_text = sys.stdin.read().strip()
         if not input_text:
-            print(json.dumps({"decision": "approve"}))
+            print("{}")
             return 0
         data = json.loads(input_text)
     except (json.JSONDecodeError, ValueError):
-        print(json.dumps({"decision": "approve"}))
+        print("{}")
         return 0
 
     result = evaluate(data)
@@ -609,7 +609,7 @@ def main() -> int:
         print(json.dumps(_normalize_stdout(result)))
         return 2
 
-    print(json.dumps({"decision": "approve"}))
+    print("{}")
     return 0
 
 
