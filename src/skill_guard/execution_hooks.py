@@ -57,7 +57,9 @@ def _normalize_stdout(data: dict) -> dict:
         if data.get('additionalContext'):
             out['additionalContext'] = data['additionalContext']
         return out
-    if data.get('decision') == 'allow':
+    if data.get('decision') in ('allow', 'approve'):
+        # 'approve' is a legacy internal enum (e.g. skill_pattern_gate
+        # normalization) — schema-invalid on stdout for every event.
         return _allow()
     if data.get('decision') == 'block':
         return {'decision': 'block', 'reason': data.get('reason', '')}
