@@ -149,8 +149,13 @@ _CONFIRM_RE = re.compile(
     re.IGNORECASE,
 )
 # ponytail: file-mutation imperatives only — noun-ambiguous verbs (build, ship,
-# patch, clean, bump, generate, wire) excluded because they false-match inside
-# questions ("status of the build?"). "ship it" is covered by _CONFIRM_RE.
+# patch, clean, bump, generate, wire, apply) excluded because they false-match
+# inside questions ("status of the build?", "what does apply mean?"). "ship it"
+# is covered by _CONFIRM_RE.
+# "apply" considered+rejected 2026-07-04: most polysemous candidate yet ("apply
+# button", "doesn't apply here"); N=1 evidence; and adding it wouldn't even
+# clear-allow the triggering "apply the blocks?" — L292 needs no "?", so it
+# only reaches ambiguous-allow. Use "go ahead" / --allow-unsolicited.
 _IMPERATIVE_RE = re.compile(
     r"\b(?:fix|edit|update|change|modify|add|create|write|implement|refactor"
     r"|move|rename|delete|remove|migrate)\b",
