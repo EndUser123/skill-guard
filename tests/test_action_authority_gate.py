@@ -115,6 +115,22 @@ class TestGateLogic:
             _seed_transcript(tp, [q])
             assert _action_authority_gate(_data(tmp_path, tp)) is not None, f"failed on: {q}"
 
+    # ponytail: lock in the `apply` rejection (reviewed 2026-07-04). Adding
+    # `apply` to _IMPERATIVE_RE breaks both tests — re-measure TP/FP on a real
+    # blocked-messages corpus before re-proposing. See execution_hooks.py:151-160.
+    def test_apply_declarative_still_ambiguous_not_clear_allow(self, tmp_path, monkeypatch):
+        log = tmp_path / "ambig.jsonl"
+        monkeypatch.setattr("skill_guard.execution_hooks._AMBIGUOUS_LOG", log)
+        tp = tmp_path / "t.jsonl"
+        _seed_transcript(tp, ["apply the patch"])
+        assert _action_authority_gate(_data(tmp_path, tp)) is None
+        assert log.exists(), "apply must NOT be a clear imperative — it must log ambiguous"
+
+    def test_apply_conceptual_question_still_blocks(self, tmp_path):
+        tp = tmp_path / "t.jsonl"
+        _seed_transcript(tp, ["what does apply mean in this context?"])
+        assert _action_authority_gate(_data(tmp_path, tp)) is not None
+
     def test_ambiguous_verb_in_question_allows(self, tmp_path, monkeypatch):
         # redirect telemetry log to temp so we don't pollute the real one
         log = tmp_path / "ambig.jsonl"
