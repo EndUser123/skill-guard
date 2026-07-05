@@ -422,7 +422,14 @@ def log_command_intent_telemetry(
     wrote = False
     for base in (_intent_state_dir(), _fallback_state_dir()):
         try:
-            state_file = base / f"terminals/{terminal_id}/pending_command_intent.json"
+            # STATE-01: prefer session-scoped path. WT_SESSION is shared across
+            # concurrent Claude sessions in one Windows Terminal, so terminal_id
+            # is NOT a per-session key. Only fall back to terminal-scoped when
+            # session_id is absent (legacy callers).
+            if session_id:
+                state_file = base / f"sessions/{session_id}/pending_command_intent.json"
+            else:
+                state_file = base / f"terminals/{terminal_id}/pending_command_intent.json"
             state_file.parent.mkdir(parents=True, exist_ok=True)
             tmp = state_file.with_suffix(".tmp")
             for attempt in range(2):
@@ -451,22 +458,18 @@ def log_command_intent_telemetry(
 
 
 def clear_command_intent(terminal_id: str, session_id: str) -> None:
-    """Clear any pending command intent for this terminal."""
-    safe_terminal = _safe_id(terminal_id) if terminal_id else ""
-    safe_session = _safe_id(session_id) if session_id else ""
+    """Clear this session's pending command intent.
 
+    Session-scoped only — WT_SESSION is shared across concurrent Claude sessions
+    in one Windows Terminal, so clearing by terminal_id would damage a sibling
+    session's in-flight intent. Refuses to clear when session_id is absent.
+    Legacy terminal-scoped files are left to TTL-expire (90s).
+    """
+    if not session_id:
+        return
     for base in (_intent_state_dir(), _fallback_state_dir()):
         try:
-            if terminal_id:
-                (base / f"terminals/{terminal_id}/pending_command_intent.json").unlink(missing_ok=True)
-            if safe_terminal:
-                (base / f"pending_command_intent_{safe_terminal}.json").unlink(missing_ok=True)
-                if safe_session:
-                    (base / f"pending_command_intent_{safe_terminal}_{safe_session}.json").unlink(
-                        missing_ok=True
-                    )
-            if safe_session:
-                (base / f"pending_command_intent_{safe_session}.json").unlink(missing_ok=True)
+            (base / f"sessions/{session_id}/pending_command_intent.json").unlink(missing_ok=True)
         except Exception:
             continue
 

@@ -82,6 +82,7 @@ from skill_guard.utils.terminal_detection import detect_terminal_id
 from skill_guard.slash_command_observability import extract_command_name, extract_slash_command
 from skill_guard.skill_enforcer import (
     build_command_context,
+    clear_command_intent,
     is_topic_inquiry,
     log_command_intent_telemetry,
     should_block_command,
@@ -176,6 +177,18 @@ def handle_user_prompt_submit(data: dict) -> dict:
     # Extract command + args
     command, args = extract_slash_command(normalized)
     if not command:
+        # ponytail: per-turn intent — the previous turn's slash had its chance to
+        # trigger Skill() (Stop Layer 2 coerces in-turn). Carrying it forward locks
+        # the user out for the model's failure. Clear and move on.
+        # FM-2: only clear on single-line prompts — extract_slash_command anchors on
+        # line 1 (^/ without re.MULTILINE), so a multi-line paste whose slash lives
+        # on a later line would falsely miss; clearing on that miss would yank an
+        # unrelated in-flight intent. Multi-line prompts are left to TTL-expire.
+        if "\n" not in normalized:
+            try:
+                clear_command_intent(terminal_id, session_id)
+            except OSError:
+                pass
         return {"continue": True}
 
     # Built-ins, ignored commands, and non-skill commands pass through without creating runs
