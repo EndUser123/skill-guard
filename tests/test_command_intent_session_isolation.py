@@ -30,7 +30,9 @@ def isolated_state(tmp_path, monkeypatch):
 
 
 def _intent_path(base: Path, session_id: str) -> Path:
-    return base / ".claude" / "hooks" / "state" / "sessions" / session_id / "pending_command_intent.json"
+    # STATE-01 migration: writer's primary base is the canonical
+    # P:/.claude/state/ (state_paths contract), with hooks/state/ as legacy fallback.
+    return base / ".claude" / "state" / "sessions" / session_id / "pending_command_intent.json"
 
 
 class TestState01WriterIsSessionScoped:
@@ -58,8 +60,8 @@ class TestState01WriterIsSessionScoped:
         log_command_intent_telemetry("tid_only", "", "/wiki a", "wiki")
         # No session-scoped path
         assert not (_intent_path(isolated_state, "")).parent.parent.exists() or True
-        # Legacy terminal-scoped path written instead
-        legacy = isolated_state / ".claude" / "hooks" / "state" / "terminals" / "tid_only" / "pending_command_intent.json"
+        # Terminal-scoped path written to the canonical base (state_paths contract)
+        legacy = isolated_state / ".claude" / "state" / "terminals" / "tid_only" / "pending_command_intent.json"
         assert legacy.exists()
 
 
