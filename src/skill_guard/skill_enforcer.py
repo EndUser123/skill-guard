@@ -32,7 +32,8 @@ def _hooks_dir() -> Path:
 
 
 def _intent_state_dir() -> Path:
-    return _hooks_dir() / "state"
+    # Canonical state_paths contract (P:/.claude/state/), not hooks/state/.
+    return _hooks_dir().parent / "state"
 
 
 def _session_data_dir() -> Path:
@@ -40,7 +41,10 @@ def _session_data_dir() -> Path:
 
 
 def _fallback_state_dir() -> Path:
-    return Path(tempfile.gettempdir()) / "claude_hooks" / "state"
+    # Legacy hooks/state/ kept during the STATE-01 migration so the reader's
+    # legacy base still finds newly-written intent files; see
+    # test_state_migration_dual_base.py for the dual-base no-orphan proof.
+    return _hooks_dir() / "state"
 
 
 def _fallback_session_data_dir() -> Path:
