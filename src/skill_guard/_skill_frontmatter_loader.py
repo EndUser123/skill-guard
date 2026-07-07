@@ -91,7 +91,6 @@ def _load_skill_frontmatter(skill_name: str) -> dict[str, Any] | None:
         "allowed_first_tools": [],
         "required_first_command_patterns": [],
         "required_first_command_hint": "",
-        "enforcement": "",
         "enforcement_tier": "",
         "workflow_steps": [],
         "completion_criteria": [],
@@ -142,9 +141,6 @@ def _load_skill_frontmatter(skill_name: str) -> dict[str, Any] | None:
         rfch = fm_data.get("required_first_command_hint", "")
         if isinstance(rfch, str):
             result["required_first_command_hint"] = rfch.strip()
-        enforcement = fm_data.get("enforcement", "")
-        if isinstance(enforcement, str):
-            result["enforcement"] = enforcement.strip()
         output_enforcement = fm_data.get("output_enforcement", "")
         if isinstance(output_enforcement, str):
             result["output_enforcement"] = output_enforcement.strip()

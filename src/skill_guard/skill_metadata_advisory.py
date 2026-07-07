@@ -89,7 +89,6 @@ def _enhancement_reasons(metadata: dict) -> list[str]:
     contract_type = _classify_contract(metadata)
 
     workflow_steps = _normalize_list(metadata.get("workflow_steps", []))
-    enforcement = str(metadata.get("enforcement", "") or "").strip().lower()
     workflow_binding = str(metadata.get("workflow_binding", "") or "").strip().lower()
     workflow_enforcement = str(metadata.get("workflow_enforcement", "") or "").strip().lower()
     required_phase_artifacts = _normalize_list(metadata.get("required_phase_artifacts", []))
@@ -109,10 +108,6 @@ def _enhancement_reasons(metadata: dict) -> list[str]:
     )
 
     if workflow_like:
-        if enforcement in {"", "advisory", "none"}:
-            reasons.append(
-                f"enforcement is {enforcement or 'unset'} even though the skill declares workflow contract"
-            )
 
         if workflow_binding not in {"exclusive"}:
             reasons.append(
