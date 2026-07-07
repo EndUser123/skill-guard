@@ -209,6 +209,73 @@ class TestTranscriptParser:
         # Plan step 10: missing/unreadable transcript -> None -> fail-open (allow).
         assert _parse_transcript_for_last_user_message(str(tmp_path / "nope.jsonl")) is None
 
+    # --- 2026-07-06 false-block regression: parser must walk past noise ---
+
+    def test_skips_reminder_only_turn(self, tmp_path):
+        """A user turn that is 100% <system-reminder> must not end the walk."""
+        tp = tmp_path / "t.jsonl"
+        _seed_transcript(tp, [
+            "fix the bug",
+            "<system-reminder>MEMORY.md large; consider compacting.</system-reminder>",
+        ])
+        assert _parse_transcript_for_last_user_message(str(tp)) == "fix the bug"
+
+    def test_skips_compact_summary_entry(self, tmp_path):
+        """isCompactSummary entries (compaction) must be skipped, not returned."""
+        tp = tmp_path / "t.jsonl"
+        with tp.open("w", encoding="utf-8") as f:
+            f.write(json.dumps({"type": "user", "message": {"content": "fix the bug"}}) + "\n")
+            f.write(json.dumps({"type": "user", "isCompactSummary": True,
+                                "isVisibleInTranscriptOnly": True,
+                                "message": {"content": "This session is being continued from..."}}) + "\n")
+        assert _parse_transcript_for_last_user_message(str(tp)) == "fix the bug"
+
+    def test_skips_is_meta_entry(self, tmp_path):
+        """isMeta entries (hook injections) must be skipped, not returned."""
+        tp = tmp_path / "t.jsonl"
+        with tp.open("w", encoding="utf-8") as f:
+            f.write(json.dumps({"type": "user", "message": {"content": "fix the bug"}}) + "\n")
+            f.write(json.dumps({"type": "user", "isMeta": True,
+                                "message": {"content": "hook-injected context"}}) + "\n")
+        assert _parse_transcript_for_last_user_message(str(tp)) == "fix the bug"
+
+    def test_all_noise_returns_empty(self, tmp_path):
+        """Transcript with ONLY noise entries returns '' (gate still blocks)."""
+        tp = tmp_path / "t.jsonl"
+        _seed_transcript(tp, ["<system-reminder>advisory</system-reminder>"])
+        assert _parse_transcript_for_last_user_message(str(tp)) == ""
+
+
+class TestPostCompactRegression:
+    """2026-07-06: gate false-blocked after /compact — the last user-role entry
+    was reminder-only/compact-summary and the parser stopped there instead of
+    reaching the real instruction further back (H1, verified 180/180)."""
+
+    def test_real_instruction_behind_reminder_turn_allows(self, tmp_path):
+        tp = tmp_path / "t.jsonl"
+        _seed_transcript(tp, [
+            "fix the parser in execution_hooks.py",
+            "<system-reminder>consider compacting</system-reminder>",
+        ])
+        assert _action_authority_gate(_data(tmp_path, tp)) is None
+
+    def test_real_instruction_behind_compact_summary_allows(self, tmp_path):
+        tp = tmp_path / "t.jsonl"
+        with tp.open("w", encoding="utf-8") as f:
+            f.write(json.dumps({"type": "user", "message": {"content": "update the gate tests"}}) + "\n")
+            f.write(json.dumps({"type": "user", "isCompactSummary": True,
+                                "message": {"content": "Session continuation summary..."}}) + "\n")
+        assert _action_authority_gate(_data(tmp_path, tp)) is None
+
+    def test_question_behind_reminder_turn_still_blocks(self, tmp_path):
+        """The walk must land on the real message and judge THAT — a question blocks."""
+        tp = tmp_path / "t.jsonl"
+        _seed_transcript(tp, [
+            "what does this function do?",
+            "<system-reminder>consider compacting</system-reminder>",
+        ])
+        assert _action_authority_gate(_data(tmp_path, tp)) is not None
+
 
 # ===========================================================================
 # REGRESSION: exact MEMORY.md failure path
