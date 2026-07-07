@@ -32,7 +32,6 @@ _VALID_CONTRACT_TYPES = {"workflow", "output", "hybrid", "analysis"}
 # one with contract_type=workflow-execution (contract-era) can be MIGRATED.
 _CONTRACT_ERA_TYPES = frozenset({"workflow-execution", "structured-output", "hybrid"})
 
-_VALID_ENFORCEMENT_VALUES = {"strict", "advisory", "none"}
 
 
 def _normalize_string_list(value: object) -> list[str]:
@@ -251,17 +250,13 @@ def _validate_skill_frontmatter(skill_name: str) -> list[str]:
         if not isinstance(fm_data, dict):
             return warnings
 
-        required_fields = ["name", "description", "version", "enforcement"]
+        # enforcement is a DEAD field — all manually-invoked skills are enforced.
+        # Do not require or validate it (user directive 2026-07-07; memory:
+        # feedback_enforcement_none_dead.md).
+        required_fields = ["name", "description", "version"]
         for field in required_fields:
             if field not in fm_data or not str(fm_data.get(field) or "").strip():
                 warnings.append(f"Missing required frontmatter field: {field}")
-
-        enforcement = fm_data.get("enforcement", "")
-        if enforcement and enforcement not in _VALID_ENFORCEMENT_VALUES:
-            warnings.append(
-                f"Invalid enforcement value '{enforcement}'; "
-                f"must be one of: {', '.join(sorted(_VALID_ENFORCEMENT_VALUES))}"
-            )
 
         workflow_steps = fm_data.get("workflow_steps", [])
         normalized_workflow_steps: list[str] = []
