@@ -173,11 +173,17 @@ def _strip_injections(text: str) -> str:
 
 
 def _parse_transcript_for_last_user_message(transcript_path: str) -> str | None:
-    """Return text of the last user-authored message in the transcript JSONL.
+    """Return raw text of the last user-AUTHORED message in the transcript JSONL.
 
-    Skips tool_result entries (role:user with only tool_result blocks).
+    Skips tool_result entries (role:user with only tool_result blocks),
+    structural entries (isMeta / isCompactSummary — hook injections and
+    compaction summaries), and entries whose text is empty after stripping
+    <system-reminder> blocks. Without the empty-after-strip skip, a
+    reminder-only user turn (or a compact summary) short-circuits the walk
+    and the gate false-blocks even though the real instruction survives
+    further back in the file (verified 180/180 transcripts, 2026-07-06).
     Returns None if the transcript is missing/unreadable (callers fail-open).
-    Returns '' only when the file is readable but holds no user text.
+    Returns '' only when the file holds no user-authored text at all.
     """
     try:
         path = Path(transcript_path)
@@ -196,6 +202,8 @@ def _parse_transcript_for_last_user_message(transcript_path: str) -> str | None:
             continue
         if entry.get("role") != "user" and entry.get("type") != "user":
             continue
+        if entry.get("isMeta") or entry.get("isCompactSummary"):
+            continue
         message = entry.get("message", entry)
         if not isinstance(message, dict):
             continue
@@ -210,7 +218,7 @@ def _parse_transcript_for_last_user_message(transcript_path: str) -> str | None:
             text = "\n".join(parts)
         else:
             text = ""
-        if text.strip():
+        if _strip_injections(text).strip():
             return text
     return ""
 
