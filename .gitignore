@@ -77,3 +77,6 @@ post-pack-tree.txt
 .claude/
 .evidence/
 .state/
+
+.in_use/
+.aid/
