@@ -60,6 +60,7 @@ BUILTIN_SLASH_COMMANDS = frozenset(
         "batch",
         "bug",
         "clear",
+        "compact",
         "config",
         "cost",
         "doctor",

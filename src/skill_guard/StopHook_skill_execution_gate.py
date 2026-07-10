@@ -127,39 +127,12 @@ STALE_TIMEOUT = 300  # 5 minutes
 
 DEBUG = os.environ.get("SKILL_EXEC_DEBUG", "0") == "1"
 
-# Slash commands that are NOT skills (built-in CLI commands)
-# These should never be blocked by skill enforcement
-BUILTIN_SLASH_COMMANDS = {
-    "help",
-    "clear",
-    "compact",
-    "cost",
-    "doctor",
-    "init",
-    "login",
-    "logout",
-    "memory",
-    "permissions",
-    "review",
-    "status",
-    "terminal-setup",
-    "vim",
-    "bug",
-    "config",
-    "model",
-    "tasks",
-    "listen",
-}
-
-# Slash commands that are lightweight/meta and don't need enforcement
-LIGHTWEIGHT_SLASH_COMMANDS = {
-    "context-status",
-    "clear-notifications",
-    "obs",
-    "recent",
-    "constraints",
-    "standards",
-}
+# Exemption sets: single source in slash_command_observability — a local copy
+# drifted stale (missing reload-plugins etc.) and caused FP blocks (2026-07-10).
+from skill_guard.slash_command_observability import (
+    BUILTIN_SLASH_COMMANDS,
+    LIGHTWEIGHT_SLASH_COMMANDS,
+)
 
 
 def _is_exempt_command(cmd: str | None) -> bool:
@@ -279,11 +252,19 @@ def _parse_transcript_snapshot(input_data: dict) -> dict:
                 text = _extract_text_content(message_content).strip()
                 if text:
                     if "<command-name>" in text:
-                        # Harness slash-command entry — authoritative user prompt
-                        # for this turn (the SKILL.md injection that follows it is
-                        # also role=user and must not shadow it).
-                        snapshot["user_prompt"] = text
-                        found_user = True
+                        # Harness slash-command entry. It is this turn's prompt
+                        # only when nothing was found yet, or when the found
+                        # prompt is its companion SKILL.md injection. A command
+                        # entry behind a REAL user prompt belongs to a previous
+                        # turn (builtins like /reload-plugins produce no
+                        # assistant reply, so no turn separator exists) — do NOT
+                        # steal it (FP incident 2026-07-10).
+                        _is_companion_injection = snapshot["user_prompt"].startswith(
+                            "Base directory for this skill"
+                        )
+                        if not found_user or _is_companion_injection:
+                            snapshot["user_prompt"] = text
+                            found_user = True
                         if found_assistant:
                             break
                     elif not found_user:
