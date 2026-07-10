@@ -44,6 +44,10 @@ def _skills_dir() -> Path:
 
 SLASH_COMMAND_RE = re.compile(r"^/([a-z0-9_-]+)(?:\s+(.*))?$", re.IGNORECASE)
 NAMESPACED_SLASH_COMMAND_RE = re.compile(r"^/([a-z0-9_-]+):([a-z0-9_-]+)(?:\s+(.*))?$", re.IGNORECASE)
+# Harness slash-command transcript entries wrap the command in XML tags:
+#   <command-name>/plugin:skill</command-name> ... <command-args>args</command-args>
+COMMAND_NAME_TAG_RE = re.compile(r"<command-name>\s*/?([a-z0-9_:-]+)\s*</command-name>", re.IGNORECASE)
+COMMAND_ARGS_TAG_RE = re.compile(r"<command-args>(.*?)</command-args>", re.IGNORECASE | re.DOTALL)
 LEADING_PROMPT_GLYPHS_RE = re.compile(r"^\s*(?:[❯›»>$#]+\s*)+")
 BACKING_SKILL_RE = re.compile(r'Skill\(\s*["\']([A-Za-z0-9_-]+)["\']\s*\)')
 
@@ -119,6 +123,12 @@ def normalize_prompt(prompt: str) -> str:
 
 def extract_slash_command(prompt: str) -> tuple[str | None, str]:
     """Return the slash command name and argument tail."""
+    # Harness transcript entries carry the command in <command-name> XML tags,
+    # not as a leading "/token" — parse those first (schema since CC 2.x).
+    tag = COMMAND_NAME_TAG_RE.search(prompt or "")
+    if tag:
+        args_match = COMMAND_ARGS_TAG_RE.search(prompt)
+        return tag.group(1).lower(), (args_match.group(1).strip() if args_match else "")
     normalized = _normalize_prompt(prompt)
     match = NAMESPACED_SLASH_COMMAND_RE.match(normalized)
     if match:

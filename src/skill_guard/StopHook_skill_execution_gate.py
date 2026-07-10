@@ -161,6 +161,22 @@ LIGHTWEIGHT_SLASH_COMMANDS = {
     "standards",
 }
 
+
+def _is_exempt_command(cmd: str | None) -> bool:
+    """True when the slash command needs no skill enforcement.
+
+    Namespaced commands (plugin:skill) are exempt when either the full name or
+    the bare skill tail is in an exemption set (e.g. /cc-skills-sdlc:task
+    matches a lightweight "task" entry).
+    """
+    if not cmd:
+        return True
+    tail = cmd.rsplit(":", 1)[-1]
+    for group in (BUILTIN_SLASH_COMMANDS, LIGHTWEIGHT_SLASH_COMMANDS, KNOWLEDGE_SKILLS):
+        if cmd in group or tail in group:
+            return True
+    return False
+
 _SNAPSHOT_CACHE_KEY = "__skill_exec_transcript_snapshot"
 
 
@@ -226,19 +242,27 @@ def _parse_transcript_snapshot(input_data: dict) -> dict:
             except json.JSONDecodeError:
                 continue
 
-            role = entry.get("role", "")
             msg_type = entry.get("type", "")
             message = entry.get("message", entry)
+            if not isinstance(message, dict):
+                message = {}
             message_content = message.get("content", entry.get("content", ""))
+            # Current transcript schema nests role under message.role with
+            # top-level type "user"/"assistant"; older schema had top-level role.
+            role = entry.get("role", "") or message.get("role", "")
 
             is_assistant = (
                 (msg_type == "message" and role == "assistant")
                 or msg_type == "assistant"
                 or role == "assistant"
             )
-            is_user = role == "user" or (msg_type == "message" and role == "user")
+            is_user = role == "user" or msg_type == "user"
 
             if is_assistant:
+                if found_user:
+                    # Reached the previous turn's assistant response — the
+                    # current turn is fully scanned.
+                    break
                 if not found_assistant:
                     snapshot["response_text"] = _extract_text_content(message_content)
                     found_assistant = True
@@ -254,14 +278,21 @@ def _parse_transcript_snapshot(input_data: dict) -> dict:
                 # the reverse scan stops before reaching Skill tool_call entries.
                 text = _extract_text_content(message_content).strip()
                 if text:
-                    # Real user prompt (not a tool_result whose role happens to
-                    # be "user").  This marks the start of the current turn.
-                    snapshot["user_prompt"] = text
-                    found_user = True
+                    if "<command-name>" in text:
+                        # Harness slash-command entry — authoritative user prompt
+                        # for this turn (the SKILL.md injection that follows it is
+                        # also role=user and must not shadow it).
+                        snapshot["user_prompt"] = text
+                        found_user = True
+                        if found_assistant:
+                            break
+                    elif not found_user:
+                        # Provisional prompt: keep scanning — a <command-name>
+                        # entry may precede this one in the same turn.
+                        snapshot["user_prompt"] = text
+                        found_user = True
                 # tool_result user messages have no text — keep scanning
                 # backwards so we reach the assistant tool_use messages.
-                if found_user and found_assistant:
-                    break
 
         snapshot["tools_used"] = all_tools
 
@@ -324,24 +355,18 @@ def log(msg: str) -> None:
 
 
 def log_event(event: str, data: dict) -> None:
-    """Log structured event for analysis using atomic rename.
+    """Append one structured JSONL event for analysis.
 
-    Write to .tmp in same directory, flush+fsync, rename over original.
-    This prevents JSONL corruption on crash-mid-write in multi-terminal scenarios.
+    The previous tmp-write + rename implementation REPLACED the log with the
+    single newest event on every call, destroying history. Plain append keeps
+    the history; a torn trailing line on crash is tolerated by JSONL readers
+    that parse per-line.
     """
     try:
         LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
         entry = {"timestamp": time.time(), "event": event, **data}
-        line = json.dumps(entry) + "\n"
-
-        # Atomic rename: write to .tmp, flush+sync, rename over original
-        # .tmp in same directory = same filesystem = atomic rename on NTFS
-        tmp_file = LOG_FILE.parent / f"{LOG_FILE.stem}.{os.getpid()}.tmp"
-        with tmp_file.open("w", encoding="utf-8") as f:
-            f.write(line)
-            f.flush()
-            os.fsync(f.fileno())
-        tmp_file.replace(LOG_FILE)
+        with LOG_FILE.open("a", encoding="utf-8") as f:
+            f.write(json.dumps(entry) + "\n")
     except Exception:
         pass
 
@@ -909,7 +934,7 @@ def run(input_data: dict) -> dict | None:
     # Fix 1: required_first_command_patterns enforcement.
     # After frontmatter_warnings advisory, check if the skill declares required first
     # command patterns and validate the actual first Bash command matches.
-    if slash_cmd and slash_cmd not in BUILTIN_SLASH_COMMANDS and slash_cmd not in LIGHTWEIGHT_SLASH_COMMANDS and slash_cmd not in KNOWLEDGE_SKILLS:
+    if not _is_exempt_command(slash_cmd):
         _skill_md_path = Path(fr"P:\\\\\\.claude/skills/{slash_cmd}/SKILL.md")
         if _skill_md_path.exists():
             try:
@@ -1042,12 +1067,7 @@ def run(input_data: dict) -> dict | None:
         except Exception:
             pass
 
-    if (
-        slash_cmd
-        and slash_cmd not in BUILTIN_SLASH_COMMANDS
-        and slash_cmd not in LIGHTWEIGHT_SLASH_COMMANDS
-        and slash_cmd not in KNOWLEDGE_SKILLS
-    ):
+    if not _is_exempt_command(slash_cmd):
         if "Skill" in tools_used_this_turn:
             contract_requires_workflow = _requires_execution_tools(state)
             execution_tools_after_skill = _EXECUTION_TOOLS.intersection(tools_used_this_turn)
@@ -1113,6 +1133,78 @@ def run(input_data: dict) -> dict | None:
                     f"Re-read the skill's Execution section and run it now."
                 ),
             }
+
+        if "<command-name>" in (user_prompt or ""):
+            # Harness-expanded slash command (current Claude Code): the harness
+            # injected SKILL.md as a user message and the Skill tool is never
+            # called. Judge execution directly instead of requiring Skill().
+            _execution_tools_used = _EXECUTION_TOOLS.intersection(tools_used_this_turn)
+            _help_request = False
+            try:
+                from skill_guard.slash_command_observability import extract_slash_command as _esc
+
+                _, _slash_args = _esc(user_prompt or "")
+                _arg_tokens = set(_slash_args.split())
+                _help_request = bool(_arg_tokens) and _arg_tokens.issubset(_HELP_FLAGS)
+            except Exception:
+                pass
+
+            if _execution_tools_used or _help_request:
+                _log_slash_outcome(
+                    "completed",
+                    reason=(
+                        "execution_tools_after_harness_expansion"
+                        if _execution_tools_used
+                        else "help_request"
+                    ),
+                )
+                if not router_snapshot_active:
+                    _clear_governance_state()
+                return None
+
+            if not tools_used_this_turn:
+                # Incident shape (2026-07-09 /go "No response required."): slash
+                # command expanded, model responded with zero tool calls.
+                log_event(
+                    "slash_command_ignored",
+                    {
+                        "skill": slash_cmd,
+                        "user_prompt": (user_prompt or "")[:200],
+                        "tools_used": tools_used_this_turn,
+                        "enforcement": "block",
+                    },
+                )
+                _log_slash_outcome("blocked", reason="no_tools_after_harness_expansion")
+                if not router_snapshot_active:
+                    _clear_governance_state()
+                return _workflow_block(
+                    f"SLASH COMMAND NOT EXECUTED: /{slash_cmd}\n\n"
+                    f"The skill was loaded (harness-injected SKILL.md) but you used "
+                    f"NO tools and produced no workflow execution.\n\n"
+                    f"Follow the skill's documented workflow now using tools "
+                    f"(Bash, Task, Read, etc.). Do not answer with prose alone."
+                )
+
+            if not _requires_execution_tools(state):
+                # Some non-execution tools used and no workflow contract —
+                # analysis-style completion is acceptable.
+                _log_slash_outcome(
+                    "completed", reason="analysis_contract_after_harness_expansion"
+                )
+                if not router_snapshot_active:
+                    _clear_governance_state()
+                return None
+
+            _log_slash_outcome("bypassed", reason="workflow_contract_without_execution_tools")
+            if not router_snapshot_active:
+                _clear_governance_state()
+            return _workflow_block(
+                f"SKILL WORKFLOW NOT EXECUTED: /{slash_cmd}\n\n"
+                f"The skill declares a workflow contract but no execution tools "
+                f"(Bash, Task, Read, etc.) were used this turn "
+                f"(tools: {', '.join(tools_used_this_turn)}).\n\n"
+                f"Re-read the skill's Execution section and run it now."
+            )
 
         # Skill was not called. Check if the hook system itself blocked all attempts
         # (system failure) before blaming the model (genuine violation).
@@ -1208,12 +1300,7 @@ def run(input_data: dict) -> dict | None:
     # Continue with remaining checks (non-slash-command path)
 
     if not tools_used_this_turn:
-        if (
-            slash_cmd
-            and slash_cmd not in BUILTIN_SLASH_COMMANDS
-            and slash_cmd not in LIGHTWEIGHT_SLASH_COMMANDS
-            and slash_cmd not in KNOWLEDGE_SKILLS
-        ):
+        if not _is_exempt_command(slash_cmd):
             # Check if the hook system itself blocked all tool attempts this turn.
             # Distinguishes: Claude bypassed (genuine violation) vs hooks blocked everything (system failure).
             if LEDGER_AVAILABLE and slash_cmd and active_turn_id:
@@ -1264,12 +1351,7 @@ def run(input_data: dict) -> dict | None:
         return None
 
     if "Skill" not in tools_used_this_turn:
-        if (
-            slash_cmd
-            and slash_cmd not in BUILTIN_SLASH_COMMANDS
-            and slash_cmd not in LIGHTWEIGHT_SLASH_COMMANDS
-            and slash_cmd not in KNOWLEDGE_SKILLS
-        ):
+        if not _is_exempt_command(slash_cmd):
             execution_tools_used = {
                 tool_name
                 for tool_name in tools_used_this_turn

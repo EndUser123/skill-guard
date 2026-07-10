@@ -118,7 +118,7 @@ _INVESTIGATION_TOOLS = frozenset({
 
 
 def _extract_slash_command(prompt: str) -> str | None:
-    """Namespaced-aware extractor (delegates to the shared slash_command_observability).
+    r"""Namespaced-aware extractor (delegates to the shared slash_command_observability).
 
     Replaces the prior colon-truncating regex `^/([a-zA-Z][\w-]*)`, which mis-extracted
     `/cc-skills-utils:plugin-installer` as `cc-skills-utils`. The shared extractor
@@ -593,8 +593,25 @@ def stop_main():
         reason = result.get("reason", "")
         _log_stop_block("skill-guard_Stop", reason, "", block_ctx)
         print(json.dumps({"decision": "block", "reason": reason}))
-    else:
-        print(json.dumps({}))
+        return
+
+    # Slash-command execution gate (StopHook_skill_execution_gate.run) was an
+    # orphaned module until 2026-07-10 — no entry point invoked it, so slash
+    # bypass ("/skill ignored, prose/null response") was never enforced.
+    # Fail-open: any gate error must not break the Stop pipeline.
+    try:
+        from skill_guard import StopHook_skill_execution_gate as _slash_gate
+
+        gate_result = _slash_gate.run(payload)
+    except Exception:
+        gate_result = None
+    if isinstance(gate_result, dict) and gate_result.get("block") is True:
+        reason = gate_result.get("reason", "")
+        _log_stop_block("skill-guard_Stop:slash_gate", reason, "", block_ctx)
+        print(json.dumps({"decision": "block", "reason": reason}))
+        return
+
+    print(json.dumps({}))
 
 
 if __name__ == "__main__":
