@@ -156,6 +156,40 @@ def test_is_exempt_command():
     assert gate._is_exempt_command("cc-skills-sdlc:go") is False
 
 
+# --- FP regression (2026-07-10): builtin command steal -------------------------
+# /reload-plugins is CLI-handled and writes NO assistant entry, so its command
+# entry sits contiguous with the next real user prompt. The scan must not steal
+# it, and builtins must be exempt via the SHARED exemption sets.
+
+def _friction_entries() -> list[dict]:
+    return [
+        _command_entry("/reload-plugins", ""),
+        _user("do you know what to do with this packet?"),
+        _assistant([{"type": "text", "text": "Yes. It's an adversarial-review packet..."}]),
+    ]
+
+
+def test_scan_does_not_steal_previous_turn_command_entry(tmp_path):
+    snap = gate._parse_transcript_snapshot(
+        {"transcript_path": _write_transcript(tmp_path, _friction_entries())}
+    )
+    assert snap["user_prompt"] == "do you know what to do with this packet?"
+
+
+def test_run_allows_prose_turn_after_builtin_command(tmp_path, no_ledger):
+    result = gate.run({"transcript_path": _write_transcript(tmp_path, _friction_entries())})
+    assert result is None
+
+
+def test_exemption_sets_are_shared_single_source():
+    import skill_guard.slash_command_observability as obs
+
+    assert gate.BUILTIN_SLASH_COMMANDS is obs.BUILTIN_SLASH_COMMANDS
+    assert gate.LIGHTWEIGHT_SLASH_COMMANDS is obs.LIGHTWEIGHT_SLASH_COMMANDS
+    assert gate._is_exempt_command("reload-plugins") is True
+    assert gate._is_exempt_command("compact") is True
+
+
 # --- Registered entry point (router.py Stop) ----------------------------------
 # Pins testing_entrypoint_launch_gap: the gate module was orphaned — no entry
 # point invoked run() — so module-level tests alone could never prove liveness.
