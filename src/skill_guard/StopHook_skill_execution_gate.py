@@ -134,6 +134,17 @@ from skill_guard.slash_command_observability import (
     LIGHTWEIGHT_SLASH_COMMANDS,
 )
 
+# Plugin-aware SKILL.md resolver (project + user + plugin-cache roots). Reuses
+# the same resolver the universal gate trusts for disable-model-invocation, so
+# namespaced plugin skills (e.g. cc-skills-sdlc:go) resolve correctly. Fail
+# open to None so a missing resolver never blocks the gate.
+try:
+    from skill_guard.skill_enforcer import _resolve_skill_md_path
+except Exception:  # pragma: no cover - resolver must fail open
+
+    def _resolve_skill_md_path(_cmd: str):  # type: ignore[no-redef]
+        return None
+
 
 def _is_exempt_command(cmd: str | None) -> bool:
     """True when the slash command needs no skill enforcement.
@@ -916,8 +927,8 @@ def run(input_data: dict) -> dict | None:
     # After frontmatter_warnings advisory, check if the skill declares required first
     # command patterns and validate the actual first Bash command matches.
     if not _is_exempt_command(slash_cmd):
-        _skill_md_path = Path(fr"P:\\\\\\.claude/skills/{slash_cmd}/SKILL.md")
-        if _skill_md_path.exists():
+        _skill_md_path = _resolve_skill_md_path(slash_cmd)
+        if _skill_md_path is not None:
             try:
                 with _skill_md_path.open("r", encoding="utf-8") as _f:
                     _skill_md_text = _f.read()
@@ -1222,16 +1233,19 @@ def run(input_data: dict) -> dict | None:
         # TRANSCRIPT PARSE FAILURE FALLBACK: If transcript parse returned empty
         # tools_used (e.g. transcript not flushed, system-reminder broke reverse-scan,
         # or post-compact transcript is empty), check the ledger for a skill_loaded
-        # event from this terminal. This survives compaction because the ledger is
-        # SQLite on disk.
-        if not tools_used_this_turn and LEDGER_AVAILABLE and terminal_id:
+        # event IN THE ACTIVE TURN. Turn-scoped (not whole-terminal): a prior turn's
+        # skill_loaded must NOT satisfy this turn's fallback, otherwise a zero-tool
+        # turn after any earlier skill use is silently allowed. Reuses the same
+        # SQL-level turn filter as the _all_blocked check above.
+        if not tools_used_this_turn and LEDGER_AVAILABLE and active_turn_id:
             try:
-                from __lib.hook_ledger import _load_db_skill_events
+                from __lib.hook_ledger import _load_db_events
 
-                _skill_events = _load_db_skill_events(str(terminal_id))
+                _turn_events = _load_db_events(str(active_turn_id))
                 _skill_confirmed = any(
-                    e.get("payload", {}).get("skill", "").lower() == slash_cmd.lower()
-                    for e in _skill_events
+                    e.get("event_type") == "skill_loaded"
+                    and e.get("payload", {}).get("skill", "").lower() == slash_cmd.lower()
+                    for e in _turn_events
                 )
                 if _skill_confirmed:
                     log(
@@ -1244,7 +1258,7 @@ def run(input_data: dict) -> dict | None:
                         {
                             "skill": slash_cmd,
                             "transcript_tools": tools_used_this_turn,
-                            "event_count": len(_skill_events),
+                            "event_count": len(_turn_events),
                         },
                     )
                     if not router_snapshot_active:
