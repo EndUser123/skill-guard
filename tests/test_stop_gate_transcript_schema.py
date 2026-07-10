@@ -241,3 +241,80 @@ def test_log_event_appends_instead_of_replacing(tmp_path, monkeypatch):
     assert len(lines) == 2
     assert json.loads(lines[0])["event"] == "first"
     assert json.loads(lines[1])["event"] == "second"
+
+
+# --- Ledger fallback turn-scoping (fix 2a, 2026-07-10) ------------------------
+# The transcript-parse-failure fallback must only honor a skill_loaded event
+# from the ACTIVE turn. Before fix 2a it matched ANY historical skill_loaded
+# for the terminal, so a zero-tool turn following any earlier skill use was
+# silently allowed. The fallback is reached only via the PLAIN slash form (no
+# <command-name> XML) with zero tools — the harness-XML path blocks earlier.
+
+_CURRENT_TURN = "turn-current-2a"
+_PRIOR_TURN = "turn-prior-2a"
+
+
+def _plain_slash_zero_tool_entries() -> list[dict]:
+    """Plain-form slash command (not harness-expanded); current turn has zero tools."""
+    return [
+        _user("/cc-skills-sdlc:go proceed"),
+        _assistant([{"type": "text", "text": "I'll answer in prose instead of running it."}]),
+    ]
+
+
+def _enable_ledger(monkeypatch, active_turn: str) -> None:
+    """Turn the ledger on with a resolved active turn, isolating state side channels."""
+    monkeypatch.setattr(gate, "LEDGER_AVAILABLE", True)
+    monkeypatch.setattr(gate, "ENABLED", True)
+    monkeypatch.setattr(gate, "_read_state", lambda: {})
+    monkeypatch.setattr(gate, "_get_terminal_id", lambda data: "term-2a")
+    monkeypatch.setattr(gate, "_get_active_turn_id", lambda tid: active_turn)
+
+
+def test_ledger_fallback_does_not_match_prior_turn_skill_loaded(tmp_path, monkeypatch):
+    """Fix 2a: a PRIOR-turn skill_loaded must not satisfy the current-turn fallback."""
+    import __lib.hook_ledger as ledger
+
+    # Precondition: slash command is extracted from the plain form.
+    assert extract_slash_command("/cc-skills-sdlc:go proceed") == ("cc-skills-sdlc:go", "proceed")
+
+    # Current turn has NO skill_loaded; a PRIOR turn does. The old terminal-wide
+    # match would have allowed the stop; the turn-scoped filter must not.
+    def fake_load_db_events(turn_id):
+        assert turn_id == _CURRENT_TURN, f"fallback must query active turn, got {turn_id!r}"
+        return []
+
+    prior_event = {
+        "event_type": "skill_loaded",
+        "turn_id": _PRIOR_TURN,
+        "payload": {"skill": "cc-skills-sdlc:go", "turn_id": _PRIOR_TURN},
+    }
+
+    monkeypatch.setattr(ledger, "_load_db_events", fake_load_db_events)
+    monkeypatch.setattr(ledger, "_load_db_skill_events", lambda terminal_id: [prior_event])
+    _enable_ledger(monkeypatch, _CURRENT_TURN)
+
+    result = gate.run({"transcript_path": _write_transcript(tmp_path, _plain_slash_zero_tool_entries())})
+
+    # Prior-turn skill_loaded no longer satisfies the fallback → gate blocks.
+    assert result is not None
+    assert result.get("block") is True
+    assert "cc-skills-sdlc:go" in result["reason"]
+
+
+def test_ledger_fallback_still_allows_same_turn_skill_loaded(tmp_path, monkeypatch):
+    """Positive control: a CURRENT-turn skill_loaded still satisfies the fallback."""
+    import __lib.hook_ledger as ledger
+
+    same_turn_event = {
+        "event_type": "skill_loaded",
+        "turn_id": _CURRENT_TURN,
+        "payload": {"skill": "cc-skills-sdlc:go", "turn_id": _CURRENT_TURN},
+    }
+
+    monkeypatch.setattr(ledger, "_load_db_events", lambda turn_id: [same_turn_event])
+    monkeypatch.setattr(ledger, "_load_db_skill_events", lambda terminal_id: [])
+    _enable_ledger(monkeypatch, _CURRENT_TURN)
+
+    result = gate.run({"transcript_path": _write_transcript(tmp_path, _plain_slash_zero_tool_entries())})
+    assert result is None  # current-turn skill_loaded → fallback allows stop
