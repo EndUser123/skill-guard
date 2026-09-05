@@ -342,7 +342,7 @@ def _probe_log(gate_name: str, decision: str, tool_name: str, terminal_id: str, 
         "reason": reason[:200] if reason else "",
     }
     try:
-        with _probe_log.open("a", encoding="utf-8") as _f:
+        with _PROBE_LOG.open("a", encoding="utf-8") as _f:
             _f.write(_probe_json.dumps(entry) + "\n")
     except Exception:
         pass

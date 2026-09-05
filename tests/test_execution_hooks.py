@@ -498,3 +498,58 @@ class TestSkillExistsCache:
         _skill_exists_cached("plugin-installer")
         info_after_more = _skill_exists_cached.cache_info()
         assert info_after_more.hits > info_after_first.hits
+
+
+class TestProbeLog:
+    """Regression for a real, live bug (found + fixed 2026-09-05): `_probe_log`
+    referenced `_probe_log.open(...)` inside its own body — a self-referential
+    collision with the function's own name instead of the module constant
+    `_PROBE_LOG` — so every call raised AttributeError on a function object,
+    silently swallowed by the bare `except Exception: pass`. Confirmed via the
+    real telemetry file (P:/.claude/tmp/PRETOOL_GATE_PROBE.jsonl): zero rows
+    written between 2026-07-14 and 2026-09-05, ~53 days, despite the hook
+    being live and enabled the whole time. The bug never affected actual
+    allow/block decisions (probe calls are fire-and-forget) — only
+    skill-guard's own self-observability was dead. No test previously covered
+    this function at all."""
+
+    def test_probe_log_actually_writes_a_row(self, tmp_path, monkeypatch):
+        from skill_guard import execution_hooks as eh
+
+        probe_path = tmp_path / "probe.jsonl"
+        monkeypatch.setattr(eh, "_PROBE_LOG", probe_path)
+        eh._probe_log(
+            "runtime", "allow", "Read", "term-1", "run-1", "some-skill",
+            reason="test reason",
+        )
+        assert probe_path.exists(), (
+            "_probe_log must write to _PROBE_LOG (the module constant), not "
+            "shadow-reference its own function name"
+        )
+        rows = [json.loads(line) for line in probe_path.read_text(
+            encoding="utf-8"
+        ).splitlines() if line.strip()]
+        assert len(rows) == 1
+        assert rows[0]["gate"] == "runtime"
+        assert rows[0]["decision"] == "allow"
+        assert rows[0]["tool"] == "Read"
+        assert rows[0]["reason"] == "test reason"
+
+    def test_probe_log_appends_multiple_rows(self, tmp_path, monkeypatch):
+        from skill_guard import execution_hooks as eh
+
+        probe_path = tmp_path / "probe.jsonl"
+        monkeypatch.setattr(eh, "_PROBE_LOG", probe_path)
+        eh._probe_log("skill_first", "block", "Bash", "t", "", "foo")
+        eh._probe_log("runtime", "allow", "Read", "t", "r", "foo")
+        rows = probe_path.read_text(encoding="utf-8").splitlines()
+        assert len(rows) == 2
+
+    def test_probe_log_never_raises_on_write_failure(self, monkeypatch):
+        """Fail-open contract: a broken probe path must never break the gate."""
+        from pathlib import Path
+
+        from skill_guard import execution_hooks as eh
+
+        monkeypatch.setattr(eh, "_PROBE_LOG", Path("Z:/does/not/exist/probe.jsonl"))
+        eh._probe_log("runtime", "allow", "Read", "t", "r", "foo")  # must not raise
